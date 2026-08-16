@@ -1,0 +1,11 @@
+data/
+third_party/
+outputs/
+wandb/
+*.hdf5
+*.sif
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+ops/*.log
+*.egg-info/
