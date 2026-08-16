@@ -133,3 +133,13 @@ surface (exact height from empirical inspection). Facts driving implementation:
 - ee_frame target order: keep cup_place's (end_effector, right, left).
 - Success: drawer_top_joint >= 0.15 AND object inside drawer-frame cavity box
   AND gripper released; timeout ~35 s (longer than cup_place: two grasps).
+
+## D13 — 2026-08-17: T2 box sizes bounded by the stow-corridor feasibility
+Empirical (18 debug runs): the drawer-stow descent requires the carried box's
+trailing edge to clear the drawer wall from the arm's carry equilibrium
+(x~0.32 at the required height) at the reliably achievable opening (~0.30
+after post-release drift). This caps the box half-width at ~0.024 m. L3 sizes
+set to 4.0/4.8 cm (was 4.5/5.8); DEFAULT_BOX = box_m_red (4.8 cm). The 20%%
+size spread keeps the variant axis meaningful. Descent gate now checks the
+physical clearance condition (handle-relative, pull-direction projected,
+variant-aware) instead of target-distance proxies.

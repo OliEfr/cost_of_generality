@@ -305,3 +305,10 @@ of drawer_stow is carrying the box OVER the 0.779 m drawer wall. Hard-won DLS
 Handle phase is stable across all runs: grasp 0.012/0.012, pull to 0.248
 (joint-gated at 0.20 + overshoot), release, retreat. Object grasp cycle stable:
 fingers 0.0277/0.029 on the 5.8 cm box, held through all subsequent states.
+
+**T2 GEOMETRY RESOLUTION (2026-08-17 ~02:30):** runs 15-18 showed the 5.8 cm
+box is ~1 cm infeasible: pull ceiling ~0.335 (base-proximity stall), drawer
+creeps ~3 cm closed after release (decaying drift, present even at damping 25
+-- treat as environmental), carry equilibrium x~0.32. D13: boxes shrunk to
+4.0/4.8 cm; physical-clearance descent gate. Drawer damping 8->25 (drift
+mitigation + knock resistance).

@@ -23,10 +23,12 @@ OBJ_RANGE = {"x": (0.16, 0.26), "y": (0.36, 0.54), "yaw": (-0.785, 0.785)}  # 10
 CABINET_FIXED = (0.9, 0.0)
 CABINET_RANGE = {"x": (0.85, 0.95), "y": (-0.06, 0.06),
                  "yaw": (math.pi - 0.13, math.pi + 0.13)}  # +-7.5 deg
-DRAWER_OPEN_TARGET = 0.26      # expert pull target (m); success threshold is 0.15.
-                               # Deeper pull moves the drawer wall line closer to the
-                               # base (x 0.315), where the arm can hold the carrying
-                               # height -- at 0.20 the crossing sits in the DLS sag zone
+DRAWER_OPEN_TARGET = 0.33      # expert pull target (m); success threshold is 0.15.
+                               # Deep pull moves the drawer wall behind the descent corridor
+                               # (arm carry envelope ends x~0.32; wall inner at 0.575-open+0.01
+                               # must sit below that minus box half). 0.33 is the deepest the
+                               # pull reliably reaches before the base-proximity stall (0.36+
+                               # hit the 6 s bail in run 17)
 
 
 def _fixed(x: float, y: float, z: float, yaw: float = 0.0) -> dict:

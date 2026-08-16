@@ -66,7 +66,7 @@ WAIT = {
 
 HANDLE_APPROACH_DIST = 0.10     # in front of the handle, handle frame -z
 PULL_RATE = 0.10                # m/s commanded pull speed
-PULL_OVERSHOOT = 0.04           # command a little past the joint target
+PULL_OVERSHOOT = 0.02           # command a little past the joint target (limit 0.40)
 PULL_TIMEOUT = 6.0              # bail (episode will fail success) after this
 OBJECT_DROP_CLEARANCE = 0.02    # object bottom above cavity floor at release
 
@@ -317,10 +317,16 @@ class DrawerStowSm:
             elif from_state == Sm.STAGE_FOR_STOW:
                 go = (s0 == from_state) & waited & near & ramp1_done
             elif from_state == Sm.APPROACH_ABOVE_DRAWER:
-                # z is over-commanded on purpose (sag compensation), so `near`
-                # can never pass here -- gate on ramp completion + XY only
-                xy_near = (ee_pose[:, 0:2] - des[:, 0:2]).norm(dim=-1) < 0.045
-                go = (s0 == from_state) & waited & xy_near & ramp_done
+                # gate on the PHYSICAL descent condition: the carried box's
+                # trailing edge must clear the drawer wall line, measured along
+                # the pull direction from the live handle pose (z is
+                # over-commanded for sag compensation, so `near` cannot pass,
+                # and target-distance proxies wedged the box in runs 14-18)
+                back_dir = -pull_dir[:, 0:2]
+                back_dir = back_dir / back_dir.norm(dim=-1, keepdim=True).clamp(min=1e-6)
+                depth = ((ee_pose[:, 0:2] - handle_pose[:, 0:2]) * back_dir).sum(dim=-1)
+                clear = depth >= HANDLE_TO_FACE + 0.012 + object_half_size + 0.010
+                go = (s0 == from_state) & waited & clear & ramp_done
             elif from_state in TIME_ONLY:
                 go = (s0 == from_state) & waited
             else:

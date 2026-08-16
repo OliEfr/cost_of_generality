@@ -46,10 +46,11 @@ CABINET_CFG = ArticulationCfg(
     ),
     actuators={
         # stiffness 0: stock's 10.0 acts as a return spring toward joint 0 and
-        # silently re-closes the drawer after release; viscous damping holds it
+        # silently re-closes the drawer after release; strong viscous damping
+        # holds it (8.0 let release momentum drift it 4+ cm closed)
         "drawers": ImplicitActuatorCfg(
             joint_names_expr=["drawer_top_joint", "drawer_bottom_joint"],
-            effort_limit=87.0, velocity_limit=100.0, stiffness=0.0, damping=8.0,
+            effort_limit=87.0, velocity_limit=100.0, stiffness=0.0, damping=25.0,
         ),
         "doors": ImplicitActuatorCfg(
             joint_names_expr=["door_left_joint", "door_right_joint"],
@@ -116,7 +117,11 @@ def _box(name: str, edge: float, color: tuple) -> BoxVariant:
 
 BOX_VARIANTS: dict[str, BoxVariant] = {}
 for _cname, _rgb in COLORS.items():
-    BOX_VARIANTS[f"box_s_{_cname}"] = _box(f"box_s_{_cname}", 0.045, _rgb)
-    BOX_VARIANTS[f"box_m_{_cname}"] = _box(f"box_m_{_cname}", 0.058, _rgb)
+    # sizes bounded by the stow corridor: descent needs the box half-width to
+    # clear the drawer wall from the arm's carry equilibrium (x~0.32) at the
+    # reliably reachable opening (~0.30 after post-release drift) -- 5.8 cm was
+    # ~1 cm infeasible (debug runs 12-18)
+    BOX_VARIANTS[f"box_s_{_cname}"] = _box(f"box_s_{_cname}", 0.040, _rgb)
+    BOX_VARIANTS[f"box_m_{_cname}"] = _box(f"box_m_{_cname}", 0.048, _rgb)
 
 DEFAULT_BOX = "box_m_red"
