@@ -133,3 +133,6 @@ Gen-SR-per-level so far: L0 86.4%.
 ranges identical to HDF5. Full L0 conversion (400 eps) started on CPU concurrently
 with the L1/L2 generation wave.
 
+**L0 LeRobot dataset VALIDATED (2026-08-16):** 400 eps / 82,916 frames, pixel err
+0.0151 < 0.03, VALIDATE_OK. 81 MB after h264 (~40x vs HDF5) — cluster sync trivial.
+
