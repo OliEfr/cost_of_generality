@@ -172,3 +172,18 @@ cross-process (identical cup/goal/joint snapshots for seed 5000 on L2). All P4
 VERIFY items now closed; local pipeline fully proven. Remaining before the matrix:
 L3 wave + conversions (running), G5 cluster bring-up (blocked on Slurm association).
 
+
+**L3 WAVE DONE (2026-08-16 23:52):** all 10 variants exit 0, wall 23:27:05->23:52:39
+= 25 min 34 s (~2.6 min/variant — 65-70 min estimate was ~3x too high; warm Kit
+start is ~1.5-2 min, not ~4; timings.md corrected). Per-variant gen SR: v00-v04
+(small cylinder x 5 colors) each 40/45 = 88.9%; v05-v09 (large cylinder x 5 colors)
+each 40/46 = 87.0%. Identical attempt counts within each size group => generation
+outcome depends only on geometry, not color — expected (color is render-only) and a
+free determinism sanity check. Overall L3: 400/455 = 87.9% gen SR.
+Gen-SR-per-level finding now complete: L0 86.4 / L1 85.8 / L2 85.5 / L3 87.9 —
+essentially flat across the ladder; Mimic generation does not get harder with our
+randomization ranges (worth a sentence in the report; the data-cost curves cannot be
+explained by generation-side attrition). L3 conversion (10-file interleaved merge,
+shuffle_seed 0) + validation launched. L1 converted+validated (VALIDATE_OK); L2
+conversion running. Hourly fallback cron armed per user request (checks tmux/logs/
+GPU/disk/G0/cert) in addition to event watchers.

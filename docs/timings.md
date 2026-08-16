@@ -22,7 +22,8 @@ against these numbers (CLAUDE.md rule 5 applies).
 | Mimic gen, visuomotor, 400 successes (L0) | **22 min 09 s** | ~18/min after startup |
 | Mimic gen, visuomotor, 400 successes (L1) | **22 min 11 s** | GPU exclusive |
 | Mimic gen, 400 successes, GPU shared with a training run (L2) | **32 min 08 s** | ~45% slower under sharing — acceptable |
-| Full 4-level datagen for one task (L0+L1+L2+L3 wave) | ~2 h (est from parts) | L3 wave = 10 × (startup + ~2.5 min) ≈ ~65–70 min |
+| L3 wave: 10 × (Kit start + gen 40 successes @ 8 envs) | **25 min 34 s** (~2.6 min/variant) | Measured 2026-08-16, GPU otherwise idle. The prior ~65–70 min estimate assumed a cold ~4 min Kit start per variant; with warm shader/extension caches a Kit start is only ~1.5–2 min. Use the warm number for back-to-back sim jobs, the cold number for first launch after reboot/env change. |
+| Full 4-level datagen for one task (L0+L1+L2+L3 wave) | **~1 h 42 min** measured total (22+22+32+26) | L2 leg was GPU-shared; ~1.5 h if exclusive |
 | frames_qa per level | ~7–8 min | PNG written before the shutdown hang |
 
 ## Conversion / validation (CPU, nice -n 10, sharing box with sim)
