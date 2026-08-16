@@ -75,3 +75,24 @@ Provenance control holds: the SAME surviving sources feed generation for all lev
 **VERIFY at G2/G3:** annotate yield printed as "Exported X (out of Y)"; if <10
 survive, record more sources rather than loosening checks.
 
+
+## D10 — 2026-08-17: Keep table_cam FOV despite corner clipping (~0.25% of episodes)
+Full-sweep QA (red-pixel segmentation, frame 0, all 400 eps of L1 and L2): 1/400
+episodes start with the cup fully outside the table_cam view, 5-6/400 marginal
+(<30 px), all at the far corner x~0.65/y~-0.25 of the cup range. Identical sampler
+and camera across L1/L2/L3 => the effect is level-uniform and train/eval-matched
+(frozen eval sets sample the same distribution), so cross-level comparisons stay
+fair. Wrist cam covers the approach; n_obs_steps=2 policies re-acquire the cup
+early in the rollout. Regenerating all visuomotor data with a wider FOV (~3 h +
+re-QA) would shrink pixels-per-object for every episode to fix a 1-in-400 corner.
+KEEP camera + datasets; report as a known characteristic in the paper's setup
+section. Evidence: ops/qa/L1_visibility.png, L2_visibility.png.
+
+## D11 — 2026-08-17: Frozen eval sets = seed protocol + committed state snapshots
+Benchmark per level = (env cfg, protocol.json seeds). To make silent env-cfg drift
+detectable, we additionally commit per-level initial-state snapshots
+(configs/eval_sets/{L}.json): 10 batches x 20 envs of cup/goal poses from
+env.reset(seed=5000+b) on the STATE env. L0-L2 standard eval = batches 0-4
+(100 eps), headline rerun = 0-9 (200 eps). L3 per D2 pools per-variant runs:
+standard = batch 0 on each of the 10 sub-envs (200 eps), rerun adds batch 1
+(400 eps). Any future eval run can diff its reset states against the snapshot.

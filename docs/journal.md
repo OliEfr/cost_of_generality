@@ -208,3 +208,16 @@ from success-only inputs: 400 eps / 74,740 frames, pixel err 0.0160, VALIDATE_OK
 incl. new --expect_episodes 400 guard. LeRobot datasets L0-L3 all validated
 (400 eps each). Remaining for G3: dataset QA (visual grids, action ranges,
 coverage) + per-level eval-set freeze.
+
+**G3 QA PASS (2026-08-17 ~01:10):** scripts/dev/dataset_qa.py over all 4 levels:
+coverage matches spec exactly (L1 cup span 29.9x39.9 cm vs 30x40; L2 goal
+19.8x19.9 vs 20x20; L0 all fixed; L3 slightly narrower — 400 draws via 10
+sub-runs). Final placement err max 3.71 cm vs 5 cm gate, all 1600 eps. Action
+ranges sane (yaw deltas grow with yaw randomization as expected). Visual grids +
+coverage scatters in ops/qa/. Two QA gotchas: (a) generator-exhaustion bug in my
+own QA script (list() over a yielding with-block closes the h5 handles); (b) L3
+grid appeared to show missing cups — full-sweep pixel analysis showed the real
+rate is 1/400 invisible + ~1.4% marginal at the far corner (D10: keep camera,
+level-uniform + train/eval-matched). Eval-set freeze wave launched (tmux
+cog_eval_freeze, 14 Kit sessions: L0-L2 + 10 L3 sub-envs, state envs, 10 batches
+x 20 envs each) -> configs/eval_sets/{L}.json per D11.
