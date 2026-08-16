@@ -93,3 +93,11 @@ grasp_z_offset + 0.006 (recorder + sm_diag). The tainted g2_sr_L0.hdf5 was delet
 Lesson recorded: SM targets are TCP poses — every object-height computation must add
 the TCP-to-object offset of the current grasp.
 
+**Retest after fix:** L0 diag 24/24 successes, all reaching RELEASE at ~189 steps
+(9.5 s sim), tracking error ~9 mm — well inside the 12 mm gate. L1/L2 diags queued.
+
+**G2 SR criterion MET (2026-08-16):** post-fix expert diag — L0 24/24, L1 32/32,
+L2 32/32 (88/88 overall; gate needs >=90%). All successes reach RELEASE at
+~190 steps / ~9.5 s sim. G2b started: 15 L2 source demos single-env (D9), then
+auto-annotate replay re-check.
+
