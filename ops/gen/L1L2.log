@@ -1,0 +1,172 @@
+So 16. Aug 22:31:55 CEST 2026
+[3gH    H    H    H    H    H    H    H    H    H    H    H    H    H    H    H    H    H    H    H   [INFO] Using python from: /home/admin_07/miniconda3/envs/cog_isaac/bin/python
+[INFO][AppLauncher]: Using device: cuda:0
+[INFO][AppLauncher]: Loading experience file: /home/admin_07/cost_of_generality/third_party/IsaacLab/apps/isaaclab.python.headless.rendering.kit
+Loading user config located at: '/home/admin_07/miniconda3/envs/cog_isaac/lib/python3.11/site-packages/isaacsim/kit/data/Kit/Isaac-Sim/5.1/user.config.json'
+[Info] [carb] Logging to file: /home/admin_07/miniconda3/envs/cog_isaac/lib/python3.11/site-packages/isaacsim/kit/logs/Kit/Isaac-Sim/5.1/kit_20260816_223155.log
+[1m[93m2026-08-16T20:31:55Z [0ms] [Warning] [carb.crashreporter-breakpad.plugin] [previous crash] preventing upload of minidump due to user opt-out: '/home/admin_07/miniconda3/envs/cog_isaac/lib/python3.11/site-packages/isaacsim/kit/data/Kit/Isaac-Sim/5.1/51b0eed0-8597-40ad-095a9daa-727044b9.dmp'
+[0m[1m[93m2026-08-16T20:31:55Z [76ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+[0m[1m[93m2026-08-16T20:31:55Z [76ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+[0m[1m[93m2026-08-16T20:31:55Z [85ms] [Warning] [omni.platforminfo.plugin] failed to open the default display.  Can't verify X Server version.
+[0m
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 580.173.02    | Graphics API: Vulkan
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 4090          | Yes: 0 |     | 24564   MB | 10de      | 0          |
+|     |                                  |        |     |            | 2684      | 5aad0b43.. |
+|     |                                  |        |     |            | 1         |            |
+|=============================================================================================|
+| OS: 24.04.2 LTS (Noble Numbat) ubuntu, Version: 24.04.2, Kernel: 6.8.0-124-generic
+| Processor: 13th Gen Intel(R) Core(TM) i9-13900KF
+| Bare Metal Cores: 24 | Bare Metal Logical Cores: 48
+| Available Cores:  32 
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 63105 | Free Memory: 50318
+| Total Page/Swap (MB): 59999 | Free Page/Swap: 57346
+|---------------------------------------------------------------------------------------------|
+[1m[93m2026-08-16T20:31:56Z [496ms] [Warning] [gpu.foundation.plugin] CPU performance profile is set to powersave. This profile sets the CPU to the lowest frequency reducing performance.
+[0m[1m[93m2026-08-16T20:31:56Z [504ms] [Warning] [gpu.foundation.plugin] IOMMU is enabled.
+[0m[1m[93m2026-08-16T20:31:56Z [918ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+[0m[1m[93m2026-08-16T20:31:56Z [918ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+[0m[1m[93m2026-08-16T20:31:56Z [931ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+[0m[1m[93m2026-08-16T20:31:56Z [931ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+[0m[1m[93m2026-08-16T20:31:56Z [935ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+[0m[1m[93m2026-08-16T20:31:56Z [935ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+[0m[1m[93m2026-08-16T20:31:56Z [946ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+[0m[1m[93m2026-08-16T20:31:56Z [946ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+[0m[1m[93m2026-08-16T20:31:56Z [946ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+[0m[1m[93m2026-08-16T20:31:56Z [946ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+[0m[1m[93m2026-08-16T20:31:56Z [947ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+[0m[1m[93m2026-08-16T20:31:56Z [947ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+[0m[1m[93m2026-08-16T20:31:56Z [1,021ms] [Warning] [omni.log] Source: omni.hydra was already registered.
+[0m[1m[93m2026-08-16T20:31:56Z [1,185ms] [Warning] [carb] Acquiring non optional plugin interface which is not listed as dependency: [omni::physx::IPhysxBenchmarks v1.0] (plugin: <default plugin>), by client: omni.physics.physx.plugin. Add it to CARB_PLUGIN_IMPL_DEPS() macro of a client.
+[0m[1m[93m2026-08-16T20:31:56Z [1,197ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+[0m[1m[93m2026-08-16T20:31:58Z [2,669ms] [Warning] [pxr.Semantics] pxr.Semantics is deprecated - please use Semantics instead
+[0m[1m[93m2026-08-16T20:31:58Z [2,768ms] [Warning] [omni.graph.core.plugin] Found duplicate of category 'Replicator' - was 'Annotators', adding 'Fabric Reader'
+[0m[1m[93m2026-08-16T20:31:58Z [2,768ms] [Warning] [omni.graph.core.plugin] Category 'Replicator' not accepted on node type 'omni.replicator.core.FabricReader' in extension 'omni.replicator.core'
+[0m[1m[93m2026-08-16T20:31:58Z [2,769ms] [Warning] [omni.replicator.core.scripts.extension] No material configuration file, adding configuration to material settings directly.
+[0m[1m[93m2026-08-16T20:32:01Z [5,750ms] [Warning] [omni.fabric.plugin] Warning: attribute viewportHandle not found for bucket id 7
+
+[0m/home/admin_07/miniconda3/envs/cog_isaac/lib/python3.11/site-packages/gymnasium/envs/registration.py:636: UserWarning: [33mWARN: Overriding environment Isaac-Stack-Cube-Franka-IK-Rel-Skillgen-v0 already in registry.[0m
+  logger.warn(f"Overriding environment {new_spec.id} already in registry.")
+/home/admin_07/miniconda3/envs/cog_isaac/lib/python3.11/site-packages/gymnasium/envs/registration.py:636: UserWarning: [33mWARN: Overriding environment Isaac-Stack-Cube-Bin-Franka-IK-Rel-Mimic-v0 already in registry.[0m
+  logger.warn(f"Overriding environment {new_spec.id} already in registry.")
+[INFO]: Parsing configuration from: <class 'cog.tasks.cup_place.mimic.cup_place_mimic_env_cfg.FrankaCupPlaceVisuomotorMimicEnvCfg_L1'>
+[1m[93m2026-08-16T20:32:02Z [6,537ms] [Warning] [isaaclab.envs.manager_based_env] Seed not set for the environment. The environment creation may not be deterministic.
+[0m[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : None
+	Physics step-size     : 0.01
+	Rendering step-size   : 0.02
+	Environment step-size : 0.05
+[1m[93m2026-08-16T20:32:02Z [6,556ms] [Warning] [isaaclab.envs.manager_based_env] The render interval (2) is smaller than the decimation (5). Multiple render calls will happen for each environment step. If this is not intended, set the render interval to be equal to the decimation.
+[0m[INFO]: Time taken for scene creation : 1.728027 seconds
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 8
+	Environment spacing   : 2.5
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : []
+	Replicate physics     : False
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+[1m[93m2026-08-16T20:32:04Z [9,004ms] [Warning] [carb] Client omni.hydratexture.plugin has acquired [carb::settings::ISettings v1.0] 100 times. Consider accessing this interface with carb::getCachedInterface() (Performance warning)
+[0m[1m[93m2026-08-16T20:32:04Z [9,016ms] [Warning] [carb] Client omni.hydratexture.plugin has acquired [carb::dictionary::IDictionary v1.1] 100 times. Consider accessing this interface with carb::getCachedInterface() (Performance warning)
+[0m[INFO]: Time taken for simulation start : 1.696991 seconds
+[INFO] Command Manager:  <CommandManager> contains 0 active terms.
++------------------------+
+|  Active Command Terms  |
++--------+-------+-------+
+| Index  | Name  |  Type |
++--------+-------+-------+
++--------+-------+-------+
+
+[INFO] Event Manager:  <EventManager> contains 1 active terms.
++--------------------------------------+
+| Active Event Terms in Mode: 'reset'  |
++-------+------------------------------+
+| Index | Name                         |
++-------+------------------------------+
+|   0   | init_franka_arm_pose         |
+|   1   | randomize_franka_joint_state |
+|   2   | randomize_cup_and_goal       |
++-------+------------------------------+
+
+[INFO] Recorder Manager:  <RecorderManager> contains 5 active terms.
++--------------------------------------------------+
+|              Active Recorder Terms               |
++-------+------------------------------------------+
+| Index | Name                                     |
++-------+------------------------------------------+
+|   0   | record_initial_state                     |
+|   1   | record_post_step_states                  |
+|   2   | record_pre_step_actions                  |
+|   3   | record_pre_step_flat_policy_observations |
+|   4   | record_post_step_processed_actions       |
++-------+------------------------------------------+
+
+[INFO] Action Manager:  <ActionManager> contains 2 active terms.
++------------------------------------+
+|   Active Action Terms (shape: 7)   |
++-------+----------------+-----------+
+| Index | Name           | Dimension |
++-------+----------------+-----------+
+|   0   | arm_action     |         6 |
+|   1   | gripper_action |         1 |
++-------+----------------+-----------+
+
+[INFO] Observation Manager: <ObservationManager> contains 2 groups.
++----------------------------------------------+
+| Active Observation Terms in Group: 'policy'  |
++---------+----------------+-------------------+
+|  Index  | Name           |       Shape       |
++---------+----------------+-------------------+
+|    0    | actions        |        (7,)       |
+|    1    | joint_pos      |        (9,)       |
+|    2    | joint_vel      |        (9,)       |
+|    3    | cup_pos        |        (3,)       |
+|    4    | cup_quat       |        (4,)       |
+|    5    | eef_pos        |        (3,)       |
+|    6    | eef_quat       |        (4,)       |
+|    7    | gripper_pos    |        (2,)       |
+|    8    | table_cam      |   (128, 128, 3)   |
+|    9    | wrist_cam      |   (128, 128, 3)   |
++---------+----------------+-------------------+
++----------------------------------------------+
+| Active Observation Terms in Group: 'subtask_terms' |
++-------------+------------------+-------------+
+|    Index    | Name             |    Shape    |
++-------------+------------------+-------------+
+|      0      | grasp_1          |      ()     |
++-------------+------------------+-------------+
+
+[INFO] Termination Manager:  <TerminationManager> contains 0 active terms.
++----------------------------+
+|  Active Termination Terms  |
++--------+-------+-----------+
+| Index  | Name  |  Time Out |
++--------+-------+-----------+
++--------+-------+-----------+
+
+[INFO] Reward Manager:  <RewardManager> contains 0 active terms.
++-----------------------+
+|  Active Reward Terms  |
++-------+------+--------+
+| Index | Name | Weight |
++-------+------+--------+
++-------+------+--------+
+
+[INFO] Curriculum Manager:  <CurriculumManager> contains 0 active terms.
++----------------------+
+| Active Curriculum Terms |
++-----------+----------+
+|   Index   | Name     |
++-----------+----------+
++-----------+----------+
+
+[INFO]: Completed setting up the environment...
+Loaded 15 to datagen info pool
+[1m[93m2026-08-16T20:32:07Z [11,567ms] [Warning] [carb] Client gpu.foundation.plugin has acquired [gpu::unstable::IMemoryBudgetManagerFactory v0.1] 100 times. Consider accessing this interface with carb::getCachedInterface() (Performance warning)
+[0m

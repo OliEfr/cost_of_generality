@@ -121,3 +121,10 @@ Failed episodes exported separately (*_failed.hdf5) — useful for QA.
 log ops/gen/L0.log. Estimated ~3-4 h from smoke throughput. Converter smoke on the
 10-demo file running concurrently on CPU (G4 prep).
 
+**L0 DATASET COMPLETE (2026-08-16 19:02):** 400/463 successes = 86.4% generation SR,
+3.5 GB (L0.hdf5) + 550 MB failed pool, in 22 min wall (8 envs) — startup dominated
+the smoke, so real throughput is ~20x my estimate; full 4-level datagen fits in ~2 h,
+not days. Converter smoke: 10 episodes -> valid LeRobotDataset v3 tree
+(videos/meta/manifest). L1+L2 generation wave launched 22:31 (tmux cog_gen_L1L2).
+Gen-SR-per-level so far: L0 86.4%.
+
