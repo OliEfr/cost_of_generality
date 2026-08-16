@@ -231,3 +231,12 @@ independent streams. G3 criteria all green: 400 clean demos/level (validated
 LeRobot sets, --expect_episodes), gen SR 85.5-87.9% >> 30% floor, QA pass, eval
 sets frozen. Task 1 data phase is DONE. Next: P5/G5 cluster bring-up (blocked on
 G0 Slurm association), then the 24-run matrix.
+
+**TIMING CORRECTION (2026-08-17):** the eval-set freeze wave took 84 s TOTAL
+(~6.5 s/leg), not ~2.5 min/leg as first committed — state-only headless Kit
+(isaaclab.python.headless.kit, no cameras) boots in ~3 s; the 3.5-4 min startup
+cost is entirely the camera/RTX stack. timings.md fixed. Investigation footnote:
+log-file mtimes clustered at wave end looked impossible for serial legs until the
+in-log carb timestamps showed each leg really ran start-to-finish in ~6.5 s;
+EVALSET_OK sits mid-file because carb's buffered log lines flush at shutdown,
+after python's flushed print. Trust in-log timestamps over stream order.

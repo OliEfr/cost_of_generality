@@ -25,8 +25,9 @@ against these numbers (CLAUDE.md rule 5 applies).
 | L3 wave: 10 × (Kit start + gen 40 successes @ 8 envs) | **25 min 34 s** (~2.6 min/variant) | Measured 2026-08-16, GPU otherwise idle. The prior ~65–70 min estimate assumed a cold ~4 min Kit start per variant; with warm shader/extension caches a Kit start is only ~1.5–2 min. Use the warm number for back-to-back sim jobs, the cold number for first launch after reboot/env change. |
 | Full 4-level datagen for one task (L0+L1+L2+L3 wave) | **~1 h 42 min** measured total (22+22+32+26) | L2 leg was GPU-shared; ~1.5 h if exclusive |
 | frames_qa per level | ~7–8 min | PNG written before the shutdown hang |
-| Eval-set freeze, one sub-level (Kit start + 10 × reset(seed) on 20-env state env) | see wave row | state env, no cameras |
-| Eval-set freeze wave, 13 sub-levels serial | measured via file mtimes, ~2.5–3 min each | 2026-08-17 |
+| Kit start, STATE-only headless (no cameras/RTX) | **~3 s** (!) | The ~3.5–4 min figure is for camera-enabled visuomotor sessions only — do not budget minutes for state-env legs |
+| Eval-set freeze, one sub-level (state env, 20 envs, 10 seeded resets) | **~6.5 s** incl. Kit start | file-mtime cadence, 2026-08-17 |
+| Eval-set freeze wave, 13 sub-levels serial | **84 s** total | 00:42:01→00:43:25 |
 
 ## Conversion / validation (CPU, nice -n 10, sharing box with sim)
 
