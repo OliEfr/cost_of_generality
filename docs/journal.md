@@ -248,3 +248,19 @@ offset (0.305,0,0.01 / rot 0.5,0.5,-0.5,-0.5); asset is Nucleus-cloud-only.
 No in-tree cabinet Mimic env. Stock SM insufficient (world-frame offsets, 1.5 cm
 pull). D12 finalized with addendum + VERIFY (d) (Articulation as object_ref).
 Next: empirical cabinet geometry inspection, then scaffold src/cog/tasks/drawer_stow.
+
+**TASK 2 SCAFFOLD COMPLETE (2026-08-17 ~03:00):** src/cog/tasks/drawer_stow/
+written, full cup_place structure mirrored (assets/levels/env cfgs/mdp/mimic/SM)
++ record_drawer_source_demos.py + t2_smoke.py. Design points beyond D12:
+- Object can't live on the cabinet top (down-grasp at z .85/r .7 near-singular)
+  nor on the ground under the drawer's pull path -> procedural PLINTH at
+  (0.24,0.45), top z 0.40; object zone x<=0.26 keeps the vertical grasp corridor
+  clear of the opened drawer front (>=0.325 at 0.2 m pull, nearest cabinet pose).
+- Cabinet root moved 0.8->0.9 (handle ends at x~0.26 after pull, not 0.19).
+- Cabinet rand capped (+-5 cm, +-7.5 deg yaw) so its swept corner misses the plinth.
+- SM: torch-based 16 states; handle-frame offsets (yaw-safe), ramped pull latched
+  at grasp (0.10 m/s to joint 0.20), traverses at z 0.92 above the drawer rim,
+  yaw-aligned box grasp (mod pi/2). 3 Mimic subtasks: open(cabinet)/grasp(object)/
+  stow(cabinet); signals drawer_opened_1, grasp_2.
+- Custom mdp.drawer_opened obs term (no such helper upstream).
+Smoke (env create + 2 expert episodes on L0) running in tmux cog_t2smoke.
