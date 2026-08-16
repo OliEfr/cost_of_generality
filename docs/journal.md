@@ -57,3 +57,21 @@
   orphans the python child holding ~4.8 GB VRAM. Killing orphans was blocked by the
   session policy; they must be cleaned up manually if they accumulate
   (`pgrep -af frames_qa`). Worst-case VRAM still fits under 24 GB for this sweep.
+
+## 2026-08-16 — adversarial review round 2 (workflow wf_5b659661-27b): 2 minor findings
+
+6 agents (3 reviewers vs IsaacLab v2.3.0 source + per-finding verification), no
+blockers/majors. Confirmed minors, both in source-demo recording:
+1. **Parallel overshoot** — with num_envs=8 several envs can succeed in the same
+   step; RecorderManager exports all of them before the script's `exported>=target`
+   check, so the HDF5 can hold a few more than --num_demos.
+2. **Batch-size replay divergence** — sources recorded in 8-env batched PhysX are
+   replayed open-loop by annotate_demos.py at num_envs=1; PhysX is not bit-identical
+   across batch sizes, so annotate's success re-check may drop episodes (loud, not
+   silent). Upstream mimic workflow records sources single-env.
+
+**Policy adopted:** final source demos are recorded with `--num_envs 1` and
+over-recorded (~15 for a 10-target), keeping the episodes that survive annotation
+(matches upstream guidance; kills both findings). 8-env recording remains for
+expert-SR gate measurements only (throwaway files).
+

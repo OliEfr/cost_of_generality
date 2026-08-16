@@ -57,3 +57,21 @@ identical across levels it cancels in the cost ratios N*(L_k)/N*(L0).
 
 **VERIFY:** none — verified visually in frames QA (wrist views vary slightly across
 L0 resets; table-cam scene layout identical).
+
+## D9 — 2026-08-16: Source demos recorded on L2, single-env, over-recorded
+
+**Decision:** the per-task source demo set (target 10) is recorded on the **L2** env
+(widest pose distribution: cup pose + goal varied, default cup cyl_m_red) with
+`--num_envs 1`, over-recording to ~15 and keeping the first 10 that survive
+annotate's replay re-check.
+
+**Why:** (a) L2 sources give the Mimic NN-selection (k=3) spatially diverse
+references usable for every level; L0-only sources would be 10 near-identical
+trajectories. (b) Single-env recording matches annotate_demos.py's hardcoded 1-env
+replay — avoids PhysX batch-size divergence (review finding). (c) Over-recording
+absorbs the residual replay non-determinism upstream documents even single-env.
+Provenance control holds: the SAME surviving sources feed generation for all levels.
+
+**VERIFY at G2/G3:** annotate yield printed as "Exported X (out of Y)"; if <10
+survive, record more sources rather than loosening checks.
+
