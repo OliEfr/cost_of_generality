@@ -221,3 +221,13 @@ rate is 1/400 invisible + ~1.4% marginal at the far corner (D10: keep camera,
 level-uniform + train/eval-matched). Eval-set freeze wave launched (tmux
 cog_eval_freeze, 14 Kit sessions: L0-L2 + 10 L3 sub-envs, state envs, 10 batches
 x 20 envs each) -> configs/eval_sets/{L}.json per D11.
+
+**G3 PASSED — P3 COMPLETE FOR TASK 1 (2026-08-17 ~02:00):** eval-set freeze wave:
+13/13 sub-levels EXIT=0, merged to configs/eval_sets/{L0,L1,L2,L3}.json (D11
+format: 10 batches x 20 envs of cup/goal init poses per sub-level). Snapshot
+invariance matches spec exactly: L0 cup+goal frozen across seeds (0.0 cm); L1 cup
+varies 37.9 cm / goal frozen; L2 cup 38.8 + goal 19.5 cm; L3 sub-envs draw
+independent streams. G3 criteria all green: 400 clean demos/level (validated
+LeRobot sets, --expect_episodes), gen SR 85.5-87.9% >> 30% floor, QA pass, eval
+sets frozen. Task 1 data phase is DONE. Next: P5/G5 cluster bring-up (blocked on
+G0 Slurm association), then the 24-run matrix.
