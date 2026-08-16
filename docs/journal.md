@@ -148,3 +148,16 @@ shared libs; conda ffmpeg would endanger the numpy==1.26.4 pin). Fix:
 `--dataset.video_backend=pyav` (pyav 15.1.0 bundles its own ffmpeg). Applied to the
 G4 smoke; PINS.md updated; cluster backend decided at G5a by throughput.
 
+**G4 train smoke RUNNING (2026-08-16 22:58):** diffusion policy training live on
+L0/N=25 via --dataset.episodes (pyav backend), loss 0.579 @ step 200. Epoch math
+confirms subselection empirically: 12.8k samples / 5.2k subset frames = epoch 2.47
+as logged. ~2.8 steps/s data-bound while sharing the box with L2 generation
+(updt_s 0.123 vs data_s 0.262) — pyav decode throughput is a G5a consideration.
+
+**G4 train leg DONE / L1+L2 datasets DONE (2026-08-16 23:27):** 5k-step smoke
+finished exit 0, loss 0.579 -> 0.098, checkpoint saved (~30 min sharing the GPU with
+generation). L1 400 demos (85.8% gen SR), L2 400 demos (85.5%). Launched in
+parallel: L3 wave (tmux cog_gen_L3, 10 sub-variants x 40), G4 eval smoke (20 eps,
+reduced 2x10 smoke protocol in ops/ — frozen eval sets untouched), L1/L2
+conversion+validation on CPU. Gen-SR per level so far: L0 86.4, L1 85.8, L2 85.5.
+

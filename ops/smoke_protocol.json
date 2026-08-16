@@ -1,0 +1,6 @@
+{
+  "num_envs": 10,
+  "batches": 2,
+  "base_seed": 5000,
+  "comment": "SMOKE ONLY - 20 episodes, reduced envs to share GPU with L3 gen wave"
+}
