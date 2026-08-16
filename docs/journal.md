@@ -107,3 +107,8 @@ annotated episodes (L2_source_annotated.hdf5) — zero replay attrition, validat
 D9's single-env policy. Gate criteria: expert SR >=90% on L0-L2 (88/88 diag) +
 sources replay correctly (15/15). Next: P3 Mimic generation smoke on L0.
 
+**P3 state-generation smoke PASSED (2026-08-16):** Mimic generated 11/12 successful
+L0 demos (91.7% gen SR, G3 floor is 30%) from the 15 annotated L2 sources, stopping
+at the 10-success target. All subclass contracts exercised live (datagen pool load,
+subtask transforms, target_eef_pose_to_action). Visuomotor generation smoke queued.
+
