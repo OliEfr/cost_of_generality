@@ -45,9 +45,11 @@ CABINET_CFG = ArticulationCfg(
         },
     ),
     actuators={
+        # stiffness 0: stock's 10.0 acts as a return spring toward joint 0 and
+        # silently re-closes the drawer after release; viscous damping holds it
         "drawers": ImplicitActuatorCfg(
             joint_names_expr=["drawer_top_joint", "drawer_bottom_joint"],
-            effort_limit=87.0, velocity_limit=100.0, stiffness=10.0, damping=1.0,
+            effort_limit=87.0, velocity_limit=100.0, stiffness=0.0, damping=8.0,
         ),
         "doors": ImplicitActuatorCfg(
             joint_names_expr=["door_left_joint", "door_right_joint"],

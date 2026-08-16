@@ -66,7 +66,6 @@ HANDLE_APPROACH_DIST = 0.10     # in front of the handle, handle frame -z
 PULL_RATE = 0.10                # m/s commanded pull speed
 PULL_OVERSHOOT = 0.04           # command a little past the joint target
 PULL_TIMEOUT = 6.0              # bail (episode will fail success) after this
-RETREAT_DIST = 0.12
 TRAVERSE_Z = 0.92               # safe TCP height above the open drawer rim
 OBJECT_DROP_CLEARANCE = 0.02    # object bottom above cavity floor at release
 
@@ -172,13 +171,14 @@ class DrawerStowSm:
             max=DRAWER_OPEN_TARGET + PULL_OVERSHOOT,
         )
 
-        m = (s == Sm.RELEASE_HANDLE) | (s == Sm.RETREAT_FROM_HANDLE)
         release_pos = lh[:, 0:3] + pull_dir * self.pull_progress.unsqueeze(-1)
-        retreat_pos = release_pos + pull_dir * RETREAT_DIST
-        retreat_pos = torch.cat([retreat_pos[:, 0:2],
+        # retreat straight up (an extra -x offset at z 0.92 with a horizontal
+        # wrist is IK-awkward near the base pillar); rotate to the down-facing
+        # object-grasp quat during the ascent
+        retreat_pos = torch.cat([release_pos[:, 0:2],
                                  torch.full((N, 1), TRAVERSE_Z, device=dev)], dim=-1)
         assign(s == Sm.RELEASE_HANDLE, release_pos, lh[:, 3:7], 1.0)
-        assign(s == Sm.RETREAT_FROM_HANDLE, retreat_pos, lh[:, 3:7], 1.0)
+        assign(s == Sm.RETREAT_FROM_HANDLE, retreat_pos, lg[:, 3:7], 1.0)
 
         m = s == Sm.APPROACH_ABOVE_OBJECT
         above_obj = torch.cat([lg[:, 0:2], torch.full((N, 1), TRAVERSE_Z, device=dev)], dim=-1)
