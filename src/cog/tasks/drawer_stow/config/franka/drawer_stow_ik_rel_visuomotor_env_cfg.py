@@ -57,12 +57,12 @@ class FrankaDrawerStowVisuomotorEnvCfg(FrankaDrawerStowIKRelEnvCfg):
             width=IMG_W,
             data_types=["rgb"],
             spawn=sim_utils.PinholeCameraCfg(
-                focal_length=24.0, focus_distance=400.0, horizontal_aperture=26.0,
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=28.0,
                 clipping_range=(0.1, 4),
             ),
             offset=CameraCfg.OffsetCfg(
                 pos=(0.15, -0.90, 1.20),
-                rot=(0.50646, -0.84961, 0.12643, -0.07536),  # look-at (0.50, 0.25, 0.55)
+                rot=(0.51651, -0.83910, 0.14534, -0.08947),  # look-at (0.55, 0.22, 0.60)
                 convention="ros",
             ),
         )
