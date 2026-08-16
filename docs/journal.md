@@ -101,3 +101,9 @@ L2 32/32 (88/88 overall; gate needs >=90%). All successes reach RELEASE at
 ~190 steps / ~9.5 s sim. G2b started: 15 L2 source demos single-env (D9), then
 auto-annotate replay re-check.
 
+**G2 PASSED (2026-08-16):** G2b recorded 15/15 L2 source demos single-env
+(expert_SR=1.00, data/hdf5/L2_source.hdf5) and annotate --auto exported 15/15
+annotated episodes (L2_source_annotated.hdf5) — zero replay attrition, validating
+D9's single-env policy. Gate criteria: expert SR >=90% on L0-L2 (88/88 diag) +
+sources replay correctly (15/15). Next: P3 Mimic generation smoke on L0.
+
