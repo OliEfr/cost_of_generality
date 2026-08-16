@@ -205,38 +205,43 @@ class DrawerStowSm:
         m = (s == Sm.RETREAT_UP) | (s == Sm.DONE)
         assign(m, above_drawer, lg[:, 3:7], 1.0)
 
-        # ---- transitions ----
+        # ---- transitions (evaluated on a frozen copy: one step per call max) ----
+        s0 = self.state.clone()
         near = (ee_pose[:, 0:3] - des[:, 0:3]).norm(dim=-1) < self.thr
         waited = torch.zeros(N, dtype=torch.bool, device=dev)
         for st, w in WAIT.items():
-            waited |= (s == st) & (self.wait >= w)
+            waited |= (s0 == st) & (self.wait >= w)
 
-        def step_to(from_state, to_state, extra=None):
-            go = (s == from_state) & waited
-            if from_state not in (Sm.REST, Sm.GRASP_HANDLE, Sm.GRASP_OBJECT,
-                                  Sm.RELEASE_HANDLE, Sm.RELEASE_OBJECT):
-                go &= near
-            if extra is not None:
-                go = ((s == from_state) & extra) | go if from_state == Sm.PULL_DRAWER else go & extra
+        # states whose transition needs only the dwell time, not position
+        TIME_ONLY = (Sm.REST, Sm.GRASP_HANDLE, Sm.GRASP_OBJECT,
+                     Sm.RELEASE_HANDLE, Sm.RELEASE_OBJECT)
+        NEXT = {
+            Sm.REST: Sm.APPROACH_INFRONT_HANDLE,
+            Sm.APPROACH_INFRONT_HANDLE: Sm.APPROACH_HANDLE,
+            Sm.APPROACH_HANDLE: Sm.GRASP_HANDLE,
+            Sm.GRASP_HANDLE: Sm.PULL_DRAWER,
+            Sm.PULL_DRAWER: Sm.RELEASE_HANDLE,
+            Sm.RELEASE_HANDLE: Sm.RETREAT_FROM_HANDLE,
+            Sm.RETREAT_FROM_HANDLE: Sm.APPROACH_ABOVE_OBJECT,
+            Sm.APPROACH_ABOVE_OBJECT: Sm.APPROACH_OBJECT,
+            Sm.APPROACH_OBJECT: Sm.GRASP_OBJECT,
+            Sm.GRASP_OBJECT: Sm.LIFT_OBJECT,
+            Sm.LIFT_OBJECT: Sm.APPROACH_ABOVE_DRAWER,
+            Sm.APPROACH_ABOVE_DRAWER: Sm.LOWER_INTO_DRAWER,
+            Sm.LOWER_INTO_DRAWER: Sm.RELEASE_OBJECT,
+            Sm.RELEASE_OBJECT: Sm.RETREAT_UP,
+            Sm.RETREAT_UP: Sm.DONE,
+        }
+        pull_done = (drawer_joint >= DRAWER_OPEN_TARGET) | (self.wait >= PULL_TIMEOUT)
+        for from_state, to_state in NEXT.items():
+            if from_state == Sm.PULL_DRAWER:
+                go = (s0 == from_state) & pull_done
+            elif from_state in TIME_ONLY:
+                go = (s0 == from_state) & waited
+            else:
+                go = (s0 == from_state) & waited & near
             self.state[go] = to_state
             self.wait[go] = 0.0
-
-        step_to(Sm.REST, Sm.APPROACH_INFRONT_HANDLE)
-        step_to(Sm.APPROACH_INFRONT_HANDLE, Sm.APPROACH_HANDLE)
-        step_to(Sm.APPROACH_HANDLE, Sm.GRASP_HANDLE)
-        step_to(Sm.GRASP_HANDLE, Sm.PULL_DRAWER)
-        pull_done = (drawer_joint >= DRAWER_OPEN_TARGET) | (self.wait >= PULL_TIMEOUT)
-        step_to(Sm.PULL_DRAWER, Sm.RELEASE_HANDLE, extra=pull_done)
-        step_to(Sm.RELEASE_HANDLE, Sm.RETREAT_FROM_HANDLE)
-        step_to(Sm.RETREAT_FROM_HANDLE, Sm.APPROACH_ABOVE_OBJECT)
-        step_to(Sm.APPROACH_ABOVE_OBJECT, Sm.APPROACH_OBJECT)
-        step_to(Sm.APPROACH_OBJECT, Sm.GRASP_OBJECT)
-        step_to(Sm.GRASP_OBJECT, Sm.LIFT_OBJECT)
-        step_to(Sm.LIFT_OBJECT, Sm.APPROACH_ABOVE_DRAWER)
-        step_to(Sm.APPROACH_ABOVE_DRAWER, Sm.LOWER_INTO_DRAWER)
-        step_to(Sm.LOWER_INTO_DRAWER, Sm.RELEASE_OBJECT)
-        step_to(Sm.RELEASE_OBJECT, Sm.RETREAT_UP)
-        step_to(Sm.RETREAT_UP, Sm.DONE)
 
         self.wait += self.dt
         return des
