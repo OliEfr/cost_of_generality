@@ -75,12 +75,16 @@ OBJECT_DROP_CLEARANCE = 0.02    # object bottom above cavity floor at release
 # plinth low (OBJ_HOVER_Z), climb to stow height at SMALL radius (STAGE_WP),
 # then translate out over the drawer wall at constant z.
 RETREAT_WP = (0.20, 0.20, 0.80)
-STAGE_END = (0.26, 0.10, 0.825)
+STAGE_END = (0.21, 0.10, 0.82)  # z: the arm's practical hold ceiling (higher unwraps the elbow);
+                                # x: carried-box leading edge (x+half) must clear the wall line
+                                # 0.575-open during the ascent -- 0.25 clipped it at open 0.30
 OBJ_HOVER_Z = 0.62
-STOW_TRAVERSE_Z = 0.84          # COMMANDED wall-crossing height; DLS sags ~2-4 cm below it, and
-                                # the sagged actual (~0.80-0.82) is what must clear the 0.779 wall
+STOW_TRAVERSE_Z = 0.86          # COMMANDED wall-crossing height; DLS sags ~2-4 cm below it, and
+                                # the sagged actual (~0.82-0.84) is what must clear the 0.779 wall
 HANDLE_TO_FACE = 0.03           # handle frame sits 3 cm in front of the drawer face
-STOW_BEHIND_FACE = 0.04         # drop just behind the drawer front wall (short reach)
+STOW_BEHIND_FACE = 0.08         # drop well clear of the wall's inner face: the descent
+                                # starts with up to ~2 cm XY lag, and a box edge that
+                                # overlaps the wall wedges it shut (run 14: drawer 0.31->0)
 STOW_RAMP_RATE = 0.06           # m/s ascent ramp (stage leg)
 TRAVERSE_RATE = 0.03            # m/s wall-crossing leg: slower = tighter z tracking (less sag)
 
@@ -120,6 +124,8 @@ class DrawerStowSm:
         self.stage_progress = torch.zeros(num_envs, device=device)
         self.stage_start = torch.zeros(num_envs, 3, device=device)
         self.latched_stow = torch.zeros(num_envs, 2, device=device)
+        self.lower_progress = torch.zeros(num_envs, device=device)
+        self.lower_start = torch.zeros(num_envs, 3, device=device)
         self.latched_handle = torch.zeros(num_envs, 7, device=device)
         self.latched_grasp = torch.zeros(num_envs, 7, device=device)
 
@@ -131,6 +137,8 @@ class DrawerStowSm:
         self.stage_progress[env_ids] = 0.0
         self.stage_start[env_ids] = 0.0
         self.latched_stow[env_ids] = 0.0
+        self.lower_progress[env_ids] = 0.0
+        self.lower_start[env_ids] = 0.0
         self.latched_handle[env_ids] = 0.0
         self.latched_grasp[env_ids] = 0.0
 
@@ -251,9 +259,22 @@ class DrawerStowSm:
         self.stow_progress[m] = self.stow_progress[m] + TRAVERSE_RATE * self.dt
         ramp_done = frac >= 1.0
 
+        in_traverse = s == Sm.APPROACH_ABOVE_DRAWER
+        self.lower_start[in_traverse] = ee_pose[in_traverse, 0:3]
+
+        # descent is a ramped DIAGONAL from wherever the traverse equilibrium
+        # ended toward the in-cavity drop point: at the start height the box
+        # bottom is above the wall top, and the +x component clears the wall
+        # edge before contact height; the unreachable-at-height x becomes
+        # reachable as z drops
         m = s == Sm.LOWER_INTO_DRAWER
         stow_pos = torch.cat([stow_xy, stow_tcp_z.unsqueeze(-1)], dim=-1)
-        assign(m, stow_pos, lg[:, 3:7], -1.0)
+        seg3 = stow_pos - self.lower_start
+        seg3_len = seg3.norm(dim=-1).clamp(min=1e-6)
+        frac3 = (self.lower_progress / seg3_len).clamp(max=1.0)
+        lower_pos = self.lower_start + seg3 * frac3.unsqueeze(-1)
+        assign(m, lower_pos, lg[:, 3:7], -1.0)
+        self.lower_progress[m] = self.lower_progress[m] + 0.05 * self.dt
 
         m = s == Sm.RELEASE_OBJECT
         assign(m, stow_pos, lg[:, 3:7], 1.0)
@@ -296,7 +317,10 @@ class DrawerStowSm:
             elif from_state == Sm.STAGE_FOR_STOW:
                 go = (s0 == from_state) & waited & near & ramp1_done
             elif from_state == Sm.APPROACH_ABOVE_DRAWER:
-                go = (s0 == from_state) & waited & near & ramp_done
+                # z is over-commanded on purpose (sag compensation), so `near`
+                # can never pass here -- gate on ramp completion + XY only
+                xy_near = (ee_pose[:, 0:2] - des[:, 0:2]).norm(dim=-1) < 0.045
+                go = (s0 == from_state) & waited & xy_near & ramp_done
             elif from_state in TIME_ONLY:
                 go = (s0 == from_state) & waited
             else:
