@@ -96,7 +96,8 @@ def _box(name: str, edge: float, color: tuple) -> BoxVariant:
     return BoxVariant(
         name=name,
         half_size=edge / 2,
-        grasp_z_offset=0.008,
+        grasp_z_offset=-0.005,  # grip slightly below center: the carried box hangs
+        # higher relative to the TCP, buying wall clearance on the stow traverse
         spawn=sim_utils.CuboidCfg(
             size=(edge, edge, edge),
             rigid_props=CUP_RIGID_PROPS,

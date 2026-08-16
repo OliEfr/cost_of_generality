@@ -75,12 +75,14 @@ OBJECT_DROP_CLEARANCE = 0.02    # object bottom above cavity floor at release
 # plinth low (OBJ_HOVER_Z), climb to stow height at SMALL radius (STAGE_WP),
 # then translate out over the drawer wall at constant z.
 RETREAT_WP = (0.20, 0.20, 0.80)
-STAGE_WP = (0.16, 0.16, 0.84)
+STAGE_END = (0.26, 0.10, 0.825)
 OBJ_HOVER_Z = 0.62
-STOW_TRAVERSE_Z = 0.835         # carried box bottom (TCP-~0.037) clears the 0.779 wall top;
-                                # keep BELOW ~0.85: DLS hits a straight-elbow damped stall above
+STOW_TRAVERSE_Z = 0.84          # COMMANDED wall-crossing height; DLS sags ~2-4 cm below it, and
+                                # the sagged actual (~0.80-0.82) is what must clear the 0.779 wall
 HANDLE_TO_FACE = 0.03           # handle frame sits 3 cm in front of the drawer face
-STOW_BEHIND_FACE = 0.075        # drop point this far behind the drawer front wall
+STOW_BEHIND_FACE = 0.04         # drop just behind the drawer front wall (short reach)
+STOW_RAMP_RATE = 0.06           # m/s ascent ramp (stage leg)
+TRAVERSE_RATE = 0.03            # m/s wall-crossing leg: slower = tighter z tracking (less sag)
 
 
 def _yaw_quat(yaw: torch.Tensor) -> torch.Tensor:
@@ -114,6 +116,10 @@ class DrawerStowSm:
         self.state = torch.zeros(num_envs, dtype=torch.long, device=device)
         self.wait = torch.zeros(num_envs, device=device)
         self.pull_progress = torch.zeros(num_envs, device=device)
+        self.stow_progress = torch.zeros(num_envs, device=device)
+        self.stage_progress = torch.zeros(num_envs, device=device)
+        self.stage_start = torch.zeros(num_envs, 3, device=device)
+        self.latched_stow = torch.zeros(num_envs, 2, device=device)
         self.latched_handle = torch.zeros(num_envs, 7, device=device)
         self.latched_grasp = torch.zeros(num_envs, 7, device=device)
 
@@ -121,6 +127,10 @@ class DrawerStowSm:
         self.state[env_ids] = Sm.REST
         self.wait[env_ids] = 0.0
         self.pull_progress[env_ids] = 0.0
+        self.stow_progress[env_ids] = 0.0
+        self.stage_progress[env_ids] = 0.0
+        self.stage_start[env_ids] = 0.0
+        self.latched_stow[env_ids] = 0.0
         self.latched_handle[env_ids] = 0.0
         self.latched_grasp[env_ids] = 0.0
 
@@ -164,7 +174,13 @@ class DrawerStowSm:
         # anchor on the live handle pose instead (frame transformer tracks the
         # drawer): from the handle, HANDLE_TO_FACE + STOW_BEHIND_FACE toward the
         # cabinet lands inside the pulled-out cavity for any cabinet pose
-        stow_xy = handle_pose[:, 0:2] - pull_dir[:, 0:2] * (HANDLE_TO_FACE + STOW_BEHIND_FACE)
+        stow_live = handle_pose[:, 0:2] - pull_dir[:, 0:2] * (HANDLE_TO_FACE + STOW_BEHIND_FACE)
+        # freeze the target once the traverse starts: if the carried object grazes
+        # the drawer wall, a live handle-anchored target chases the closing drawer
+        # (runaway feedback observed in debug run 9)
+        pre_stow = s <= Sm.STAGE_FOR_STOW
+        self.latched_stow[pre_stow] = stow_live[pre_stow]
+        stow_xy = self.latched_stow
         floor_z = drawer_body_pose[:, 2] + DRAWER_CAVITY_FLOOR_Z
         stow_tcp_z = floor_z + object_half_size + OBJECT_DROP_CLEARANCE + grasp_z_offset
 
@@ -210,14 +226,30 @@ class DrawerStowSm:
 
         m = s == Sm.LIFT_OBJECT
         assign(m, above_obj, lg[:, 3:7], -1.0)
+        self.stage_start[m] = above_obj[m]  # latch ramp-1 origin at the lift top
 
+        # both stow legs are RAMPED: a far target lets DLS unwrap the elbow into
+        # the straight branch, whose max height at radius ~0.4 is below the wall
         m = s == Sm.STAGE_FOR_STOW
-        stage_pos = torch.tensor(STAGE_WP, device=dev).expand(N, 3)
+        stage_end = torch.tensor(STAGE_END, device=dev).expand(N, 3)
+        seg1 = stage_end - self.stage_start
+        seg1_len = seg1.norm(dim=-1).clamp(min=1e-6)
+        frac1 = (self.stage_progress / seg1_len).clamp(max=1.0)
+        stage_pos = self.stage_start + seg1 * frac1.unsqueeze(-1)
         assign(m, stage_pos, lg[:, 3:7], -1.0)
+        self.stage_progress[m] = self.stage_progress[m] + STOW_RAMP_RATE * self.dt
+        ramp1_done = frac1 >= 1.0
 
         m = s == Sm.APPROACH_ABOVE_DRAWER
-        above_drawer = torch.cat([stow_xy, torch.full((N, 1), STOW_TRAVERSE_Z, device=dev)], dim=-1)
+        stage_xy = torch.tensor(STAGE_END[:2], device=dev).expand(N, 2)
+        span = stow_xy - stage_xy
+        span_len = span.norm(dim=-1).clamp(min=1e-6)
+        frac = (self.stow_progress / span_len).clamp(max=1.0)
+        ramp_xy = stage_xy + span * frac.unsqueeze(-1)
+        above_drawer = torch.cat([ramp_xy, torch.full((N, 1), STOW_TRAVERSE_Z, device=dev)], dim=-1)
         assign(m, above_drawer, lg[:, 3:7], -1.0)
+        self.stow_progress[m] = self.stow_progress[m] + TRAVERSE_RATE * self.dt
+        ramp_done = frac >= 1.0
 
         m = s == Sm.LOWER_INTO_DRAWER
         stow_pos = torch.cat([stow_xy, stow_tcp_z.unsqueeze(-1)], dim=-1)
@@ -261,6 +293,10 @@ class DrawerStowSm:
         for from_state, to_state in NEXT.items():
             if from_state == Sm.PULL_DRAWER:
                 go = (s0 == from_state) & pull_done
+            elif from_state == Sm.STAGE_FOR_STOW:
+                go = (s0 == from_state) & waited & near & ramp1_done
+            elif from_state == Sm.APPROACH_ABOVE_DRAWER:
+                go = (s0 == from_state) & waited & near & ramp_done
             elif from_state in TIME_ONLY:
                 go = (s0 == from_state) & waited
             else:

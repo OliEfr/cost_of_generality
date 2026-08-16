@@ -284,3 +284,24 @@ and fixed via the visuomotor frame-dump debug loop (t2_visual_debug.py):
 Also: "final" state prints after env auto-reset — post-reset reads are the
 RESET scene, not the episode end (drawer 0.000 red herring). Pull phase works:
 grip 0.010/0.014 on the bar, ramped pull to joint 0.20-0.21 in ~2.7 s.
+
+**T2 STOW-TRAVERSE DEBUG (2026-08-17 ~06:00-08:00, runs 6-10):** the hard part
+of drawer_stow is carrying the box OVER the 0.779 m drawer wall. Hard-won DLS
+(IK-Rel) mechanics on the Panda, for future experts:
+- Configuration-branch trap: chasing a FAR high target makes DLS unwrap the
+  elbow into the straight branch (j4 -> -0.47), whose max TCP height at radius
+  0.4 is ~0.78 -- below the wall. No joint limit is hit; it is a damped stall
+  (dist frozen, all joints mid-range). Diagnosis signature: j2~0, j4~-0.47.
+- Fix that works: RAMP every long segment (pull-style); ramped targets keep the
+  elbow bent (j4 -1.4..-1.0 observed through the same region that stalled).
+- Even ramped, holding z while translating outward sags 2-4 cm (z is traded in
+  the damped LSQ). Command higher than needed (0.84 for a 0.80 requirement) and
+  slow the ramp over the critical region (0.03 m/s).
+- Wall clearance arithmetic: carried-box bottom = TCP - (half + |grasp_off|);
+  gripping BELOW center (grasp_z_offset -0.005) buys ~1.3 cm.
+- Anchor drop targets on LATCHED poses: a live handle-anchored target chases
+  the drawer away if the box grazes the wall (runaway feedback, run 9:
+  drawer 0.248 -> 0.128 with the target retreating 0.37 -> 0.49).
+Handle phase is stable across all runs: grasp 0.012/0.012, pull to 0.248
+(joint-gated at 0.20 + overshoot), release, retreat. Object grasp cycle stable:
+fingers 0.0277/0.029 on the 5.8 cm box, held through all subsequent states.
