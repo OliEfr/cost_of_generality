@@ -128,3 +128,8 @@ not days. Converter smoke: 10 episodes -> valid LeRobotDataset v3 tree
 (videos/meta/manifest). L1+L2 generation wave launched 22:31 (tmux cog_gen_L1L2).
 Gen-SR-per-level so far: L0 86.4%.
 
+**Converter validation PASSED (2026-08-16):** VALIDATE_OK on the smoke conversion —
+10 eps / 2064 frames, max mean |pixel err| 0.0166 (< 0.03 codec tolerance), action
+ranges identical to HDF5. Full L0 conversion (400 eps) started on CPU concurrently
+with the L1/L2 generation wave.
+
