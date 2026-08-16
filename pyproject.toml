@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cog"
+version = "0.1.0"
+description = "The Cost of Generality: data cost of generality in robot manipulation IL"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
