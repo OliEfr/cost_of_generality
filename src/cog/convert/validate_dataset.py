@@ -22,6 +22,8 @@ def main():
     ap.add_argument("--root", required=True)
     ap.add_argument("--repo_id", required=True)
     ap.add_argument("--n_checks", type=int, default=20)
+    ap.add_argument("--expect_episodes", type=int, default=0,
+                    help="fail unless total_episodes matches (0 = skip check)")
     args = ap.parse_args()
 
     root = Path(args.root)
@@ -54,6 +56,8 @@ def main():
 
     st = ds.meta.stats
     print(f"[validate] action min={np.round(st['action']['min'],3)} max={np.round(st['action']['max'],3)}")
+    if args.expect_episodes and ds.num_episodes != args.expect_episodes:
+        raise SystemExit(f"[validate] FAIL: total_episodes={ds.num_episodes} != expected {args.expect_episodes}")
     print("[validate] VALIDATE_OK")
 
 

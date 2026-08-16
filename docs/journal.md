@@ -191,3 +191,14 @@ GPU/disk/G0/cert) in addition to event watchers.
 **L1+L2 CONVERSION CHAIN DONE (2026-08-17 ~00:0x):** L2 converted (75 MB) and
 validated — VALIDATE_OK. LeRobot datasets now green for L0/L1/L2 (400 eps each,
 ~75-81 MB); L3 interleaved-merge conversion in flight.
+
+**GOTCHA — glob pulled failed demos into L3 (2026-08-17 ~00:20):** first L3
+conversion used `--input data/hdf5/L3v0*.hdf5`, which also matches
+`L3v0X_failed.hdf5` -> dataset had 455 eps (400 successes + 55 fails) yet
+validation printed VALIDATE_OK (validator checks integrity, not provenance).
+Caught only via the episodes=455 count. Tainted data/lerobot/L3 deleted,
+reconverted from the explicit success-only list. Hardened: converter now refuses
+`*_failed*` inputs without --allow_failed; validator gained --expect_episodes.
+Rule for future agents: NEVER glob HDF5 inputs; RecorderManager writes
+`<name>_failed.hdf5` next to every `<name>.hdf5`. L0/L1/L2 verified clean
+(info.json total_episodes=400 each).

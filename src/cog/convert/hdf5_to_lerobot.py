@@ -79,7 +79,12 @@ def main():
     ap.add_argument("--fps", type=int, default=20)
     ap.add_argument("--shuffle_seed", type=int, default=0)
     ap.add_argument("--max_episodes", type=int, default=0, help="0 = all")
+    ap.add_argument("--allow_failed", action="store_true",
+                    help="permit input filenames containing '_failed' (blocked by default: a glob like L3v0*.hdf5 also matches L3v00_failed.hdf5)")
     args = ap.parse_args()
+    bad = [p for p in args.input if "_failed" in Path(p).name]
+    if bad and not args.allow_failed:
+        raise SystemExit(f"refusing failed-demo inputs (use --allow_failed to override): {bad}")
 
     root = Path(args.root)
     if root.exists():
