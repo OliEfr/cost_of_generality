@@ -44,8 +44,8 @@ class CupPlaceSceneCfg(InteractiveSceneCfg):
 
 @configclass
 class ActionsCfg:
-    arm_action = MISSING
-    gripper_action = MISSING
+    arm_action: mdp.JointPositionActionCfg = MISSING
+    gripper_action: mdp.BinaryJointPositionActionCfg = MISSING
 
 
 @configclass

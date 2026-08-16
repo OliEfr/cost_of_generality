@@ -1,0 +1,97 @@
+{
+ "task": "Cog-CupPlace-L0-IK-Rel-Visuomotor-v0",
+ "n_ids": 52,
+ "policy_obs": {
+  "actions": [
+   [
+    2,
+    7
+   ],
+   "torch.float32"
+  ],
+  "joint_pos": [
+   [
+    2,
+    9
+   ],
+   "torch.float32"
+  ],
+  "joint_vel": [
+   [
+    2,
+    9
+   ],
+   "torch.float32"
+  ],
+  "cup_pos": [
+   [
+    2,
+    3
+   ],
+   "torch.float32"
+  ],
+  "cup_quat": [
+   [
+    2,
+    4
+   ],
+   "torch.float32"
+  ],
+  "eef_pos": [
+   [
+    2,
+    3
+   ],
+   "torch.float32"
+  ],
+  "eef_quat": [
+   [
+    2,
+    4
+   ],
+   "torch.float32"
+  ],
+  "gripper_pos": [
+   [
+    2,
+    2
+   ],
+   "torch.float32"
+  ],
+  "table_cam": [
+   [
+    2,
+    128,
+    128,
+    3
+   ],
+   "torch.uint8"
+  ],
+  "wrist_cam": [
+   [
+    2,
+    128,
+    128,
+    3
+   ],
+   "torch.uint8"
+  ]
+ },
+ "subtask_terms": {
+  "grasp_1": [
+   2
+  ]
+ },
+ "ok": true,
+ "table_cam": [
+  [
+   2,
+   128,
+   128,
+   3
+  ],
+  "torch.uint8",
+  0,
+  255
+ ]
+}
