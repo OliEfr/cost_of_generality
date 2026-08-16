@@ -96,3 +96,20 @@ env.reset(seed=5000+b) on the STATE env. L0-L2 standard eval = batches 0-4
 (100 eps), headline rerun = 0-9 (200 eps). L3 per D2 pools per-variant runs:
 standard = batch 0 on each of the 10 sub-envs (200 eps), rerun adds batch 1
 (400 eps). Any future eval run can diff its reset states against the snapshot.
+
+## D12 — 2026-08-17 (PROPOSED, finalize after asset recon): Task 2 design — drawer + stow
+Task: Franka opens a closed drawer, then picks a tabletop object and stows it
+inside; success = object inside the drawer cavity (pos in drawer-frame box) at
+episode end, drawer opening >= 15 cm. Scripted expert = 4-phase SM (grasp handle
+-> pull open -> grasp object -> place in drawer); Mimic subtasks object-centric:
+handle/cabinet ref for 1-2, object ref for 3, drawer ref for 4.
+Generality ladder mirrors Task 1 semantics (same 4-level structure, same N grid,
+same 80k-step training, same eval protocol):
+- T2-L0: all fixed (cabinet pose, object pose, one object)
+- T2-L1: + object XY randomized on table (range set after workspace check)
+- T2-L2: + cabinet pose randomized (XY few cm + yaw range — the drawer IS the
+  goal, so this is the goal-randomization analog)
+- T2-L3: + object variants: 2 box sizes x 5 colors = 10 sub-envs per D2 pattern
+Provenance control identical: same sources + generator settings across levels;
+gen SR per level reported. Object = procedural box (fits drawer; D1 analog).
+User can veto/adjust before datagen starts.
