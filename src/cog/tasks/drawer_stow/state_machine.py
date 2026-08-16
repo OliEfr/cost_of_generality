@@ -127,9 +127,15 @@ class DrawerStowSm:
         des = torch.zeros(N, 8, device=dev)
         des[:, 7] = 1.0  # default open
 
-        # latch handle target until the grasp begins; latch object grasp likewise
+        # latch handle target until the grasp begins; latch object grasp likewise.
+        # The grasp roll is flipped 180 deg about the approach (z) axis: the
+        # frame-transformer orientation as-is drives panda_joint6 to its 3.75 rad
+        # limit, which then blocks the post-release lift (DLS cannot escape).
+        flip_z = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device).expand(N, 4)
+        handle_grasp = torch.cat(
+            [handle_pose[:, 0:3], quat_mul(handle_pose[:, 3:7], flip_z)], dim=-1)
         pre_handle = s <= Sm.APPROACH_HANDLE
-        self.latched_handle[pre_handle] = handle_pose[pre_handle]
+        self.latched_handle[pre_handle] = handle_grasp[pre_handle]
         obj_grasp = torch.cat(
             [object_pose[:, 0:2],
              (object_pose[:, 2] + grasp_z_offset).unsqueeze(-1),
@@ -178,7 +184,7 @@ class DrawerStowSm:
         retreat_pos = torch.cat([release_pos[:, 0:2],
                                  torch.full((N, 1), TRAVERSE_Z, device=dev)], dim=-1)
         assign(s == Sm.RELEASE_HANDLE, release_pos, lh[:, 3:7], 1.0)
-        assign(s == Sm.RETREAT_FROM_HANDLE, retreat_pos, lg[:, 3:7], 1.0)
+        assign(s == Sm.RETREAT_FROM_HANDLE, retreat_pos, lh[:, 3:7], 1.0)
 
         m = s == Sm.APPROACH_ABOVE_OBJECT
         above_obj = torch.cat([lg[:, 0:2], torch.full((N, 1), TRAVERSE_Z, device=dev)], dim=-1)

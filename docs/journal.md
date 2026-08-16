@@ -264,3 +264,23 @@ written, full cup_place structure mirrored (assets/levels/env cfgs/mdp/mimic/SM)
   stow(cabinet); signals drawer_opened_1, grasp_2.
 - Custom mdp.drawer_opened obs term (no such helper upstream).
 Smoke (env create + 2 expert episodes on L0) running in tmux cog_t2smoke.
+
+**T2 EXPERT DEBUG SESSION (2026-08-17 ~03:30-05:30):** three root causes found
+and fixed via the visuomotor frame-dump debug loop (t2_visual_debug.py):
+1. SM transition cascade: `s = self.state` aliased the live tensor, so one
+   compute() could fall through ALL gates (near/waited precomputed against
+   REST's trivially-true target). Fix: evaluate every gate on a frozen s0 copy;
+   max one transition per step. (Commit 14a826c.)
+2. Sektion drawer actuator is a RETURN SPRING: stock stiffness 10 targets
+   joint 0, silently re-closing the drawer after release. stiffness=0 +
+   damping=8 makes it hold position like a real drawer. Verified live gains
+   [[0,0]]/[[8,8]] in-sim. (4211e98.)
+3. Handle grasp roll drives panda_joint6 to its 3.752 rad limit (visible as
+   joints[5]=3.75 pinned in the trace); the post-release lift then needs j6
+   PAST the limit and DLS stalls at dist 0.17 forever. The bar admits two
+   grasp rolls; flipping the TCP 180 deg about the approach axis lands j6
+   near 0.6. Debug pattern that found it: print joint vector every 50 steps —
+   a pinned coordinate at a round number is a limit, not an IK failure.
+Also: "final" state prints after env auto-reset — post-reset reads are the
+RESET scene, not the episode end (drawer 0.000 red herring). Pull phase works:
+grip 0.010/0.014 on the bar, ramped pull to joint 0.20-0.21 in ~2.7 s.

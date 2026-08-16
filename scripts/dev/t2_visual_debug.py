@@ -34,6 +34,8 @@ variant = BOX_VARIANTS[SUB_LEVELS[sub_key].box_variant]
 env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=1)
 env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
 obs, _ = env.reset(seed=0)
+drw = env.scene["cabinet"].actuators["drawers"]
+print(f"[dbg] drawer actuator stiffness={drw.stiffness.tolist()} damping={drw.damping.tolist()}", flush=True)
 
 sm = DrawerStowSm(dt=env_cfg.sim.dt * env_cfg.decimation, num_envs=1, device=env.device)
 actions = torch.zeros(1, 7, device=env.device)
@@ -73,6 +75,12 @@ for step in range(820):
               f"handle={handle_pose[0].tolist()} drawer={float(drawer_joint[0]):.3f} "
               f"fingers={[round(f, 4) for f in fingers]}", flush=True)
         prev_state = st
+    if step % 50 == 0:
+        dist = float((tcp_pos[0] - abs_target[0, :3]).norm())
+        jp = env.scene["robot"].data.joint_pos[0, :7]
+        print(f"[dbg] step {step}: {STATE_NAMES[st]} dist={dist:.4f} tcp={[round(x,3) for x in tcp_pos[0].tolist()]} "
+              f"des={[round(x,3) for x in abs_target[0,:3].tolist()]} drawer={float(drawer_joint[0]):.3f} "
+              f"joints={[round(float(x),2) for x in jp]}", flush=True)
     if step % 25 == 0 or st != prev_state:
         img = obs["policy"]["table_cam"][0].cpu().numpy().astype(np.uint8)
         Image.fromarray(img).save(f"{args_cli.outdir}/f{step:04d}_{STATE_NAMES[st]}.png")
