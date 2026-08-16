@@ -167,3 +167,8 @@ env -> expert -> mimic gen -> conversion -> episodes= training -> checkpoint rel
 -> batched seeded eval -> JSON. Determinism check (VERIFY c) running: seeded-reset
 snapshot diff, within- and cross-process. Registry row added for the smoke run.
 
+**VERIFY (c) CLOSED (2026-08-16):** seeded-reset determinism confirmed within- and
+cross-process (identical cup/goal/joint snapshots for seed 5000 on L2). All P4
+VERIFY items now closed; local pipeline fully proven. Remaining before the matrix:
+L3 wave + conversions (running), G5 cluster bring-up (blocked on Slurm association).
+

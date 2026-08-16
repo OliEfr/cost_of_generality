@@ -37,7 +37,7 @@ VERIFIED 2026-08-16 (source): dataset_to_policy_features classifies by prefix; n
 ## D6 — 2026-08-16: Eval protocol frozen
 configs/eval_sets/protocol.json: 100 episodes/cell = 5 batches x 20 envs,
 env.reset(seed=5000+b); headline cells rerun with batches 0-9 (200 eps).
-Determinism of seeded reset sampling VERIFY at G4.
+Determinism of seeded reset sampling VERIFIED 2026-08-16 (scripts/dev/seed_determinism.py): reset(seed=5000) snapshots (cup/goal/joints, 4 envs) identical within-process after interleaved reseeding AND across two separate app launches.
 
 ## D7 — 2026-08-16: Demo actions recorded in IK-Rel space end-to-end (spec 04 Option A)
 SM emits absolute EE targets, driver converts to IK-Rel deltas with the exact
