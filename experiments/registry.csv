@@ -1,1 +1,2 @@
 run_id,task,level,variant,n_demos,dataset_id,slurm_jobid,status,sr_40k,sr_60k,sr_80k,sr_best,eval_set,eval_n,gpu_h,notes
+g4_smoke_L0_n25,cup_place,L0,-,25,cog/L0,local,done,,,0.80(5k-step smoke; 20 eps reduced protocol),smoke,20,0.5,G4 pipeline validation only — not a study cell

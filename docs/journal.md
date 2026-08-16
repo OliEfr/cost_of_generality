@@ -161,3 +161,9 @@ parallel: L3 wave (tmux cog_gen_L3, 10 sub-variants x 40), G4 eval smoke (20 eps
 reduced 2x10 smoke protocol in ops/ — frozen eval sets untouched), L1/L2
 conversion+validation on CPU. Gen-SR per level so far: L0 86.4, L1 85.8, L2 85.5.
 
+**G4 PASSED (2026-08-16 23:29):** eval smoke SR=16/20=0.80 on L0 with the 5k-step /
+N=25 policy (DDIM-10, seeded batches 5000-5001). Entire pipeline validated:
+env -> expert -> mimic gen -> conversion -> episodes= training -> checkpoint reload
+-> batched seeded eval -> JSON. Determinism check (VERIFY c) running: seeded-reset
+snapshot diff, within- and cross-process. Registry row added for the smoke run.
+

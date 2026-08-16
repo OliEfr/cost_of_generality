@@ -1,0 +1,116 @@
+{
+ "task": "Cog-CupPlace-L0-IK-Rel-Visuomotor-v0",
+ "checkpoint": "/home/admin_07/cost_of_generality/experiments/runs/g4_smoke_L0_n25/checkpoints/last/pretrained_model",
+ "num_inference_steps": 10,
+ "protocol": {
+  "num_envs": 10,
+  "batches": 2,
+  "base_seed": 5000,
+  "comment": "SMOKE ONLY - 20 episodes, reduced envs to share GPU with L3 gen wave"
+ },
+ "episodes": 20,
+ "successes": 16,
+ "success_rate": 0.8,
+ "outcomes": [
+  {
+   "batch": 0,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": false
+  },
+  {
+   "batch": 1,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 8,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 9,
+   "success": true
+  }
+ ]
+}
