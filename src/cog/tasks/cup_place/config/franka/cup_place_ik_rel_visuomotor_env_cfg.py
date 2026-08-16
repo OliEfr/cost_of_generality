@@ -56,11 +56,14 @@ class FrankaCupPlaceVisuomotorEnvCfg(FrankaCupPlaceIKRelEnvCfg):
             width=IMG_W,
             data_types=["rgb"],
             spawn=sim_utils.PinholeCameraCfg(
-                focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955,
+                # aperture widened from stack's 20.955 + cam shifted +4cm in y:
+                # workspace is y-asymmetric (marker rim y=+0.36, cup rim y=-0.28);
+                # stock stack framing clipped the goal marker at the image edge
+                focal_length=24.0, focus_distance=400.0, horizontal_aperture=24.0,
                 clipping_range=(0.1, 4),
             ),
             offset=CameraCfg.OffsetCfg(
-                pos=(1.0, 0.0, 0.4), rot=(0.35355, -0.61237, -0.61237, 0.35355), convention="ros"
+                pos=(1.0, 0.04, 0.4), rot=(0.35355, -0.61237, -0.61237, 0.35355), convention="ros"
             ),
         )
 

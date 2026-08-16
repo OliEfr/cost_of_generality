@@ -35,3 +35,25 @@
   with frozen protocol (100 eps = 5x20 envs, seeds 5000+b).
 - Cluster: Slurm association STILL missing (user mailed support); watchdog polls hourly.
 - NEXT: G2 expert run (record_source_demos on L0), then annotate/generate smoke.
+
+## 2026-08-16 (evening) — frames QA round 2: marker clipping + joint-noise finding
+
+- **Goal marker was clipped by the table cam, not z-fighting (round 2).** After the
+  z-fight fix, L0/L1/L2 renders still showed a "half-disk" marker. Pixel analysis of
+  `ops/qa/frames_*.png` showed the green blob's bbox hits x=127 in every frame: the
+  marker extends past the RIGHT image edge. Root cause: stock stack-task table cam
+  (pos y=0, aperture 20.955 / ~47 deg) is centered on y=0, but our workspace is
+  asymmetric: goal-marker rim reaches y=+0.36 (L2 max y 0.30 + r 0.06), cup rim
+  y=-0.28. Fix: cam shifted +4 cm in y and horizontal_aperture 20.955 -> 24.0
+  (~53 deg). Covers y in [-0.315, +0.395] with ~3.5 cm margin both sides. Changed
+  BEFORE any demo is recorded, so no data has mixed intrinsics.
+- **L0 wrist views differ across resets — explained, kept (-> decisions.md D8).**
+  `randomize_franka_joint_state` (stock stack event, Gaussian std 0.02 rad on reset)
+  perturbs the arm start pose at every level incl. L0. Kept deliberately: without it
+  L0 demos would be bit-identical and SR-vs-N degenerate; it applies uniformly to all
+  levels so it cancels in cost ratios. L0 = "fixed task + natural motor noise".
+- QA sweep note: frames_qa levels each hit the 480 s timeout AFTER writing their PNG
+  (Kit hangs on close; exit 137 is benign) but `timeout -s KILL` on isaaclab.sh
+  orphans the python child holding ~4.8 GB VRAM. Killing orphans was blocked by the
+  session policy; they must be cleaned up manually if they accumulate
+  (`pgrep -af frames_qa`). Worst-case VRAM still fits under 24 GB for this sweep.

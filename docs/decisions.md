@@ -42,3 +42,18 @@ Determinism of seeded reset sampling VERIFY at G4.
 ## D7 — 2026-08-16: Demo actions recorded in IK-Rel space end-to-end (spec 04 Option A)
 SM emits absolute EE targets, driver converts to IK-Rel deltas with the exact
 formula the Mimic env uses; no cross-action-space conversion anywhere.
+
+## D8 — keep Gaussian joint-reset noise at ALL levels, including L0
+
+**Decision (2026-08-16):** keep the stock stack-task reset event
+`randomize_joint_by_gaussian_offset` (mean 0, std 0.02 rad) on the Franka joints for
+every sub-level, including L0.
+
+**Why:** with a bit-identical initial state, all L0 demos would be the same episode;
+SR(N) would be degenerate (step function at N=1) and the L0 baseline meaningless.
+The noise gives "fixed task + natural motor noise": the NVIDIA-standard value, small
+enough not to change the task, large enough that demos are distinct. Because it is
+identical across levels it cancels in the cost ratios N*(L_k)/N*(L0).
+
+**VERIFY:** none — verified visually in frames QA (wrist views vary slightly across
+L0 resets; table-cam scene layout identical).
