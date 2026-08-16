@@ -11,8 +11,12 @@
 4. Cluster: account `-A euhpc_b38_106` explicitly on every job (default account is
    the expired B34). Compute nodes have no internet: `WANDB_MODE=offline`,
    `HF_HUB_OFFLINE=1`. Nothing on `$SCRATCH` that matters (40-day purge).
-5. Every version pin goes in `docs/PINS.md` with a reason. Every run gets a row in
-   `experiments/registry.csv`. Substantive changes -> `docs/journal.md` (dated).
+5. **Keep the docs current IN THE SAME WORK SESSION — never batch documentation.**
+   Every version pin -> `docs/PINS.md` (with reason). Every run -> a row in
+   `experiments/registry.csv`. Every finding, fix, gotcha, or gate result ->
+   `docs/journal.md` (dated) at the moment it lands. Every design decision ->
+   `docs/decisions.md` (ADR-style, with why + open VERIFY items). A finding that
+   lives only in a conversation or a code comment is considered LOST.
 6. Training: fixed 80k steps, identical hyperparams for all cells
    (`configs/train/diffusion_base.yaml` is frozen after G5a). One seed (0).
 7. Eval sets under `configs/eval_sets/` are frozen benchmarks -- never regenerate.
