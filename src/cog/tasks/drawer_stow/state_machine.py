@@ -260,27 +260,21 @@ class DrawerStowSm:
         ramp_done = frac >= 1.0
 
         in_traverse = s == Sm.APPROACH_ABOVE_DRAWER
-        self.lower_start[in_traverse] = ee_pose[in_traverse, 0:3]
+        self.lower_start[in_traverse] = ee_pose[in_traverse, 0:3]  # release pose latch
 
         # descent is a ramped DIAGONAL from wherever the traverse equilibrium
         # ended toward the in-cavity drop point: at the start height the box
         # bottom is above the wall top, and the +x component clears the wall
         # edge before contact height; the unreachable-at-height x becomes
         # reachable as z drops
-        m = s == Sm.LOWER_INTO_DRAWER
-        stow_pos = torch.cat([stow_xy, stow_tcp_z.unsqueeze(-1)], dim=-1)
-        seg3 = stow_pos - self.lower_start
-        seg3_len = seg3.norm(dim=-1).clamp(min=1e-6)
-        frac3 = (self.lower_progress / seg3_len).clamp(max=1.0)
-        lower_pos = self.lower_start + seg3 * frac3.unsqueeze(-1)
-        assign(m, lower_pos, lg[:, 3:7], -1.0)
-        self.lower_progress[m] = self.lower_progress[m] + 0.05 * self.dt
-
+        # hold the ACHIEVED pose (latched at gate pass) while releasing -- the
+        # ramp targets are deliberately unreachable and would cause drift
         m = s == Sm.RELEASE_OBJECT
-        assign(m, stow_pos, lg[:, 3:7], 1.0)
+        assign(m, self.lower_start, lg[:, 3:7], 1.0)
 
+        retreat_up = self.lower_start + torch.tensor([0.0, 0.0, 0.03], device=dev)
         m = (s == Sm.RETREAT_UP) | (s == Sm.DONE)
-        assign(m, above_drawer, lg[:, 3:7], 1.0)
+        assign(m, retreat_up, lg[:, 3:7], 1.0)
 
         # ---- transitions (evaluated on a frozen copy: one step per call max) ----
         s0 = self.state.clone()
@@ -305,8 +299,12 @@ class DrawerStowSm:
             Sm.GRASP_OBJECT: Sm.LIFT_OBJECT,
             Sm.LIFT_OBJECT: Sm.STAGE_FOR_STOW,
             Sm.STAGE_FOR_STOW: Sm.APPROACH_ABOVE_DRAWER,
-            Sm.APPROACH_ABOVE_DRAWER: Sm.LOWER_INTO_DRAWER,
-            Sm.LOWER_INTO_DRAWER: Sm.RELEASE_OBJECT,
+            # no LOWER state: descending through the wall-top plane wedges the
+            # box on the wall's edge whenever the rear clearance (~mm) is inside
+            # tracking noise (runs 14-20). The cavity is a CONTAINER: releasing
+            # from carry height drops the cube ~12 cm onto the drawer floor,
+            # the walls catch it, and a cube rests identically on any face.
+            Sm.APPROACH_ABOVE_DRAWER: Sm.RELEASE_OBJECT,
             Sm.RELEASE_OBJECT: Sm.RETREAT_UP,
             Sm.RETREAT_UP: Sm.DONE,
         }
@@ -325,7 +323,7 @@ class DrawerStowSm:
                 back_dir = -pull_dir[:, 0:2]
                 back_dir = back_dir / back_dir.norm(dim=-1, keepdim=True).clamp(min=1e-6)
                 depth = ((ee_pose[:, 0:2] - handle_pose[:, 0:2]) * back_dir).sum(dim=-1)
-                clear = depth >= HANDLE_TO_FACE + 0.012 + object_half_size + 0.010
+                clear = depth >= HANDLE_TO_FACE + 0.012 + object_half_size + 0.004
                 go = (s0 == from_state) & waited & clear & ramp_done
             elif from_state in TIME_ONLY:
                 go = (s0 == from_state) & waited

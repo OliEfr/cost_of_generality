@@ -312,3 +312,14 @@ creeps ~3 cm closed after release (decaying drift, present even at damping 25
 -- treat as environmental), carry equilibrium x~0.32. D13: boxes shrunk to
 4.0/4.8 cm; physical-clearance descent gate. Drawer damping 8->25 (drift
 mitigation + knock resistance).
+
+**T2 FIRST EXPERT SUCCESS (2026-08-17 ~03:15, debug run 21):** episode
+terminated at step 673 (6 steps after RELEASE_OBJECT, far before the 800-step
+timeout) -- the success term fired: drawer 0.31 open, cube dropped ~12 cm into
+the cavity, settled, gripper released. The winning design change: NO descent
+into the cavity. The drawer is a container -- release from carry height
+(box bottom ~1.2 cm above the wall top, footprint inside the cavity) and let
+the walls catch the falling cube; a cube rests identically on any face, and
+the success check is position+settled, not gentleness. This eliminates the
+entire wedge-prone wall-crossing descent that consumed runs 14-20.
+4-episode state-env confirmation smoke running.
