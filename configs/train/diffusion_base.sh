@@ -1,4 +1,6 @@
 # Frozen diffusion-policy hyperparameters (identical for EVERY cell).
+# NOTE: source + expand $COG_DP_FLAGS under BASH (sbatch default). zsh does not
+# word-split unquoted vars — local zsh callers must use `bash -c` or ${=COG_DP_FLAGS}.
 # BATCH/LR are placeholders until the G5a A100 utilization smoke locks them
 # (sqrt-LR scaling from lr=1e-4 @ batch 64). Everything else is FINAL.
 export COG_DP_FLAGS="

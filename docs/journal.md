@@ -136,3 +136,9 @@ with the L1/L2 generation wave.
 **L0 LeRobot dataset VALIDATED (2026-08-16):** 400 eps / 82,916 frames, pixel err
 0.0151 < 0.03, VALIDATE_OK. 81 MB after h264 (~40x vs HDF5) — cluster sync trivial.
 
+**Gotcha (2026-08-16): zsh vs $COG_DP_FLAGS.** The session shell is zsh, which does
+not word-split unquoted variables: `lerobot-train $COG_DP_FLAGS` passed the whole
+multi-line flag block as ONE argument ("unrecognized arguments"). Fix: run train
+invocations under `bash -c` locally (sbatch is bash, unaffected). Noted in
+configs/train/diffusion_base.sh header. G4 train smoke relaunched under bash.
+
