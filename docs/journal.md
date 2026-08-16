@@ -240,3 +240,11 @@ log-file mtimes clustered at wave end looked impossible for serial legs until th
 in-log carb timestamps showed each leg really ran start-to-finish in ~6.5 s;
 EVALSET_OK sits mid-file because carb's buffered log lines flush at shutdown,
 after python's flushed print. Trust in-log timestamps over stream order.
+
+**TASK 2 KICKOFF (2026-08-17 ~02:15):** asset/reference recon done (subagent).
+Sektion cabinet: joints [door_left, door_right, drawer_bottom, drawer_top],
+drawer_top travel ~0.40 m, handle frame drawer_handle_top with grasp-ready
+offset (0.305,0,0.01 / rot 0.5,0.5,-0.5,-0.5); asset is Nucleus-cloud-only.
+No in-tree cabinet Mimic env. Stock SM insufficient (world-frame offsets, 1.5 cm
+pull). D12 finalized with addendum + VERIFY (d) (Articulation as object_ref).
+Next: empirical cabinet geometry inspection, then scaffold src/cog/tasks/drawer_stow.

@@ -97,7 +97,7 @@ env.reset(seed=5000+b) on the STATE env. L0-L2 standard eval = batches 0-4
 standard = batch 0 on each of the 10 sub-envs (200 eps), rerun adds batch 1
 (400 eps). Any future eval run can diff its reset states against the snapshot.
 
-## D12 — 2026-08-17 (PROPOSED, finalize after asset recon): Task 2 design — drawer + stow
+## D12 — 2026-08-17 (FINAL after asset recon): Task 2 design — drawer + stow
 Task: Franka opens a closed drawer, then picks a tabletop object and stows it
 inside; success = object inside the drawer cavity (pos in drawer-frame box) at
 episode end, drawer opening >= 15 cm. Scripted expert = 4-phase SM (grasp handle
@@ -113,3 +113,23 @@ same 80k-step training, same eval protocol):
 Provenance control identical: same sources + generator settings across levels;
 gen SR per level reported. Object = procedural box (fits drawer; D1 analog).
 User can veto/adjust before datagen starts.
+
+D12 addendum (asset recon, 2026-08-17): base scene = stock cabinet layout (Franka
+at origin on ground plane, Sektion cabinet at (0.8,0,0.4) yaw-180, drawer_top as
+the target drawer; travel limit ~0.40 m). Stow object rests on the cabinet's top
+surface (exact height from empirical inspection). Facts driving implementation:
+- Sektion USD is Nucleus-only (Isaac/Props/Sektion_Cabinet/), nothing local ->
+  cluster needs the subtree mirrored; add COG_ISAAC_ASSET_ROOT seam rooted at
+  ISAAC_NUCLEUS_DIR (cup_place's COG_ASSET_ROOT is rooted at ISAACLAB_NUCLEUS_DIR).
+- No isaaclab_mimic env for any articulated object exists -> greenfield subclass
+  of FrankaCubeStackIKRelMimicEnv per cup_place pattern.
+- VERIFY (d): SubTaskConfig.object_ref="cabinet" (an Articulation) is untested in
+  the datagen pose-transform path — smoke-test before committing to the subtask
+  split; fallback: use a rigid proxy frame or drawer body as ref.
+- Stock open_cabinet_sm.py: world-frame offsets (break under cabinet yaw ->
+  compose in handle frame), single -1.5 cm pull (insufficient -> ramped/segmented
+  pull to >=0.2 m), IK-Abs driver conventions match our converter.
+- Control at 20 Hz (decimation=5, dt=0.01) like cup_place, NOT the stock 60 Hz.
+- ee_frame target order: keep cup_place's (end_effector, right, left).
+- Success: drawer_top_joint >= 0.15 AND object inside drawer-frame cavity box
+  AND gripper released; timeout ~35 s (longer than cup_place: two grasps).
