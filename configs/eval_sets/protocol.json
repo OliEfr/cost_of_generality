@@ -1,0 +1,6 @@
+{
+  "num_envs": 20,
+  "batches": 5,
+  "base_seed": 5000,
+  "comment": "FROZEN eval protocol: 100 episodes/cell = 5 batches x 20 envs; batch b uses env.reset(seed=base_seed+b). 200-episode headline reruns: batches 0-9."
+}
