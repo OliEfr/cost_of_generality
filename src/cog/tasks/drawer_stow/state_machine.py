@@ -36,11 +36,12 @@ class Sm:
     APPROACH_OBJECT = 8
     GRASP_OBJECT = 9
     LIFT_OBJECT = 10
-    APPROACH_ABOVE_DRAWER = 11
-    LOWER_INTO_DRAWER = 12
-    RELEASE_OBJECT = 13
-    RETREAT_UP = 14
-    DONE = 15
+    STAGE_FOR_STOW = 11
+    APPROACH_ABOVE_DRAWER = 12
+    LOWER_INTO_DRAWER = 13
+    RELEASE_OBJECT = 14
+    RETREAT_UP = 15
+    DONE = 16
 
 
 # minimum dwell per state (s); position-gated states also need `near`
@@ -56,6 +57,7 @@ WAIT = {
     Sm.APPROACH_OBJECT: 0.5,
     Sm.GRASP_OBJECT: 0.4,
     Sm.LIFT_OBJECT: 0.3,
+    Sm.STAGE_FOR_STOW: 0.3,
     Sm.APPROACH_ABOVE_DRAWER: 0.5,
     Sm.LOWER_INTO_DRAWER: 0.5,
     Sm.RELEASE_OBJECT: 0.5,
@@ -66,8 +68,19 @@ HANDLE_APPROACH_DIST = 0.10     # in front of the handle, handle frame -z
 PULL_RATE = 0.10                # m/s commanded pull speed
 PULL_OVERSHOOT = 0.04           # command a little past the joint target
 PULL_TIMEOUT = 6.0              # bail (episode will fail success) after this
-TRAVERSE_Z = 0.92               # safe TCP height above the open drawer rim
 OBJECT_DROP_CLEARANCE = 0.02    # object bottom above cavity floor at release
+
+# Waypoints chosen to keep DLS out of extension singularities (debug sessions
+# 2026-08-17): rotate to the down-quat LOW and CLOSE (RETREAT_WP), hover the
+# plinth low (OBJ_HOVER_Z), climb to stow height at SMALL radius (STAGE_WP),
+# then translate out over the drawer wall at constant z.
+RETREAT_WP = (0.20, 0.20, 0.80)
+STAGE_WP = (0.16, 0.16, 0.84)
+OBJ_HOVER_Z = 0.62
+STOW_TRAVERSE_Z = 0.835         # carried box bottom (TCP-~0.037) clears the 0.779 wall top;
+                                # keep BELOW ~0.85: DLS hits a straight-elbow damped stall above
+HANDLE_TO_FACE = 0.03           # handle frame sits 3 cm in front of the drawer face
+STOW_BEHIND_FACE = 0.075        # drop point this far behind the drawer front wall
 
 
 def _yaw_quat(yaw: torch.Tensor) -> torch.Tensor:
@@ -147,10 +160,12 @@ class DrawerStowSm:
         lg = self.latched_grasp
         pull_dir = quat_apply(lh[:, 3:7], torch.tensor([0.0, 0.0, -1.0], device=dev).expand(N, 3))
 
-        # cavity stow target from the (moving) drawer body frame
-        stow_xy = drawer_body_pose[:, 0:2]
+        # cavity stow target: the drawer BODY origin sits inside the cabinet, so
+        # anchor on the live handle pose instead (frame transformer tracks the
+        # drawer): from the handle, HANDLE_TO_FACE + STOW_BEHIND_FACE toward the
+        # cabinet lands inside the pulled-out cavity for any cabinet pose
+        stow_xy = handle_pose[:, 0:2] - pull_dir[:, 0:2] * (HANDLE_TO_FACE + STOW_BEHIND_FACE)
         floor_z = drawer_body_pose[:, 2] + DRAWER_CAVITY_FLOOR_Z
-        rim_z = drawer_body_pose[:, 2] + DRAWER_CAVITY_RIM_Z
         stow_tcp_z = floor_z + object_half_size + OBJECT_DROP_CLEARANCE + grasp_z_offset
 
         def assign(mask, pos, quat, grip):
@@ -178,16 +193,15 @@ class DrawerStowSm:
         )
 
         release_pos = lh[:, 0:3] + pull_dir * self.pull_progress.unsqueeze(-1)
-        # retreat straight up (an extra -x offset at z 0.92 with a horizontal
-        # wrist is IK-awkward near the base pillar); rotate to the down-facing
-        # object-grasp quat during the ascent
-        retreat_pos = torch.cat([release_pos[:, 0:2],
-                                 torch.full((N, 1), TRAVERSE_Z, device=dev)], dim=-1)
+        # rotate to the down-facing grasp quat LOW and CLOSE (in front of the
+        # drawer wall) -- rotating while rising to a high target drives DLS
+        # into elbow-extension local minima
+        retreat_pos = torch.tensor(RETREAT_WP, device=dev).expand(N, 3)
         assign(s == Sm.RELEASE_HANDLE, release_pos, lh[:, 3:7], 1.0)
-        assign(s == Sm.RETREAT_FROM_HANDLE, retreat_pos, lh[:, 3:7], 1.0)
+        assign(s == Sm.RETREAT_FROM_HANDLE, retreat_pos, lg[:, 3:7], 1.0)
 
         m = s == Sm.APPROACH_ABOVE_OBJECT
-        above_obj = torch.cat([lg[:, 0:2], torch.full((N, 1), TRAVERSE_Z, device=dev)], dim=-1)
+        above_obj = torch.cat([lg[:, 0:2], torch.full((N, 1), OBJ_HOVER_Z, device=dev)], dim=-1)
         assign(m, above_obj, lg[:, 3:7], 1.0)
 
         m = (s == Sm.APPROACH_OBJECT) | (s == Sm.GRASP_OBJECT)
@@ -197,8 +211,12 @@ class DrawerStowSm:
         m = s == Sm.LIFT_OBJECT
         assign(m, above_obj, lg[:, 3:7], -1.0)
 
+        m = s == Sm.STAGE_FOR_STOW
+        stage_pos = torch.tensor(STAGE_WP, device=dev).expand(N, 3)
+        assign(m, stage_pos, lg[:, 3:7], -1.0)
+
         m = s == Sm.APPROACH_ABOVE_DRAWER
-        above_drawer = torch.cat([stow_xy, torch.full((N, 1), TRAVERSE_Z, device=dev)], dim=-1)
+        above_drawer = torch.cat([stow_xy, torch.full((N, 1), STOW_TRAVERSE_Z, device=dev)], dim=-1)
         assign(m, above_drawer, lg[:, 3:7], -1.0)
 
         m = s == Sm.LOWER_INTO_DRAWER
@@ -232,7 +250,8 @@ class DrawerStowSm:
             Sm.APPROACH_ABOVE_OBJECT: Sm.APPROACH_OBJECT,
             Sm.APPROACH_OBJECT: Sm.GRASP_OBJECT,
             Sm.GRASP_OBJECT: Sm.LIFT_OBJECT,
-            Sm.LIFT_OBJECT: Sm.APPROACH_ABOVE_DRAWER,
+            Sm.LIFT_OBJECT: Sm.STAGE_FOR_STOW,
+            Sm.STAGE_FOR_STOW: Sm.APPROACH_ABOVE_DRAWER,
             Sm.APPROACH_ABOVE_DRAWER: Sm.LOWER_INTO_DRAWER,
             Sm.LOWER_INTO_DRAWER: Sm.RELEASE_OBJECT,
             Sm.RELEASE_OBJECT: Sm.RETREAT_UP,

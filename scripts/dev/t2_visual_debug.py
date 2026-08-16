@@ -78,7 +78,8 @@ for step in range(820):
     if step % 50 == 0:
         dist = float((tcp_pos[0] - abs_target[0, :3]).norm())
         jp = env.scene["robot"].data.joint_pos[0, :7]
-        print(f"[dbg] step {step}: {STATE_NAMES[st]} dist={dist:.4f} tcp={[round(x,3) for x in tcp_pos[0].tolist()]} "
+        fingers = [round(float(x), 4) for x in env.scene["robot"].data.joint_pos[0, -2:]]
+        print(f"[dbg] step {step}: {STATE_NAMES[st]} dist={dist:.4f} fingers={fingers} tcp={[round(x,3) for x in tcp_pos[0].tolist()]} "
               f"des={[round(x,3) for x in abs_target[0,:3].tolist()]} drawer={float(drawer_joint[0]):.3f} "
               f"joints={[round(float(x),2) for x in jp]}", flush=True)
     if step % 25 == 0 or st != prev_state:

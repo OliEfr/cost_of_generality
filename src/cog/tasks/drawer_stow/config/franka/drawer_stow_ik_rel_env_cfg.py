@@ -24,7 +24,11 @@ class EventCfg:
         func=franka_stack_events.set_default_joint_pose,
         mode="reset",
         params={
-            "default_pose": [0.0444, -0.1894, -0.1107, -2.5148, 0.0044, 2.3775, 0.6952, 0.0400, 0.0400]
+            # stock FRANKA_PANDA_CFG default (cabinet-task ready pose): TCP high,
+            # pointing forward-down, j6=3.04 -- approaching the handle from above
+            # keeps the wrist in the branch where the post-pull lift is feasible
+            # (from cup_place's low ready pose, j6 pins at its 3.75 limit)
+            "default_pose": [0.0, -0.569, 0.0, -2.81, 0.0, 3.037, 0.741, 0.0400, 0.0400]
         },
     )
     randomize_franka_joint_state = EventTerm(
