@@ -95,7 +95,7 @@ DEFAULT_CUP = "cyl_m_red"
 
 GOAL_MARKER_SPAWN = sim_utils.CylinderCfg(
     radius=0.06,
-    height=0.002,
+    height=0.004,
     axis="Z",
     rigid_props=RigidBodyPropertiesCfg(kinematic_enabled=True, disable_gravity=True),
     collision_props=None,  # pure visual: gripper/cup pass through; cup rests on the table
@@ -104,4 +104,4 @@ GOAL_MARKER_SPAWN = sim_utils.CylinderCfg(
     ),
     semantic_tags=[("class", "goal")],
 )
-GOAL_MARKER_Z = 0.001
+GOAL_MARKER_Z = 0.003  # bottom 1 mm above tabletop; avoids z-fighting half-disk artifact

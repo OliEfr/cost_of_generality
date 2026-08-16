@@ -1,0 +1,44 @@
+# Decisions (ADR-style, newest last)
+
+## D1 — 2026-08-16: Default cup = procedural cylinder tumbler; mug USD only as L3 variant after QA
+Why: zero cloud-asset risk, robust top-down grasp, no handle-vs-yaw grasp confound
+(a mug handle breaks top-down grasps at random yaw, coupling expert quality to the
+generality level -- a confound in a data-cost study). Cylinder is yaw-symmetric.
+Consequence: L1 yaw randomization is visually inert for the cup body; position is
+the operative axis. Mug variants (mug_s/mug_m) join L3_VARIANTS only if grasp+render
+QA passes.
+
+## D2 — 2026-08-16: L3 object variation via per-variant sub-environments, not in-scene collections
+Why: RigidObjectCollection + in-focus machinery breaks Mimic's get_object_poses
+contract and complicates obs/terminations; per-variant envs (L3v00..) keep every
+env trivially Mimic-compatible. Datasets merged at the LeRobot level with
+variant-interleaved episode order (nested-N prefixes stay variant-balanced);
+eval runs per-variant and pools. Distribution semantics identical.
+
+## D3 — 2026-08-16: Env pins beyond PINS.md
+numpy==1.26.4 (2.4.6 segfaults Kit: pinocchio compiled vs numpy 1.x, imported via
+IsaacLab dex_retargeting at startup); transformers<5 (=4.57.6; transformers 5.15
+requires huggingface-hub>=1.5 while lerobot pins <0.36; base lerobot does not need
+transformers -- it is an isaaclab dep). ACCEPT_EULA/PRIVACY_CONSENT/OMNI_KIT_ACCEPT_EULA
+set as conda env vars.
+
+## D4 — 2026-08-16: One LeRobot dataset per level; N-cells via train-time episode subselection
+Why: avoids 6x dataset duplication; nested subsets guaranteed by committed shuffle
+order (seed 0) in conversion_manifest.json. Consequence: normalization stats come
+from the FULL pool for every N (deliberate: removes normalization as a nuisance
+variable across cells; noted in paper methods). VERIFY at G4: DatasetConfig.episodes
+exists in lerobot 0.4.4 train CLI; fallback = per-N dataset copies.
+
+## D5 — 2026-08-16: observation.state = proprio only (eef pose + gripper, 9d)
+Privileged object state goes under info.* keys (NOT observation.*) so lerobot's
+automatic feature->policy-input mapping cannot wire it into the vision policy.
+VERIFY at G4: make_policy input_features contains exactly state+2 images.
+
+## D6 — 2026-08-16: Eval protocol frozen
+configs/eval_sets/protocol.json: 100 episodes/cell = 5 batches x 20 envs,
+env.reset(seed=5000+b); headline cells rerun with batches 0-9 (200 eps).
+Determinism of seeded reset sampling VERIFY at G4.
+
+## D7 — 2026-08-16: Demo actions recorded in IK-Rel space end-to-end (spec 04 Option A)
+SM emits absolute EE targets, driver converts to IK-Rel deltas with the exact
+formula the Mimic env uses; no cross-action-space conversion anywhere.
