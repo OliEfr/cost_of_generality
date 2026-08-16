@@ -112,3 +112,12 @@ L0 demos (91.7% gen SR, G3 floor is 30%) from the 15 annotated L2 sources, stopp
 at the 10-success target. All subclass contracts exercised live (datagen pool load,
 subtask transforms, target_eef_pose_to_action). Visuomotor generation smoke queued.
 
+**P3 visuomotor generation smoke PASSED (2026-08-16):** 10/12 successes (83.3% gen
+SR). Output HDF5 carries both 128x128x3 uint8 camera streams (live pixels, new
+framing) + full proprio/object obs; ~8.8 MB/demo => ~3.5 GB per 400-demo level.
+Failed episodes exported separately (*_failed.hdf5) — useful for QA.
+
+**Full L0 generation LAUNCHED 18:40 (tmux cog_gen_L0):** 400-success target, 8 envs,
+log ops/gen/L0.log. Estimated ~3-4 h from smoke throughput. Converter smoke on the
+10-demo file running concurrently on CPU (G4 prep).
+
