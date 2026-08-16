@@ -142,3 +142,9 @@ multi-line flag block as ONE argument ("unrecognized arguments"). Fix: run train
 invocations under `bash -c` locally (sbatch is bash, unaffected). Noted in
 configs/train/diffusion_base.sh header. G4 train smoke relaunched under bash.
 
+**Gotcha (2026-08-16): torchcodec unusable locally.** lerobot's default video
+backend torchcodec fails at first batch (libavutil.so.57 missing — no system FFmpeg
+shared libs; conda ffmpeg would endanger the numpy==1.26.4 pin). Fix:
+`--dataset.video_backend=pyav` (pyav 15.1.0 bundles its own ffmpeg). Applied to the
+G4 smoke; PINS.md updated; cluster backend decided at G5a by throughput.
+

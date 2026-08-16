@@ -9,7 +9,7 @@
 | LeRobot | ==0.4.4 | newest release with requires_python >=3.10 (0.5.0+ needs >=3.12); has LeRobotDataset v3 + diffusion + lerobot-train; single version for train (cluster) AND eval (inside cog_isaac py3.11). Coexistence with isaacsim verified (torch untouched). | verified 2026-08-16 |
 | numpy | ==1.26.4 | numpy 2.4.6 segfaults Kit (pinocchio ABI via dex_retargeting import); see decisions.md D3 | pinned 2026-08-16 |
 | transformers | <5 (4.57.6) | transformers 5.x needs huggingface-hub>=1.5, lerobot pins <0.36; isaaclab dep only | pinned 2026-08-16 |
-| torchcodec | not installed locally; cluster: try ==0.4.0 else pyav backend | torch-2.7 pairing per compat matrix (verify at G5a) | open |
+| video_backend | pyav (local) | torchcodec installed but its .so cannot load (needs system libavutil.so.56/57; conda ffmpeg would risk the numpy pin). pyav 15.1.0 works. Cluster backend decided at G5a by throughput. |
 | seed | 0 everywhere | single-seed directive | -- |
 
 Exact resolved package lists: `docs/pins/` (conda env exports, added after G1).
