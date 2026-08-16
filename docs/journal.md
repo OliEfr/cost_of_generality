@@ -187,3 +187,7 @@ explained by generation-side attrition). L3 conversion (10-file interleaved merg
 shuffle_seed 0) + validation launched. L1 converted+validated (VALIDATE_OK); L2
 conversion running. Hourly fallback cron armed per user request (checks tmux/logs/
 GPU/disk/G0/cert) in addition to event watchers.
+
+**L1+L2 CONVERSION CHAIN DONE (2026-08-17 ~00:0x):** L2 converted (75 MB) and
+validated — VALIDATE_OK. LeRobot datasets now green for L0/L1/L2 (400 eps each,
+~75-81 MB); L3 interleaved-merge conversion in flight.
