@@ -75,3 +75,21 @@ over-recorded (~15 for a 10-target), keeping the episodes that survive annotatio
 (matches upstream guidance; kills both findings). 8-env recording remains for
 expert-SR gate measurements only (throwaway files).
 
+## 2026-08-16 — G2 debug: expert stalled at 47% SR on L0 — place-height bug found & fixed
+
+First live run of the SM expert (8 envs, L0): expert_SR=0.47 (20/43). Diagnostic
+(`scripts/dev/sm_diag.py`, logs per-episode final SM state + lift/place outcome)
+showed a SINGLE failure mode: every failure stalled in LOWER with |ee-des|=0.013 vs
+the 0.012 near() gate; every success fired in RELEASE at ~189 steps with 0.009 error.
+
+**Root cause:** the place target `goal_z + half_height + 0.006` computes the desired
+CUP-CENTER height but was fed to the SM as the TCP target. The TCP grasps the cup
+grasp_z_offset (1.5 cm) ABOVE its center, so the commanded TCP pose pushed the cup
+~6 mm into the table — unreachable, steady-state error ~13 mm, LOWER never advanced.
+Successes were finger-slip luck. **Fix:** TCP place target = goal_z + half_height +
+grasp_z_offset + 0.006 (recorder + sm_diag). The tainted g2_sr_L0.hdf5 was deleted
+(regenerable throwaway; final sources come from L2 single-env per D9).
+
+Lesson recorded: SM targets are TCP poses — every object-height computation must add
+the TCP-to-object offset of the current grasp.
+

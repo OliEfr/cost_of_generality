@@ -92,7 +92,10 @@ def main():
         grasp_pose = torch.cat([grasp_pos, down_quat], dim=-1)
 
         goal_pos = (env.scene["goal_marker"].data.root_pos_w - origins).clone()
-        goal_pos[:, 2] = goal_pos[:, 2] + variant.half_height + 0.006
+        # TCP place target = desired cup-center height + grasp_z_offset (TCP grasps
+        # above the cup center; omitting the offset pushes the cup into the table
+        # and LOWER never reaches near() -> expert stalls at ~50% SR)
+        goal_pos[:, 2] = goal_pos[:, 2] + variant.half_height + variant.grasp_z_offset + 0.006
         goal_pose = torch.cat([goal_pos, down_quat], dim=-1)
 
         abs_target = sm.compute(ee_pose, grasp_pose, goal_pose)
