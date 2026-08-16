@@ -202,3 +202,9 @@ reconverted from the explicit success-only list. Hardened: converter now refuses
 Rule for future agents: NEVER glob HDF5 inputs; RecorderManager writes
 `<name>_failed.hdf5` next to every `<name>.hdf5`. L0/L1/L2 verified clean
 (info.json total_episodes=400 each).
+
+**L3 REBUILT CLEAN + ALL CONVERSIONS GREEN (2026-08-17 ~00:40):** L3 reconverted
+from success-only inputs: 400 eps / 74,740 frames, pixel err 0.0160, VALIDATE_OK
+incl. new --expect_episodes 400 guard. LeRobot datasets L0-L3 all validated
+(400 eps each). Remaining for G3: dataset QA (visual grids, action ranges,
+coverage) + per-level eval-set freeze.
