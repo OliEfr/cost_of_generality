@@ -26,13 +26,13 @@ set as conda env vars.
 Why: avoids 6x dataset duplication; nested subsets guaranteed by committed shuffle
 order (seed 0) in conversion_manifest.json. Consequence: normalization stats come
 from the FULL pool for every N (deliberate: removes normalization as a nuisance
-variable across cells; noted in paper methods). VERIFY at G4: DatasetConfig.episodes
+variable across cells; noted in paper methods). VERIFIED 2026-08-16 (source, lerobot 0.4.4): DatasetConfig.episodes
 exists in lerobot 0.4.4 train CLI; fallback = per-N dataset copies.
 
 ## D5 — 2026-08-16: observation.state = proprio only (eef pose + gripper, 9d)
 Privileged object state goes under info.* keys (NOT observation.*) so lerobot's
 automatic feature->policy-input mapping cannot wire it into the vision policy.
-VERIFY at G4: make_policy input_features contains exactly state+2 images.
+VERIFIED 2026-08-16 (source): dataset_to_policy_features classifies by prefix; non-observation.*/action keys (our info.*) hit `else: continue` and are dropped. Also verified: LeRobotDataset loads meta/stats.json from the dataset root unconditionally, so normalization stats stay FULL-POOL under episodes= subselection (D4 assumption confirmed).
 
 ## D6 — 2026-08-16: Eval protocol frozen
 configs/eval_sets/protocol.json: 100 episodes/cell = 5 batches x 20 envs,
