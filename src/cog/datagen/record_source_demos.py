@@ -73,10 +73,12 @@ def main():
 
     target = args_cli.num_demos
     step_count = 0
+    attempts = 0  # episodes finished (success + fail); SR = exported/attempts
     while simulation_app.is_running():
         _, _, terminated, truncated, _ = env.step(actions)
         dones = terminated | truncated
         if dones.any():
+            attempts += int(dones.sum().item())
             sm.reset_idx(dones.nonzero(as_tuple=False).squeeze(-1))
 
         origins = env.scene.env_origins
@@ -99,11 +101,13 @@ def main():
         step_count += 1
         exported = env.recorder_manager.exported_successful_episode_count
         if step_count % 200 == 0:
-            print(f"[record] steps={step_count} exported={exported}/{target}")
+            print(f"[record] steps={step_count} exported={exported}/{target} attempts={attempts}")
         if exported >= target:
             break
 
-    print(f"[record] DONE: {env.recorder_manager.exported_successful_episode_count} demos -> "
+    n_exp = env.recorder_manager.exported_successful_episode_count
+    sr = n_exp / max(attempts, 1)
+    print(f"[record] DONE: {n_exp} demos, attempts={attempts}, expert_SR={sr:.2f} -> "
           f"{env_cfg.recorders.dataset_export_dir_path}/{env_cfg.recorders.dataset_filename}.hdf5")
     env.close()
 
