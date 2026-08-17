@@ -276,3 +276,69 @@ equals its standard eval. Cross-level headline comparisons must use each level's
 **Corrects an earlier error:** the G3 entry claimed "L3 sub-envs draw independent
 streams". They do not -- same seed gives the same poses across variants. That claim was
 wrong and is retracted here.
+
+## D19 — 2026-08-17: Task 3 = push a puck 20 cm to a target disk, single Mimic subtask, synthetic push frame
+
+**The binding constraint (from recon + `data_generator.py:52-83`):** Mimic expresses each
+subtask's EEF trajectory relative to ONE 4x4 reference pose and rigidly re-applies it. A
+push is intrinsically a TWO-frame relation — it depends on the object pose AND the goal
+pose. Anchoring on the object reproduces the source demo's object->goal *vector*, so a
+moved goal is simply not reached; anchoring on the goal loses the approach. Neither body
+alone works. Everything below follows from designing around that.
+
+**Design:**
+
+1. **Synthetic push frame as the reference.** `get_object_poses` publishes a derived frame
+   `push_frame`: origin at the puck centre, yaw pointing from puck to target, roll/pitch
+   stripped. The source stroke is then "advance along +x of this frame", and re-applying it
+   rigidly in a new scene pushes along the *new* puck->target direction. Direction adapts
+   for free; distance does not, which forces item 2.
+
+2. **Constant stroke length: |puck - target| = 0.20 m at every level.** Rigid transforms
+   carry no scale, so the stroke baked into the source demo is the stroke you get. Holding
+   the distance fixed makes it exactly right everywhere. The task is therefore honestly
+   "push the puck 20 cm to the marker"; the generality axes vary *where* and *which way*,
+   not how far. Success radius 5 cm absorbs contact slip.
+
+3. **ONE subtask for the whole episode.** The recon's rules make multi-subtask decomposition
+   actively dangerous here: non-final term signals must be latched, monotone and false at
+   t=0 (a signal true at t=0 crashes `DataGenInfoPool._add_episode` with a bare IndexError),
+   boundaries are taken from the first NONZERO diff so contact/region predicates that chatter
+   pick the wrong step, and Mimic inserts a free-space interpolation between subtasks that
+   would jump the EEF mid-stroke. A single segment anchored on the push frame has no
+   boundaries to get wrong and keeps the stroke intact. Fallback if Mimic rejects a 1-element
+   `subtask_configs`: two subtasks sharing the same `object_ref` split at contact.
+
+4. **Gripper closed as a blade, but NOT constant.** Keep the 7-dim action with the gripper
+   last (`actions_to_gripper_actions` is a hard-coded `actions[:, -1:]` slice). The expert
+   starts open at reset and closes during the approach, then holds closed. Rationale beyond
+   realism: LeRobot's diffusion config MIN_MAX-normalizes state and action, so a gripper
+   channel that never changes would make those dims degenerate across the pool.
+
+5. **Object = flat puck, not a tall object.** Measured empirically (probe, 2026-08-17): a
+   closed-gripper blade pushed the T1 cup 20 cm, but the cup TIPPED to 90 deg partway and
+   slid on its side. A low, wide puck cannot tip. Procedural `CylinderCfg`, so no cloud
+   assets (D1's reasoning).
+
+6. **Contact height from measured geometry, closed-loop.** Also from the probe: the fingertip
+   body sits **+4.5 cm above** the `ee_frame` TCP, and an open-loop descent stalls — the first
+   probe attempt pushed air 8 cm above the puck. The SM descends until the *measured*
+   fingertip height reaches contact height, exactly as T2's expert gates on physical
+   conditions rather than commanded targets.
+
+7. **Success = puck centre within the disk AND settled.** No `released` clause (impossible
+   with a closed pusher). `settled` is mandatory, not cosmetic: generation OR-latches success
+   across every timestep, so without it a puck sliding *through* the target and out the far
+   side would be recorded as a success.
+
+8. **Levels:** L0 everything fixed; L1 puck position randomized (target follows at 20 cm,
+   fixed bearing); L2 + target bearing randomized around the puck; L3 + puck geometry
+   (radius/height) and colour. **L3 is the point of interest** — with no grasp offset to
+   invalidate, this is the one task in the study that may carry a real geometry axis
+   (paper/limitations.md entry 2). Radius variation shifts the contact standoff, which the
+   5 cm success disk should absorb; to be measured, not assumed.
+
+**Named risks:** single-reference open-loop stroke means contact slip is uncorrected within a
+segment (the reference is sampled once at segment start); IK-Rel action scale 0.5 plus one
+waypoint per step means the EEF lags under contact friction; MIN_SEPARATION must exceed a
+full stroke so the puck cannot start inside the target region.
