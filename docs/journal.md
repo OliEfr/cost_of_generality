@@ -861,3 +861,31 @@ Revised option set for the user, cheapest first:
     tuning; expensive, and re-introduces the yaw/handle grasp confound.
 My recommendation is now **(1) + (2)**: widen the scale range if we ever regenerate L3
 for another reason, and otherwise report the constraint rather than fight it.
+
+### 2026-08-17 18:35 — DECISION CLOSED: ladder stays as built, gap recorded as a limitation
+
+User's call: keep everything as is, note it as a limitation. No data regenerated, no
+level definitions touched, no frozen eval set disturbed.
+
+Landed:
+- `docs/decisions.md` D17 flipped OPEN -> RESOLVED with the rationale and the two
+  follow-ups explicitly declined (mug meshes; randomized drawer start), plus the note
+  that if L3 is ever rebuilt for another reason the box edge range should be widened
+  to 3.5-5.5 cm while it is open.
+- **`paper/limitations.md` created** — the first file in `paper/`. Five entries: (1) the
+  axes vary placement and appearance, never shape or mechanism, with the per-level table
+  and the byte-identical-colour-runs evidence; (2) *why* — Mimic's rigid object-centric
+  transform, written out with the actual math and the measured per-axis generation-SR
+  costs (object pose 10.7 pts, fixture pose 13.6 pts, appearance ~1 pt); (3) one seed
+  per cell; (4) fixed 80k-step budget rather than convergence; (5) in-distribution,
+  simulation-only evaluation.
+
+Entry 2 is deliberately written as a *result*, not an apology: pose generality is
+expensive to learn but cheap to generate, geometry generality is not cheaply generatable
+under this method at all. That asymmetry plausibly explains why MimicGen-style datasets
+in the literature vary placements rather than shapes, and it means demo-count studies
+built on such pipelines are systematically better evidence about spatial generality than
+about object generality.
+
+`paper/limitations.md` is the running list from here on — new limitations get appended
+as they land rather than reconstructed at writing time.
