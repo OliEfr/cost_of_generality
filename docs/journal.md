@@ -954,3 +954,34 @@ independent streams" — they do not. Same seed, same poses. Two wrong claims ab
 variant independence in two days (this and the T1 gen-SR figures); the pattern is that I
 asserted a property that *sounded* right for per-variant sub-environments instead of
 querying the artifacts. The artifacts were available both times.
+
+### 2026-08-17 19:25 — G3 PASSED FOR TASK 2 — the data phase of the study is COMPLETE
+
+Verified checklist, all green:
+
+1. **HDF5 pools:** 1600 demos across 13 legs (400 x L0/L1/L2, 10 x 40 for L3).
+2. **LeRobot datasets:** `data/lerobot/T2_{L0,L1,L2,L3}`, 400 episodes each, every one
+   `VALIDATE_OK` with `--expect_episodes 400`; L3 verified variant-balanced (40 per
+   variant, interleaved order).
+3. **Eval sets frozen:** `configs/eval_sets/T2_{L0,L1,L2}.json` (10 batches x 20 envs
+   each) + `T2_L3.json` (10 variants x 10 batches), invariance matching spec per-level,
+   drawer closed in every frozen batch, L3 on the corrected diagonal protocol (D18).
+4. **`experiments/gen_stats.csv`:** 13 T2 rows with exact successes/failures/attempts.
+5. **QA:** 12 artifacts (grid, coverage, drawer-opening histogram per level); asserts
+   pass on all four levels; T1 QA re-run as a regression after the refactor, unchanged.
+
+**Both tasks now have complete, validated, QA'd datasets and frozen benchmarks.** The
+study's entire local data phase is done. Everything remaining is GPU work that is
+blocked on the cluster association (G0):
+- P5/G5a: batch-size/LR smoke on one A100, then one full 80k run to calibrate GPU-h.
+- P5/G5b: the A100 rendering gate (decides whether eval runs on cluster or stays local).
+- P6: the 24-run Task-1 matrix, then the Task-2 matrix.
+
+Task 3 (push-to-target) remains the only implementation work available locally, and it
+is the sensible next thing to build while the cluster is blocked.
+
+Totals for the T2 phase, for the record: env+expert built from scratch, 29 expert debug
+iterations, 13 h 10 min of unattended generation, 2 h of parallel conversion, and three
+methodological errors caught and corrected along the way (log-scraped gen SR, the
+20-distinct-poses L3 eval protocol, and the false claim that L3 variants draw
+independent RNG streams).
