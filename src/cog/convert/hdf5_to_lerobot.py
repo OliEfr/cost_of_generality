@@ -14,6 +14,7 @@ Usage (cog_lerobot or cog_isaac env; no Isaac needed):
   python -m cog.convert.hdf5_to_lerobot --input data/hdf5/L0_gen.hdf5 \
       --root data/lerobot/cup_place_L0 --repo_id local/cup_place_L0 --fps 20
 For L3: pass multiple --input files (per-variant merge, alternating order).
+Pass --task drawer_stow for Task 2 (different privileged keys and task string).
 """
 
 import argparse
@@ -26,9 +27,29 @@ import numpy as np
 
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
-TASK_STR = "place the cup on the green target marker"
+# Per-task differences are exactly: the language string and which privileged object
+# keys the recorder wrote. Everything else (proprio state, action, both cameras,
+# joint_pos) is shared, so the policy input spec is identical across tasks.
+# name -> (hdf5 obs key, dim, component names)
+TASK_SPECS = {
+    "cup_place": {
+        "task_str": "place the cup on the green target marker",
+        "privileged": {
+            "info.cup_pos": ("cup_pos", 3, ["x", "y", "z"]),
+            "info.cup_quat": ("cup_quat", 4, ["w", "x", "y", "z"]),
+        },
+    },
+    "drawer_stow": {
+        "task_str": "open the drawer and stow the box inside",
+        "privileged": {
+            "info.object_pos": ("object_pos", 3, ["x", "y", "z"]),
+            "info.object_quat": ("object_quat", 4, ["w", "x", "y", "z"]),
+            "info.drawer_joint_pos": ("drawer_joint_pos", 1, ["drawer"]),
+        },
+    },
+}
 
-FEATURES = {
+BASE_FEATURES = {
     "observation.state": {
         "dtype": "float32",
         "shape": (9,),
@@ -46,12 +67,18 @@ FEATURES = {
         "dtype": "video", "shape": (128, 128, 3), "names": ["height", "width", "channels"],
     },
     "info.joint_pos": {"dtype": "float32", "shape": (9,), "names": [f"q{i}" for i in range(9)]},
-    "info.cup_pos": {"dtype": "float32", "shape": (3,), "names": ["x", "y", "z"]},
-    "info.cup_quat": {"dtype": "float32", "shape": (4,), "names": ["w", "x", "y", "z"]},
 }
 
 
-def episode_frames(f: h5py.File, demo: str):
+def features_for(task: str) -> dict:
+    feats = dict(BASE_FEATURES)
+    for name, (_key, dim, names) in TASK_SPECS[task]["privileged"].items():
+        feats[name] = {"dtype": "float32", "shape": (dim,), "names": names}
+    return feats
+
+
+def episode_frames(f: h5py.File, demo: str, task: str):
+    spec = TASK_SPECS[task]
     g = f[f"data/{demo}"]
     obs = g["obs"]
     T = g["actions"].shape[0]
@@ -59,16 +86,17 @@ def episode_frames(f: h5py.File, demo: str):
         [obs["eef_pos"][:], obs["eef_quat"][:], obs["gripper_pos"][:]], axis=1
     ).astype(np.float32)
     for t in range(T):
-        yield {
+        frame = {
             "observation.state": state[t],
             "action": g["actions"][t].astype(np.float32),
             "observation.images.table_cam": obs["table_cam"][t],
             "observation.images.wrist_cam": obs["wrist_cam"][t],
             "info.joint_pos": obs["joint_pos"][t].astype(np.float32),
-            "info.cup_pos": obs["cup_pos"][t].astype(np.float32),
-            "info.cup_quat": obs["cup_quat"][t].astype(np.float32),
-            "task": TASK_STR,
+            "task": spec["task_str"],
         }
+        for name, (key, _dim, _names) in spec["privileged"].items():
+            frame[name] = obs[key][t].astype(np.float32)
+        yield frame
 
 
 def main():
@@ -76,6 +104,8 @@ def main():
     ap.add_argument("--input", nargs="+", required=True, help="source HDF5 file(s); >1 = variant merge")
     ap.add_argument("--root", required=True)
     ap.add_argument("--repo_id", required=True)
+    ap.add_argument("--task", choices=sorted(TASK_SPECS), default="cup_place",
+                    help="selects task string + privileged keys; default keeps T1 behaviour")
     ap.add_argument("--fps", type=int, default=20)
     ap.add_argument("--shuffle_seed", type=int, default=0)
     ap.add_argument("--max_episodes", type=int, default=0, help="0 = all")
@@ -113,7 +143,7 @@ def main():
         ds = LeRobotDataset.create(
             repo_id=args.repo_id,
             fps=args.fps,
-            features=FEATURES,
+            features=features_for(args.task),
             root=str(root),
             robot_type="franka",
             use_videos=True,
@@ -122,7 +152,7 @@ def main():
         )
         try:
             for ep_idx, (fi, demo) in enumerate(order):
-                for frame in episode_frames(handles[fi], demo):
+                for frame in episode_frames(handles[fi], demo, args.task):
                     ds.add_frame(frame)
                 ds.save_episode()
                 if (ep_idx + 1) % 25 == 0:
@@ -131,6 +161,7 @@ def main():
             ds.finalize()
 
         manifest = {
+            "task": args.task,
             "inputs": args.input,
             "shuffle_seed": args.shuffle_seed,
             "episode_order": [{"episode_index": i, "file": args.input[fi], "demo": d}
