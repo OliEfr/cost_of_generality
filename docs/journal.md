@@ -985,3 +985,60 @@ iterations, 13 h 10 min of unattended generation, 2 h of parallel conversion, an
 methodological errors caught and corrected along the way (log-scraped gen SR, the
 20-distinct-poses L3 eval protocol, and the false claim that L3 variants draw
 independent RNG streams).
+
+### 2026-08-17 19:40-21:20 — Task 3 (push_target) built; expert at 78-98% and closing
+
+Full package written: `src/cog/tasks/push_target/` (assets, levels, mdp/{observations,
+events,terminations}, env cfg, franka state+visuomotor cfgs, mimic env + cfg, state
+machine) plus `scripts/dev/t3_smoke.py`. Design is D19. Empirical grounding first: the
+2026-08-17 probe measured that the `ee_frame` TCP z IS the contact height and that the T1
+cup TIPS at 90 deg when pushed, which is why the object is a wide flat puck.
+
+**Expert debugging, in order — every fix came from a trace, and every hypothesis I
+formed without one was wrong:**
+
+1. **Runaway ramp.** The push ramp advanced 0.015/tick unconditionally while the arm
+   followed at a third of that (commanded 0.180 m vs 0.045 m actual). The ramp pinned at
+   its cap in ~26 ticks, `spent` fired, and the machine retreated mid-push; the puck only
+   arrived because the runaway command dragged the blade forward during RETREAT. Fixed by
+   bounding the commanded advance to PUSH_LEAD ahead of MEASURED progress, and by reading
+   `spent` off measured travel. Final error 3.6 cm -> 0.8 cm.
+2. **Masked/full-width tensor mix.** `self.pushed[m] = torch.minimum(self.pushed[m] + rate,
+   lead)[m]` only works when every env is in the same state -- which a 2-env smoke test
+   guarantees and an 8-env gate does not. Compute at full width, then mask-assign.
+3. **Lateral squirt.** An open-loop straight stroke let a 2 cm blade slip off a cylinder
+   (22% on the largest puck). Replaced with a closed-loop pursuit: each tick, aim at a
+   point just inside the puck's near surface along the CURRENT puck->target line.
+4. **Descent hang.** Measured steady-state IK tracking error on the descent is ~6 mm and
+   the gate was 4 mm, so DESCEND hung until timeout with the puck untouched -- the exact
+   bug class that pinned T1's expert at 47% (13 mm error vs 12 mm gate). Three defences:
+   command BELOW the contact height, gate looser than the tracking error, and a tick
+   budget that advances the state regardless.
+5. **Crawl.** With a 2 cm lead the aim sat ~1.5 cm ahead of the blade, so the commanded
+   step was limited by that gap, not the rate: 0.7 mm/tick, 20x too slow, timing out
+   mid-stroke. Raised the lead; also raised approach/descend rates and the episode budget
+   20 s -> 30 s.
+6. **Overshoot.** A FIXED lead has no notion of "nearly there": error bottomed at 5.3 cm
+   and was then shoved 18 cm PAST the target, so the stop test never fired. Added
+   proportional braking.
+7. **Braking killed the push, radius-dependently.** Penetration is (lead_eff -
+   BLADE_HALF), which a purely proportional law fades to zero at ~3 cm of error, before
+   the 1.8 cm stop test. This INVERTED the failure mode -- large pucks failed with a fixed
+   lead, small pucks with a proportional one. Added a constant press floor.
+8. **Penetration exceeded the object.** Full lead commands the blade 3.8 cm past the
+   surface; for a 3.2 cm-radius puck that is past its CENTRE, so the blade tried to occupy
+   the puck's space and knocked it away (failures clustered at 11-16 cm). Capped
+   penetration at min(3 cm, 0.6 x radius). This removed the geometry sensitivity: the
+   three radii now score 80 / 77.5 / 80 instead of 57.5 / 75 / 90.
+
+**Gate status:** L0 95%, L1 97.5%, L2 85%, L3v00 80%, L3v04 77.5%, L3v09 80%.
+L0/L1 pass; L2 and L3 are 5-12 points short of the 90% gate. Since L1 (no bearing
+randomization) scores 97.5% and L2 (bearing +-40 deg) 85%, the bearing axis carries
+almost all of the remaining loss -- geometry now costs only ~5 points. Next diagnostic is
+whether the loss concentrates at extreme bearings (reachability / wrist reconfiguration)
+rather than being uniform.
+
+**Note for the record:** this took 8 fix cycles against T2's 29, and every one was found
+by tracing decision-time state rather than by reasoning about the mechanism. The two
+times I predicted a cause without a trace (lateral squirt, then the timeout) I was wrong
+about which variable mattered.
