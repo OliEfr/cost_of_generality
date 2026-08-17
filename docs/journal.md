@@ -358,3 +358,7 @@ object pose (10x18 cm + yaw +-45 deg) and cabinet pose (+-5 cm, +-7.5 deg yaw)
 randomization. Next: L2 source recording (single-env, over-record 18 keep 15,
 D9) -> annotate --auto (VERIFY d: Articulation object_ref) -> camera QA ->
 Mimic gen smoke.
+
+**T2 L3 VARIANTS PASS (2026-08-17):** 4/4 expert successes on L3v00 (4.0 cm
+box) and L3v05 (4.8 cm box) -- the size-variant axis works; the whole T2
+ladder L0-L3 has a working expert.
