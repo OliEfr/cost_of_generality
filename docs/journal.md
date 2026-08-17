@@ -344,3 +344,10 @@ opened drawer volume + draw-dependent creep, and the constraint algebra
 is empty by ~2 cm at any pull depth. D14: 0.20 m robot pedestal — the
 systemic fix. Carry heights raised (traverse cmd 0.92), pull target relaxed
 to 0.28, retry threshold 0.24. Pedestal-geometry gate running.
+
+**T2 END-TO-END SUCCESS AT PEDESTAL 0.08 (2026-08-17 ~09:05, run 29):**
+episode success at step 650: approach->grasp (fingers 0.012)->pull 0.287->
+retreat->ramped+slerped object leg->box grasp (0.023)->stage->traverse at
+z 0.879 (1.2 cm tracking, 7.5 cm wall clearance)->drop-release->success term.
+Joints mid-range all episode. The 0.20 m pedestal detour (runs 22-28) and its
+lessons recorded in D14-revised. Full 16-episode L0/L1/L2 gate running.

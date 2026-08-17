@@ -153,3 +153,17 @@ constraint map). A 0.20 m pedestal moves every cabinet interaction into
 mid-workspace: wall crossing gains ~10 cm clearance at any x, the deep pull
 becomes unnecessary (target back to 0.28), and the sag/wedge failure class
 disappears. Scene change only for Task 2; Task 1 unaffected.
+
+## D14-revised — 2026-08-17: pedestal height 0.08 m, not 0.20
+The 0.20 m pedestal mirrored the arm's wrist branch at the handle (j5 sign
+flip, j6 pinned) and broke every previously proven phase (runs 22-28: approach
+stalls, triple limit pins, violent reconfigurations, paths crossing the open
+drawer's volume). The minimal 0.08 m lift raises the carry ceiling past the
+stow requirement (~0.82 -> ~0.90) while keeping the arm in the SAME kinematic
+branch as the fully-proven ground trajectory. First full success with this
+geometry: 650-step episode, traverse tracking 1.2 cm at z 0.879, wrist
+mid-range throughout. Key craft rules extracted for the paper's method notes:
+ramp every long translation, SLERP orientation only where the branch needs
+guiding (obj leg yes, handle approach no), never route paths through the open
+drawer's swept volume, and treat wrist-branch selection as set by the FIRST
+large motion after reset.
