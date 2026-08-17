@@ -1,0 +1,1 @@
+- 2026-08-17 21:07  Leonardo cert <11h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
