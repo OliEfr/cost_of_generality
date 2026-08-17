@@ -246,3 +246,33 @@ position (needs a drawer-frame reference for subtasks 1 and 3 plus a delta-based
 `drawer_opened` signal). If L3 is ever regenerated for an unrelated reason, widen the
 box edge range within the cube family (3.5-5.5 cm, capped by the D13 stow corridor)
 while it is being rebuilt — free at that point.
+
+## D18 — 2026-08-17: L3 standard eval uses the diagonal (variant v <- batch v)
+
+**Problem found while freezing the T2 eval sets.** The L3 protocol as written was
+"batch 0 on each of the 10 sub-envs, pooled (200 eps)". But L3 variants differ only in
+object size/colour and **share the pose RNG stream**, so batch 0 is the *same* 20 poses
+in all ten variants: 200 episodes containing only **20 distinct object poses**. Every
+other level's 100-episode standard eval has 100 distinct poses. Verified directly in the
+frozen snapshots for both tasks (T1 and T2 identically).
+
+Why it matters: pose is the dominant difficulty axis, so 200 pose-correlated episodes
+overstate statistical power badly (naive binomial SE ~3.5 points, but only ~20
+independent spatial draws), and it makes L3 non-comparable to L0-L2 on exactly the axis
+the study measures — inside the headline cost-of-generality curve.
+
+**Decision:** L3's standard eval pairs **variant v with batch v** (the diagonal). Same
+200 episodes, same ten appearance variants, but **200 distinct poses**. The frozen
+snapshots already contain 10 batches for every variant, so this is a change to *which
+committed rows the protocol reads*, not a regeneration — rule 8 is respected and the
+snapshot data is byte-identical (verified). No evaluation had run yet (P6 blocked on
+G0), so nothing is invalidated.
+
+Also recorded: 10 batches x 20 envs = 200 distinct poses is the *total* pose supply at
+L3, so 200 episodes is its maximum spatial coverage; `headline_rerun` at L3 therefore
+equals its standard eval. Cross-level headline comparisons must use each level's
+**200-episode** set (L0-L2 batches 0-9, L3 diagonal), which have equal spatial coverage.
+
+**Corrects an earlier error:** the G3 entry claimed "L3 sub-envs draw independent
+streams". They do not -- same seed gives the same poses across variants. That claim was
+wrong and is retracted here.

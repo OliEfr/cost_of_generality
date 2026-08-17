@@ -1,6 +1,6 @@
 {
- "standard_eval": "batch 0 on each of the 10 sub-envs, pooled (200 eps)",
- "headline_rerun": "batches 0-1 on each sub-env, pooled (400 eps)",
+ "standard_eval": "variant v uses batch v (diagonal), pooled: 200 eps, 200 DISTINCT poses, all 10 variants. NB batch 0 on every variant would also be 200 eps but only 20 distinct poses -- variants share the pose RNG stream (see D18).",
+ "headline_rerun": "same as standard_eval: the frozen snapshots contain 10 batches x 20 envs = 200 distinct poses in total, so 200 eps is the maximum spatial coverage available at L3.",
  "variants": {
   "L3v00": {
    "task": "Cog-CupPlace-L3v00-IK-Rel-v0",

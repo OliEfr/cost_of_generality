@@ -1,6 +1,6 @@
 {
-  "num_envs": 20,
-  "batches": 5,
-  "base_seed": 5000,
-  "comment": "FROZEN eval protocol: 100 episodes/cell = 5 batches x 20 envs; batch b uses env.reset(seed=base_seed+b). 200-episode headline reruns: batches 0-9."
+ "num_envs": 20,
+ "batches": 5,
+ "base_seed": 5000,
+ "comment": "FROZEN eval protocol: 100 episodes/cell = 5 batches x 20 envs; batch b uses env.reset(seed=base_seed+b). 200-episode headline reruns: batches 0-9. L3 levels: variant v uses batch v (diagonal) -> 200 eps with 200 distinct poses; batch 0 on all variants would give only 20 distinct poses because variants share the pose RNG stream (D18). Cross-level headline comparisons must use each level's 200-episode set (L0-L2 batches 0-9; L3 diagonal), which have equal spatial coverage."
 }

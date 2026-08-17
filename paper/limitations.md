@@ -75,7 +75,16 @@ All cells train for the same 80k steps rather than to convergence, so results de
 success rate at a fixed compute budget. Large-N cells may be under-trained relative to
 small-N cells.
 
-## 5. In-distribution evaluation, simulation only
+## 5. Evaluation set sizes differ between levels
+
+L0-L2 use a 100-episode standard evaluation (5 batches x 20 environments, 100 distinct
+initial states); L3 uses 200 episodes, because it must cover ten appearance variants,
+paired diagonally with the ten batches so that it also holds 200 distinct poses. L3
+therefore carries a tighter confidence interval than the other levels' standard
+evaluation. Cross-level headline comparisons use each level's 200-episode set, which have
+equal spatial coverage (see D18).
+
+## 6. In-distribution evaluation, simulation only
 
 Policies are evaluated on held-out initial states drawn from the *same* level they were
 trained on, so the study measures data cost of fitting a distribution, not

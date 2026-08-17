@@ -911,3 +911,46 @@ D2 promised and it is now checked rather than assumed.
 
 Remaining for the T2 data phase: dataset QA (adapt `scripts/dev/dataset_qa.py`, which
 asserts T1's cup-to-goal final distance) and freezing the 13 T2 eval sets.
+
+### 2026-08-17 19:20 — T2 eval sets frozen; found and fixed a 20-distinct-poses bug in the L3 protocol
+
+T2 freeze wave: **13/13 sub-levels `EXIT=0`, all `EVALSET_OK`**, merged to
+`configs/eval_sets/T2_{L0,L1,L2,L3}.json`. Generalized `freeze_eval_sets.py` with
+`--task_kind` (drawer_stow snapshots the box pose plus the cabinet root *and its joint
+positions*, since the cabinet is an Articulation) and parameterized
+`merge_eval_sets.py` with `--raw`/`--prefix` so T1's frozen files cannot be touched --
+verified by md5 before/after (all five T1 files OK).
+
+Snapshot invariance is exactly per spec, checked **per-env across seeds** (my first
+check compared across the 20 parallel envs and reported 12 m "spreads" -- that was the
+check being wrong, not the data; env origins are spaced in a grid):
+
+| | box xyz | box yaw | cabinet xyz | cabinet yaw |
+|---|---|---|---|---|
+| T2_L0 | frozen | frozen | frozen | frozen |
+| T2_L1 | 9.7 x 17.5 cm | varies | frozen | frozen |
+| T2_L2 | 9.7 x 17.5 cm | varies | 9.8 x 11.6 cm | varies |
+
+Drawer joints are 0.0 in every frozen batch, confirming every eval episode starts closed.
+
+**The real find: the L3 eval protocol was much weaker than it looked.** "Batch 0 on each
+of the 10 sub-envs, pooled (200 eps)" gives only **20 distinct object poses**, because
+L3 variants share the pose RNG stream — batch 0 is the same 20 poses ten times over,
+once per appearance. L0-L2's 100-episode standard eval has 100 distinct poses. So L3's
+apparent 200-episode precision was ~20 independent spatial draws, and L3 was not
+comparable to the other levels on the study's dominant axis. This affects **both tasks
+identically** and was sitting inside the headline curve.
+
+Fixed for free by reading the *diagonal* — variant v uses batch v — which yields 200
+episodes with **200 distinct poses** and all ten variants (verified for both tasks). The
+frozen snapshots already held 10 batches per variant, so this changes which committed
+rows the protocol reads, not the data: T1's `L3.json` diff is exactly two protocol
+strings with `variants` byte-identical. No eval had run yet, so nothing is invalidated.
+Recorded as D18, along with the guidance that cross-level headline comparisons use each
+level's 200-episode set (equal spatial coverage).
+
+**This also retracts an earlier claim of mine.** The G3 entry said "L3 sub-envs draw
+independent streams" — they do not. Same seed, same poses. Two wrong claims about
+variant independence in two days (this and the T1 gen-SR figures); the pattern is that I
+asserted a property that *sounded* right for per-variant sub-environments instead of
+querying the artifacts. The artifacts were available both times.
