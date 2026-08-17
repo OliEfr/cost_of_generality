@@ -1154,3 +1154,60 @@ masking it. Given a 160-tick budget.
 **Next:** annotate the sources (`--auto`) and run a generation smoke test. That is the
 first real test of D19's single-subtask design -- whether Mimic accepts a one-element
 `subtask_configs` and whether the synthetic push frame reproduces strokes at new bearings.
+
+### 2026-08-17 23:40-23:55 — T3 MIMIC PIPELINE VALIDATED: 93 % generation SR, the highest of the three tasks
+
+Annotation and generation both work, and the result overturns what I expected.
+
+**Annotation:** `T3_L2_source_annotated.hdf5`, **17 of 20** sources accepted (three dropped
+on replay). Mimic accepts a ONE-element `subtask_configs` -- the single-subtask design of
+D19 is legal, which was the biggest open risk in the design. The annotated file's structure
+is byte-for-byte the same shape as T2's known-good one (`datagen_info` is computed at
+generation time, not stored; my expectation that it would appear in the file was wrong).
+
+**Generation smoke, state env:** 12/12 successes, 0 failures, median final placement error
+1.65 cm.
+**Generation smoke, VISUOMOTOR env (what the wave uses):** **40 successes / 43 attempts =
+93.0 % generation SR**, median final error 1.75 cm, max 4.90 cm (inside the 5 cm gate).
+Episode lengths 265-342 steps. Full obs contract present: table_cam, wrist_cam, eef_pos,
+eef_quat, gripper_pos, joint_pos, joint_vel, object_pos, object_quat, target_pos.
+
+**Camera QA passed on the reused T1 framing** (`ops/qa/T3_smoke_grid.png`): in all sampled
+episodes the yellow puck and the green target disk are both clearly visible and well
+separated at t=0, and the final frames show the puck resting on the disk. Green
+(target-disk) pixel count per first frame over 20 episodes: min 156, median 237, max 316 --
+no episode has a clipped or occluded target. No re-aiming needed, so T3 inherits T1's
+frozen camera exactly, which also keeps the visual domain identical across tasks.
+
+### The finding: generation SR measures DESIGN FIT to Mimic, not task difficulty
+
+Generation success rate across the three tasks:
+
+| task | what it is | gen SR |
+|---|---|---|
+| T1 cup_place | short prehensile pick-and-place | 85-88 % |
+| T2 drawer_stow | long-horizon articulated, 3 subtasks | **31-55 %** |
+| T3 push_target | non-prehensile contact-rich | **93 %** |
+
+Task 3 is by far the hardest to CONTROL -- it took fifteen fix cycles to get a scripted
+expert to 85-94 %, against T1's handful -- and yet it has the highest generation SR of the
+three. The reason is that its design was built around Mimic's rigid single-reference
+transform rather than in spite of it: one subtask so there are no boundaries to mis-segment
+and no interpolation jump mid-stroke, a synthetic reference frame that encodes the push
+direction so direction adapts for free, a constant stroke length because a rigid transform
+carries no scale, and sources selected for placement quality so no template hands its error
+to its copies.
+
+That reframes the T2 finding rather than contradicting it. What costs generation SR is not
+"generality" or "difficulty" in the abstract, but **the number of independent
+pose-dependent relations a task requires that a single rigid reference per subtask cannot
+express**. T2's stow needs the cabinet pose AND the drawer opening AND the box pose, across
+three chained segments; each added randomization axis degrades a transform that was already
+approximating. T3 needs exactly one relation, and it is the one the reference frame encodes.
+
+Practical consequence for anyone budgeting Mimic data: generation SR is largely a design
+variable, not a fact about the task. It is worth spending a day on the subtask
+decomposition and reference frames before spending three on generation compute.
+
+**Next:** the T3 datagen wave (13 sub-levels; at 93 % SR and ~300-step episodes this should
+be far cheaper than T2's 13 h -- estimate ~3-4 h), then conversion, QA and eval-set freeze.

@@ -118,3 +118,16 @@ All four `VALIDATE_OK` with `--expect_episodes 400`.
 episodes (~680 frames). One level is ~2 h; running the four in parallel costs the same
 2 h instead of 8 h, so **always convert levels concurrently**. T1's shorter episodes
 (~190 frames) convert roughly 3.5x faster per episode.
+
+### T3 (push-to-target) pipeline — measured 2026-08-17
+
+| step | cost |
+|---|---|
+| source recording, 20 demos, 1 env, state env | ~13,600 steps, ~12 min (expert SR 0.69 vs the strict 2 cm recording gate) |
+| annotation (`--auto`), 20 -> 17 demos | ~2 min |
+| generation smoke, state env, 12 demos, 4 envs | ~2 min, 100 % gen SR |
+| generation smoke, VISUOMOTOR, 40 demos, 8 envs | ~5 min, **93.0 % gen SR** (40/43) |
+
+Episodes are 265-342 steps (13-17 s at 20 Hz) -- roughly half T1's step count and a
+**quarter** of T2's. Combined with a 93 % generation SR versus T2's 31 %, a T3 level of 400
+demos should cost well under an hour, against T2's 2-4 h per level.
