@@ -81,8 +81,9 @@ attempt costs roughly 2x a T1 attempt before the SR difference is even counted.
 |---|---|---|---|---|
 | T2 L0 | 400 | 54.9 % | 2 h 16 min | fixed cabinet + fixed object pose |
 | T2 L1 | 400 | 44.2 % | 2 h 50 min | + object pose randomized |
-| T2 L2 | 400 | 30.6 % | 4 h 08 min | + cabinet pose randomized |
-| T2 L3 x10 variants | 10 x 40 | 33.3 % (v00, exact) | ~4 h projected (v00 = 24 min) | + object size/colour; adds a ~3.5 min Kit boot per variant |
+| T2 L2 | 400 | 30.6 % | 4 h 08 min |
+| **T2 wave total** | **1600** | — | **13 h 10 min** (03:32-16:42, unattended) | + cabinet pose randomized |
+| T2 L3 x10 variants | 10 x 40 | 32.7 % pooled (33.3 % size s / 32.0 % size m) | 3 h 54 min (23-24 min each) | + object size/colour; adds a ~3.5 min Kit boot per variant |
 
 Planning rule of thumb that falls out of this: on T2, budget **~35 min of 4090 wall
 time per 100 demos at L0 and ~62 min per 100 at L2**. Camera-enabled Kit boot is

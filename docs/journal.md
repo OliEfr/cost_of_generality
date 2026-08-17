@@ -635,3 +635,39 @@ how thin it is.
 The within-group determinism across ten independent process launches is now confirmed
 in both directions (identical inside a group, reproducibly different between groups),
 which is a stronger pipeline-determinism check than I could have designed on purpose.
+
+### 2026-08-17 16:42 — T2 DATAGEN WAVE COMPLETE: 13/13 legs, 1600 demos, 13 h 10 min
+
+`T2_WAVES_DONE`, all thirteen `GEN_T2_*_EXIT=0`. Wave ran 03:32 -> 16:42 =
+**13 h 10 min** unattended on the shared 4090, producing 1600 demos (400 per level,
+L3 as 10 x 40 variants). Inside the 13-16 h pre-launch estimate.
+
+Final generation SR, exact per D16 (`experiments/gen_stats.csv`, 26 datasets):
+
+| Level | T1 cup_place | T2 drawer_stow |
+|---|---|---|
+| L0 | 86.4 % (400/463) | **54.9 %** (400/728) |
+| L1 | 85.8 % (400/466) | **44.2 %** (400/906) |
+| L2 | 85.1 % (400/470) | **30.6 %** (400/1306) |
+| L3 (pooled) | 87.9 % (400/455) | **32.7 %** (400/1225) |
+
+L3 pooled (32.7 %) sits just above L2 (30.6 %) because each L3 variant fixes one box
+geometry while keeping L2's pose randomization — narrower per variant, so this is not
+a reversal of the downward trend (see D17 on how thin that axis is).
+
+**The headline contrast is now complete and measured on both tasks:** T1 generation SR
+is flat across the whole generality ladder (85.1-87.9 %, spread 2.8 points,
+non-monotone = noise), while T2 falls 54.9 -> 44.2 -> 30.6 % as randomization axes are
+added, 11-15 points each. Generality taxes *data production* on a long-horizon
+articulated task and is free on a short pick-place task.
+
+Because every attempt costs the same sim time, this compounds: T2 L2 needed 1306
+attempts x ~677 steps for its 400 demos, against T1 L2's 470 x ~187 — **10x the
+simulation work for the same dataset size**, of which ~2.8x is episode length and
+~2.8x is the SR penalty.
+
+Per-leg wall times are in `experiments/gen_stats.csv` (`wall_min`): L0 137, L1 171,
+L2 249, each L3 variant 23-24 min (the ten variant launches pay ~35 min of pure Kit
+boot between them).
+
+Next: convert all four T2 levels to LeRobot and validate (`scripts/ops/convert_t2_all.sh`).
