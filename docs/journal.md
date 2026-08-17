@@ -390,3 +390,26 @@ L2 ~31 — each T2 randomization axis costs ~11-15 points of generation SR,
 in sharp contrast to T1's flat 85-88% across all levels. Strong candidate
 finding for the paper: generation-side difficulty scales with task complexity
 AND with distribution breadth for long-horizon tasks.
+
+### 2026-08-17 09:52 — T2 wave status check: L0/L1 files verified, L2 mid-flight
+
+Verified the two finished legs directly in HDF5 (not just from log lines):
+
+- `T2_L0.hdf5`: **400 episodes**, action-sequence length min/mean/max = 663/705/724 steps
+- `T2_L1.hdf5`: **400 episodes**, length 663/694/724 steps
+
+Episode lengths sit at ~33-36 s of 20 Hz control, comfortably inside the 1200-step
+(60 s) timeout, so no episode is finishing by timeout-with-success luck.
+
+Final generation success rates read off the last progress line of each leg:
+L0 = 381/699 = **54.5 %**, L1 = 394/897 = **43.9 %**.
+
+L2 is at 118/374 = **31.6 %** after 71 min (started 08:39:34), giving ~1.66
+successes/min and an ETA of ~12:40. The 10-variant L3 wave then needs roughly
+another 4.5-5 h (400 successes at a similar rate plus ten ~4 min camera-enabled
+Kit boots), so the full wave should land ~17:00-17:30 today.
+
+Disk: 473 G free on `/`, `data/hdf5` at 53 G. Note the RecorderManager `_failed`
+companions are the bulk of it (L0 6.5 G, L1 10.2 G, L2 4.9 G so far) — they are
+regenerable and only needed until per-level gen SR is extracted, so they are the
+obvious reclaim target if the 150 G project budget gets tight during T3.
