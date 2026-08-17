@@ -362,3 +362,11 @@ Mimic gen smoke.
 **T2 L3 VARIANTS PASS (2026-08-17):** 4/4 expert successes on L3v00 (4.0 cm
 box) and L3v05 (4.8 cm box) -- the size-variant axis works; the whole T2
 ladder L0-L3 has a working expert.
+
+**T2 MIMIC GENERATION SMOKE PASS (2026-08-17 ~10:30):** 12/12 target demos
+generated from the 17 annotated L2 sources on the state env; gen SR ~30-34%
+(final tail 7/23 visible + guarantee completion to 12). Meets the G3 floor
+(>=30%) — far below T1's 86-88%, as expected for a long-horizon articulated
+task; record as a study finding (generation-side difficulty scales with task
+complexity). VERIFY (d) fix (cabinet in get_object_poses) held through
+generation. Next: visuomotor camera QA, then full 4-level datagen waves.
