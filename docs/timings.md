@@ -29,7 +29,8 @@ against these numbers (CLAUDE.md rule 5 applies).
 | Eval-set freeze, one sub-level (state env, 20 envs, 10 seeded resets) | **~6.5 s** incl. Kit start | file-mtime cadence, 2026-08-17 |
 | Eval-set freeze wave, 13 sub-levels serial | **84 s** total | 00:42:01→00:43:25 |
 | T2 Mimic gen (state, 12 successes @ ~30% SR, 4 envs) | ~10 min | long episodes ~650 steps |
-| T2 datagen full wave (3×400 + 10×40 visuomotor) | est 13-16 h | ~10× T1 per-success cost: 3× episode length × 3× lower gen SR |
+| T2 datagen, 400 successes visuomotor (L0) | **2 h 17 min** @ ~54.5% gen SR | 8.1 GB; wave SR ≈ 1.8× the state-env smoke |
+| T2 datagen full wave (3×400 + 10×40 visuomotor) | est ~8-10 h (measured L0 leg × SR-adjusted) | was est 13-16 h pre-measurement |
 
 ## Conversion / validation (CPU, nice -n 10, sharing box with sim)
 

@@ -377,3 +377,8 @@ rest, carry + open drawer render clearly, expert succeeded on the visuomotor
 env twice. Full T2 datagen wave launched (tmux cog_gen_t2): L0/L1/L2 x 400 +
 L3v00-09 x 40, all from the same annotated L2 sources (D9). Estimate 13-16 h
 (demos ~650 steps x ~30% gen SR ~ 10x T1 per-success cost) -> done overnight.
+
+**T2 WAVE: L0 LEG DONE (2026-08-17 05:49):** 400 successes in 2 h 17 min at
+~54.5% gen SR (visuomotor wave SR well above the ~30% state smoke), 8.1 GB.
+L1 generating at ~40% SR — the object randomization costs ~15 points of
+generation SR, first per-level generation-difficulty signal for T2.
