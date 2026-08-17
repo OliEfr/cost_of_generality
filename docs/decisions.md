@@ -207,7 +207,7 @@ exact attempt ledger.
 **Consequence:** `_failed.hdf5` files must not be deleted until their episode count
 is recorded in `docs/timings.md`.
 
-## D17 (OPEN — needs user decision) — L3 has 2 geometries, not the specified mesh set
+## D17 (RESOLVED 2026-08-17 by user) — L3 has 2 geometries, not the specified mesh set
 
 **Finding:** `L3_VARIANTS` in both tasks is 2 sizes x 5 colours. Colour has no
 physical effect, proven by identical generation SR and attempt counts within each size
@@ -231,3 +231,18 @@ separates appearance cost from geometry cost, which is a stronger result than ei
 
 **Status:** awaiting user decision. Do not regenerate L3 or edit `L3_VARIANTS` until
 it is made.
+
+**RESOLUTION (2026-08-17, user):** keep all existing data and the ladder exactly as
+built; record the missing shape/kinematics axis as a **limitation** rather than
+retrofitting it. Rationale accepted: the generator's object-centric rigid-transform
+assumption is what makes pose generality cheap and geometry generality expensive, so
+the gap is a property of the method, not an oversight — reporting it with our measured
+per-axis costs is a contribution, while bolting on a weak geometry axis would cost days
+and buy an ambiguous result. Drafted text lives in `paper/limitations.md`.
+
+Follow-ups explicitly NOT taken: mug meshes (needs per-shape source demos + expert
+retuning, re-imports the yaw/handle grasp confound), randomized drawer starting
+position (needs a drawer-frame reference for subtasks 1 and 3 plus a delta-based
+`drawer_opened` signal). If L3 is ever regenerated for an unrelated reason, widen the
+box edge range within the cube family (3.5-5.5 cm, capped by the D13 stow corridor)
+while it is being rebuilt — free at that point.
