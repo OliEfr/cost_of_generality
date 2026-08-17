@@ -1244,3 +1244,23 @@ pattern appears in my own command line killed my own shell mid-sequence (exit 14
 the edit and relaunch un-run. Replaced with: `pgrep`, then verify each candidate's
 `/proc/<pid>/cmdline`, then `kill` by PID. Worth noting that the first attempt at even that
 was wrong -- I quoted the PID list so `/proc/$PIDS/cmdline` expanded to a single bogus path.
+
+### 2026-08-18 00:36 — T3 L0 leg done: 98.5 % generation SR, 29 min for 400 demos
+
+`GEN_T3_L0_EXIT=0`. Exact counts from the HDF5 pair (D16): **400 successes / 406 attempts =
+98.5 % gen SR**, mean episode 317 steps, 5.21 GB, **29 min** wall. L1 now generating at
+~90 %.
+
+For scale, the same 400 demos by task:
+
+| | gen SR | attempts for 400 demos | mean ep len | wall per level |
+|---|---|---|---|---|
+| T1 L0 | 86.4 % | 463 | 207 | ~25 min |
+| T2 L0 | 54.9 % | 728 | 705 | 137 min |
+| **T3 L0** | **98.5 %** | **406** | **317** | **29 min** |
+
+T3 L0 needs 6 wasted attempts to produce 400 demos; T2 L0 needed 328 and T2 L2 needed 906.
+The 13-leg T3 wave should therefore finish in ~3 h against T2's 13 h 10 min, for the same
+1600 demos -- a 4.4x saving that comes almost entirely from designing the task around
+Mimic's transform rather than from the task being easier (it is not; its expert took 15 fix
+cycles against T2's 29 but at a far lower success ceiling).
