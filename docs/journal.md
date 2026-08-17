@@ -671,3 +671,29 @@ L2 249, each L3 variant 23-24 min (the ten variant launches pay ~35 min of pure 
 boot between them).
 
 Next: convert all four T2 levels to LeRobot and validate (`scripts/ops/convert_t2_all.sh`).
+
+### 2026-08-17 16:45 — T2 conversion launched (and a repeat tmux-environment bite)
+
+First launch of `scripts/ops/convert_t2_all.sh` died in under a second: all four legs
+returned 127 with `python: command not found`. Cause: the script did
+`source ~/miniforge3/etc/profile.d/conda.sh` but **conda on this box is
+`~/miniconda3`**, and a tmux-spawned bash is non-interactive so it has no conda shell
+function to fall back on. My interactive calls had been working only because the
+session shell already had conda initialised — the classic "works when I type it,
+fails in tmux" trap, and the second time a tmux launch has failed for environment
+reasons (the eval-freeze wave died on a missing redirect directory).
+
+Fix: call the interpreter by absolute path,
+`/home/admin_07/miniconda3/envs/cog_isaac/bin/python`, and assert up front that it
+exists and can import lerobot+h5py. Also made validation skip (rather than run and
+fail confusingly) when its conversion failed. Nothing was created by the bad run —
+the four dataset roots did not exist — so the re-run started clean.
+
+**Rule for future tmux/cron work in this repo: never rely on `conda activate` in a
+non-interactive shell; use the absolute env python and fail fast if it is missing.**
+The bad log is kept as `ops/convert_t2_failed_env.log`.
+
+Relaunched 16:44, converting T2_L0 -> `data/lerobot/T2_L0` with validation
+(`--expect_episodes 400`) chained per level. T2 episodes average ~680 frames vs T1's
+~190, so expect roughly 3.5x T1's per-level conversion cost; will record the measured
+number in timings.md when L0 lands.

@@ -5,21 +5,32 @@
 # `<name>_failed.hdf5` beside every `<name>.hdf5`, and a glob like T2_L3v0*.hdf5
 # silently pulls in the failures (this cost us a bad 455-episode L3 dataset once --
 # see docs/journal.md). The converter also refuses `_failed` names as a backstop.
+#
+# Absolute interpreter on purpose: a tmux/cron bash is non-interactive and has no
+# conda shell function, so `conda activate` here fails and leaves `python` undefined.
 set -u
 cd /home/admin_07/cost_of_generality
-source ~/miniforge3/etc/profile.d/conda.sh
-conda activate cog_isaac
+
+PY=/home/admin_07/miniconda3/envs/cog_isaac/bin/python
+if [ ! -x "$PY" ]; then echo "FATAL: no interpreter at $PY"; exit 1; fi
+"$PY" -c "import lerobot, h5py" || { echo "FATAL: env missing lerobot/h5py"; exit 1; }
 
 convert_and_validate () {
   local key="$1"; shift
   local root="data/lerobot/${key}"
-  echo "=== ${key} $(date '+%H:%M:%S') ==="
-  python -m cog.convert.hdf5_to_lerobot --task drawer_stow \
+  echo "=== ${key} start $(date '+%F %H:%M:%S') ==="
+  "$PY" -m cog.convert.hdf5_to_lerobot --task drawer_stow \
     --input "$@" --root "${root}" --repo_id "local/${key}" --fps 20
-  echo "CONVERT_${key}_EXIT=$?"
-  python -m cog.convert.validate_dataset --root "${root}" \
+  local ce=$?
+  echo "CONVERT_${key}_EXIT=${ce}"
+  if [ "${ce}" -ne 0 ]; then
+    echo "SKIP_VALIDATE_${key} (conversion failed)"
+    return
+  fi
+  "$PY" -m cog.convert.validate_dataset --root "${root}" \
     --repo_id "local/${key}" --expect_episodes 400
   echo "VALIDATE_${key}_EXIT=$?"
+  echo "=== ${key} end $(date '+%F %H:%M:%S') ==="
 }
 
 convert_and_validate T2_L0 data/hdf5/T2_L0.hdf5
