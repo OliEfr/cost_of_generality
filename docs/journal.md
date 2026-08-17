@@ -370,3 +370,10 @@ generated from the 17 annotated L2 sources on the state env; gen SR ~30-34%
 task; record as a study finding (generation-side difficulty scales with task
 complexity). VERIFY (d) fix (cabinet in get_object_poses) held through
 generation. Next: visuomotor camera QA, then full 4-level datagen waves.
+
+**T2 CAMERA QA PASS + DATAGEN LAUNCH (2026-08-17 ~11:00):** table_cam frozen at
+pos (0.10,-0.85,1.45) look-at (0.45,0.28,0.42) aperture 28: box visible at
+rest, carry + open drawer render clearly, expert succeeded on the visuomotor
+env twice. Full T2 datagen wave launched (tmux cog_gen_t2): L0/L1/L2 x 400 +
+L3v00-09 x 40, all from the same annotated L2 sources (D9). Estimate 13-16 h
+(demos ~650 steps x ~30% gen SR ~ 10x T1 per-success cost) -> done overnight.

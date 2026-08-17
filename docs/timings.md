@@ -28,6 +28,8 @@ against these numbers (CLAUDE.md rule 5 applies).
 | Kit start, STATE-only headless (no cameras/RTX) | **~3 s** (!) | The ~3.5–4 min figure is for camera-enabled visuomotor sessions only — do not budget minutes for state-env legs |
 | Eval-set freeze, one sub-level (state env, 20 envs, 10 seeded resets) | **~6.5 s** incl. Kit start | file-mtime cadence, 2026-08-17 |
 | Eval-set freeze wave, 13 sub-levels serial | **84 s** total | 00:42:01→00:43:25 |
+| T2 Mimic gen (state, 12 successes @ ~30% SR, 4 envs) | ~10 min | long episodes ~650 steps |
+| T2 datagen full wave (3×400 + 10×40 visuomotor) | est 13-16 h | ~10× T1 per-success cost: 3× episode length × 3× lower gen SR |
 
 ## Conversion / validation (CPU, nice -n 10, sharing box with sim)
 
