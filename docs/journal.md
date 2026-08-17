@@ -791,3 +791,73 @@ axis for T2 is not a second cabinet asset (another cloud-asset dependency) but
 **randomizing the drawer's initial opening** -- one line in the reset event, no new
 assets, and it directly attacks the kinematic-state assumption the expert leans on.
 Noted for the user's decision; not implemented.
+
+### 2026-08-17 18:20 — CORRECTION: Mimic's rigid-transform assumption is *itself* the constraint on which generality axes we can have
+
+User pushed back on my 18:05 suggestion that pre-opening the drawer is "one line in
+the reset event", asking whether changing objects significantly or pre-opening the
+drawer breaks MimicGen. They are right and I was wrong. Read the actual math in
+`third_party/IsaacLab/.../datagen/data_generator.py`
+(`transform_source_data_segment_using_object_pose`, lines 52-83):
+
+    src_eef_rel_obj = src_eef_poses @ inv(src_obj_pose)     # source eef in object frame
+    new_eef_poses   = src_eef_rel_obj @ cur_obj_pose        # re-applied to current object
+
+Per subtask, the source end-effector trajectory is expressed relative to **one 4x4
+reference pose** and rigidly re-applied to that reference's current pose. Two
+assumptions follow, and both are load-bearing:
+
+1. **The needed gripper pose is a fixed rigid offset from the reference frame** -- i.e.
+   object geometry is unchanged, or changed so little the same offset still works.
+2. **The reference pose captures all relevant state.** It is a single rigid pose; any
+   degree of freedom not encoded in it is invisible to the transform.
+
+**Pre-opening the drawer breaks assumption 2 as currently configured.** Subtask 1 uses
+`object_ref="cabinet"`, and our `get_object_poses` supplies the cabinet **root** pose,
+which does not move when the drawer slides. A drawer starting 10 cm open therefore
+leaves the reference pose identical while the handle has moved 10 cm -- the transformed
+trajectory would reach for the closed-drawer handle position and miss by exactly the
+initial opening. Subtask 3 (stow) has the same blind spot: it also references the
+cabinet root, so the drawer's opening at stow time is invisible to it.
+
+It is fixable in principle -- expose the drawer body/handle frame (we already publish a
+handle FrameTransformer) and point subtasks 1 and 3 at it, so the opening lives *inside*
+the reference pose. But it is not one line, and two further issues remain:
+the pull *stroke* is baked into the source segment (starting part-open plus a full
+stroke drives toward the 0.4 m travel limit and changes the final opening, which shifts
+the stow clearance), and the `drawer_opened` termination signal is an absolute
+threshold, so a drawer starting past it satisfies subtask 1 at t=0 and the segmentation
+degenerates. The threshold would have to become a delta from the initial opening, or
+the randomization be capped below it.
+
+**Significant object geometry change breaks assumption 1.** Subtask 2's grasp is a
+fixed offset in the box frame. Cube 4.0 -> 4.8 cm is fine (flat faces, grip 5 mm below
+centre). A mug with a handle needs a genuinely different grasp relative to its own
+frame, and one that depends on yaw -- exactly the confound D1 flagged. One source-demo
+set cannot cover mug and cylinder; you would need **per-geometry source demos**, i.e.
+re-run the scripted-expert tuning per shape. For T2 that tuning was 29 debug iterations
+for a single geometry.
+
+**This reframes the open decision and is a genuine paper finding, not an excuse.** The
+reason our ladder varies pose and appearance rather than geometry is not oversight: it
+is that **the data generator's object-centric rigid-transform assumption makes pose
+variation nearly free to generate and geometry variation expensive.** Any MimicGen-style
+pipeline has this property, which is why datasets built this way vary placements, not
+shapes. Stating that explicitly -- with our measured numbers, where pose axes cost
+11-13 points of generation SR and the appearance axis costs ~1 -- is a contribution
+about the method, and it is a more honest and more useful result than quietly bolting on
+a half-working geometry axis.
+
+Revised option set for the user, cheapest first:
+(1) **Widen the box scale within the cube family** (e.g. 3.5-5.5 cm instead of
+    4.0/4.8). Mimic-safe, no new source demos, no new assets; bounded above by the stow
+    corridor (5.8 cm was infeasible, D13). Makes the existing axis less thin without
+    touching the method's assumptions.
+(2) **Accept the ladder as pose+appearance and report the constraint as a finding.**
+    Zero cost, scientifically honest, adds a result about MimicGen-style pipelines.
+(3) **Drawer initial opening**: needs the reference-frame change *and* a delta-based
+    termination signal; medium effort, real risk of a fresh debug loop.
+(4) **New geometries (mug)**: needs per-geometry source demos and per-shape expert
+    tuning; expensive, and re-introduces the yaw/handle grasp confound.
+My recommendation is now **(1) + (2)**: widen the scale range if we ever regenerate L3
+for another reason, and otherwise report the constraint rather than fight it.
