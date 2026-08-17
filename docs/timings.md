@@ -92,3 +92,8 @@ per-variant jobs (L3) lose ~35 min of pure startup across ten launches.
 SR figures above are exact (success + `_failed` episode counts per D16), not scraped
 from generator logs — log tails understate by up to 19 demos because the final
 progress flush is lost at shutdown.
+
+**Source of truth for generation SR and demo counts: `experiments/gen_stats.csv`**
+(regenerate with `python scripts/dev/gen_stats.py`). The tables in this file are a
+human-readable digest; if they ever disagree with the CSV, the CSV is right because it
+is recomputed from the HDF5 pairs.

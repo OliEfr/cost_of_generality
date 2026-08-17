@@ -430,7 +430,7 @@ and measured, not extrapolated:
 | T2 L2 | 384/1267 | **30.3 %** | 4 h 08 min |
 
 Compare Task 1, same Mimic machinery, same source-demo discipline: L0 86.4 / L1 85.8
-/ L2 85.5 / L3 87.9 % — **flat** (spread 2.4 points, and non-monotone, i.e. noise). So the generality tax on data *production* is a
+/ L2 85.1 / L3 87.9 % — **flat** (spread 2.8 points, and non-monotone, i.e. noise). So the generality tax on data *production* is a
 property of the task, not of the generator: on a long-horizon articulated task each
 randomization axis costs 11-15 points of generation SR, while on a short pick-place
 task extra randomization is free. Every attempt costs the same GPU time, so the L2
@@ -516,3 +516,42 @@ Note L3v00's 33.3 % sits *above* L2's 30.6 %: an L3 variant fixes one object siz
 colour while keeping L2's pose randomization, so it is narrower than L2, not wider.
 The L3 *aggregate* over all ten variants is the L2-plus-object-variation condition —
 that aggregate, not any single variant, is what belongs on the gen-SR-vs-level curve.
+
+### 2026-08-17 13:35 — Gen SR now lives in a committed CSV, not in prose
+
+User asked whether the result values were actually recorded in the repo. They were
+not: every generation-SR number existed only as prose in `docs/journal.md` and
+`docs/timings.md`, and `experiments/registry.csv` is a *training*-run schema
+(`sr_40k`/`sr_80k`), with nowhere to put dataset-level statistics. For a number that
+becomes a paper figure, that is not good enough — prose gets rewritten and cannot be
+re-derived.
+
+Added `scripts/dev/gen_stats.py` -> **`experiments/gen_stats.csv`** (committed). It
+recomputes everything from the HDF5 pairs per D16 (successes, failures, attempts,
+gen SR, episode-length min/mean/max, finish timestamp, size), so it is idempotent and
+safe to re-run as each leg of a wave lands. Files still locked by a running generator
+are reported as in-flight and skipped rather than half-read. `--chain-wave T2_
+--wave-start ...` fills `wall_min` for a wave whose legs ran back to back from one
+script; it is left blank where it is not honestly derivable (the T1 datasets came
+from several separate launches, so chaining their mtimes would invent numbers).
+
+The script also prints the per-level aggregate pooled over L3 variants, which is the
+only correct way to place L3 on the gen-SR-vs-level curve.
+
+**It immediately caught a third log-scraping error:** Task 1 L2 is **85.1 %**
+(400/470), not the 85.5 % carried in the docs since 2026-08-16. Corrected in today's
+comparison table. Earlier entries are left as written (they are the honest record of
+what was believed then); `experiments/gen_stats.csv` now supersedes every gen-SR
+figure quoted anywhere in the docs.
+
+Full ground-truth picture, 17 finished datasets:
+
+| | L0 | L1 | L2 | L3 (pooled) |
+|---|---|---|---|---|
+| **T1 cup_place** | 86.4 % (400/463) | 85.8 % (400/466) | 85.1 % (400/470) | 87.9 % (400/455) |
+| **T2 drawer_stow** | 54.9 % (400/728) | 44.2 % (400/906) | 30.6 % (400/1306) | 33.3 % so far (40/120, v00 only) |
+
+Mean episode length is the other half of the cost story and is now in the CSV too:
+T1 ~187-207 steps vs T2 ~675-705, so a T2 attempt costs ~3.5x a T1 attempt in sim
+time *before* the SR gap multiplies it. T2 L2 needed 1306 attempts x ~677 steps for
+400 demos; T1 L2 needed 470 x ~187.

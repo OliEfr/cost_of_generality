@@ -22,3 +22,7 @@
 7. Training: fixed 80k steps, identical hyperparams for all cells
    (`configs/train/diffusion_base.yaml` is frozen after G5a). One seed (0).
 8. Eval sets under `configs/eval_sets/` are frozen benchmarks -- never regenerate.
+9. **Generation SR / demo counts come from `experiments/gen_stats.csv`**, never from
+   generator logs (carb drops the final progress flush, so log tails understate --
+   see D16). After any datagen leg lands, re-run `python scripts/dev/gen_stats.py`
+   and commit the CSV.
