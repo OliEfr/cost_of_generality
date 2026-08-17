@@ -41,6 +41,7 @@ sm.reset_idx(torch.arange(env.num_envs, device=env.device))
 
 successes = 0
 finished = 0
+bearings_ok, bearings_bad = [], []
 max_steps = int(env_cfg.episode_length_s / env.step_dt) + 5
 step = 0
 while finished < args_cli.episodes * env.num_envs and step < max_steps * args_cli.episodes:
@@ -54,6 +55,13 @@ while finished < args_cli.episodes * env.num_envs and step < max_steps * args_cl
 
     prev_err = torch.linalg.vector_norm((puck_pose[:, 0:2] - tgt[:, 0:2]), dim=1)
     prev_state = sm.state.clone()
+    prev_bearing = torch.atan2(sm.dir_xy[:, 1], sm.dir_xy[:, 0])
+    # recover the puck's start position from the latched stand-off, then measure how far
+    # it has travelled ALONG the push direction: > PUSH_DISTANCE is overshoot, < is short
+    from cog.tasks.push_target.state_machine import STANDOFF
+    puck_start = sm.standoff_xy + sm.dir_xy * STANDOFF
+    prev_travel = ((puck_pose[:, 0:2] - puck_start) * sm.dir_xy).sum(dim=1)
+    prev_puck = puck_pose[:, 0:2].clone()
     abs_target = sm.compute(ee_pose, puck_pose, tgt, variant.contact_z, variant.radius, SUCCESS_RADIUS)
     action = convert_abs_to_rel_actions(abs_target, ee_pose[:, 0:3], ee_pose[:, 3:7])
     if args_cli.debug_env >= 0:
@@ -73,11 +81,16 @@ while finished < args_cli.episodes * env.num_envs and step < max_steps * args_cl
         succ = env.termination_manager.get_term("success")[dones]
         successes += int(succ.sum().item())
         finished += len(dones)
+        for i, d in enumerate(dones.tolist()):
+            b = float(torch.rad2deg(prev_bearing[d]))
+            (bearings_ok if bool(succ[i]) else bearings_bad).append(b)
         if args_cli.trace:
             for i, d in enumerate(dones.tolist()):
                 print(f"[smoke] env {d} done: success={bool(succ[i])} "
                       f"final_err={prev_err[d]*100:.1f} cm state_at_done={int(prev_state[d])} "
-                      f"timeout={bool(truncated[d])}", flush=True)
+                      f"timeout={bool(truncated[d])} "
+                      f"bearing={float(torch.rad2deg(prev_bearing[d])):.0f}deg "
+                      f"travel={float(prev_travel[d])*100:.1f}cm/20.0", flush=True)
         sm.reset_idx(dones)
 
     if step % 100 == 0:
@@ -86,6 +99,18 @@ while finished < args_cli.episodes * env.num_envs and step < max_steps * args_cl
               f"err_med {prev_err.median()*100:.1f} cm", flush=True)
 
 print(f"[smoke] RESULT {successes}/{finished} expert successes", flush=True)
+# SR BINNED by |bearing-90|. Reporting the MEAN bearing of failures is uninformative
+# because the sampled range is symmetric about 90 deg: any bearing-driven loss still
+# averages ~90. Binned success rate is the measurement that actually separates them.
+if bearings_ok or bearings_bad:
+    bins = [(0, 10), (10, 25), (25, 45)]
+    print("[smoke] SR by |bearing-90deg|:", flush=True)
+    for lo, hi in bins:
+        ok = sum(1 for b in bearings_ok if lo <= abs(b - 90) < hi)
+        bad = sum(1 for b in bearings_bad if lo <= abs(b - 90) < hi)
+        tot = ok + bad
+        rate = f"{100*ok/tot:.0f}%" if tot else "n/a"
+        print(f"[smoke]   {lo:2d}-{hi:2d} deg: {ok:3d}/{tot:3d} = {rate}", flush=True)
 print("T3_SMOKE_DONE", flush=True)
 env.close()
 simulation_app.close()

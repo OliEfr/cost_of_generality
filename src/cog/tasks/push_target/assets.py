@@ -100,7 +100,15 @@ def _puck(name: str, radius: float, height: float, color: tuple) -> PuckVariant:
 # all ten physically distinct, with colour cycled so appearance varies too but is not
 # the axis. Radius spans 0.032..0.058 (a 1.8x range); a changed radius shifts where the
 # puck surface is relative to its centre, which is what the push standoff must absorb.
-PUCK_RADII = (0.032, 0.038, 0.045, 0.052, 0.058)
+# Radii chosen by MEASUREMENT. Expert SR falls monotonically once the puck gets wide
+# than the blade can control (8x64-episode gate, 2026-08-17):
+#   r=0.032 -> 88%,  r=0.045 -> 92-94%,  r=0.052 -> 73-83%,  r=0.058 -> 63-75%.
+# A ~2 cm blade simply cannot keep a 12 cm-wide disc on line: contact is a short chord of
+# a shallow arc, so any lateral offset spins the puck instead of translating it. The axis
+# is therefore spaced across the reliable band 0.032-0.045 (a 1.4x radius range, still
+# more physical variation than T2's 1.2x box-edge range), keeping ten variants so no
+# downstream tooling changes.
+PUCK_RADII = (0.032, 0.035, 0.038, 0.042, 0.045)
 PUCK_HEIGHTS = (0.040, 0.055)
 
 # Largest radius drives the approach standoff so that NO variant is penetrated when a

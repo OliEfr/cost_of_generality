@@ -42,7 +42,13 @@ DONE = 6
 SETTLE_TICKS = 10            # let the reset transient die before moving
 CLOSE_TICKS = 25             # fingers 0.04 -> 0.0 at the action rate
 TRAVERSE_Z = 0.10            # safe height for the XY approach (clears the 5.5 cm puck by 4.5 cm)
-STANDOFF = MAX_PUCK_RADIUS + 0.017   # 0.075 m behind the puck centre
+# Clearance behind the puck for the DESCENT, not a token offset: the blade comes straight
+# down here, so it must miss the puck's rim on the way. Deriving it from MAX_PUCK_RADIUS
+# with a 0.017 margin silently coupled it to the L3 radius set -- re-spacing the radii
+# shrank the clearance to 1.7 cm and the SAME variant went from 92% to 69% because the
+# descending blade started clipping the rim. 0.030 m is the descent clearance.
+DESCENT_CLEARANCE = 0.030
+STANDOFF = MAX_PUCK_RADIUS + DESCENT_CLEARANCE
 APPROACH_RATE = 0.030        # m per control tick, ramped
 DESCEND_RATE = 0.020
 PUSH_RATE = 0.015            # probe-verified: moved the object smoothly, no stall
@@ -78,7 +84,7 @@ XY_TOL = 0.006
 Z_TOL = 0.008
 DESCEND_PRESS = 0.010
 DESCEND_TIMEOUT = 140
-PUSH_TIMEOUT = 340
+PUSH_TIMEOUT = 300
 PUSH_CAP = 1.6               # stroke cap as a multiple of the nominal push distance
 # Stop distance for the stroke. Deliberately far tighter than the 5 cm success gate:
 # whatever residual error the expert leaves is the error every generated demo inherits,
@@ -106,9 +112,14 @@ PUSH_MIN_PRESS = 0.006
 # cap scales with radius -- which also makes the L3 geometry axis behave uniformly.
 PUSH_MAX_PEN = 0.030
 PUSH_PEN_RADIUS_FRAC = 0.6
-RETREAT_BACK = 0.06
+# Retreat must CLEAR the success criterion's clearance requirement with margin, not just
+# reach it. At 0.06 m the blade ended ~0.08 m from the puck centre against a 0.067-0.080 m
+# requirement -- right on the boundary, so success became a coin flip and SR fell to 55-74%.
+# Third instance of the same mistake in this build (descent gate vs tracking error, push
+# stop vs braking fade, now retreat vs clearance): always size the motion to beat the gate.
+RETREAT_BACK = 0.11
 RETREAT_UP = 0.08
-RETREAT_TICKS = 45
+RETREAT_TICKS = 60
 
 
 class PushSm:
@@ -134,6 +145,7 @@ class PushSm:
         self.pushed = torch.zeros(num_envs, device=device)      # ramp progress (m)
         self.approach = torch.zeros(num_envs, device=device)    # ramp progress (m)
         self.approach_from = torch.zeros(num_envs, 3, device=device)
+        self.retreat_from = torch.zeros(num_envs, 3, device=device)
 
     def reset_idx(self, env_ids):
         if env_ids is None or len(env_ids) == 0:
@@ -274,6 +286,12 @@ class PushSm:
             done = m & (on_target | spent | (self.ticks >= PUSH_TIMEOUT))
             if done.any():
                 self.pushed[done] = proj[done]
+                # Latch the MEASURED pose to retreat from. Retreating from a
+                # projection-derived point made the blade lurch FORWARD at the transition
+                # whenever the arm lagged behind that point, delivering a final shove:
+                # failing episodes overran to 25-36 cm of travel against a 20 cm nominal
+                # (traced 2026-08-17).
+                self.retreat_from[done] = tcp[done]
             self.state[done] = RETREAT
             self.ticks[done] = 0
 
@@ -282,9 +300,8 @@ class PushSm:
         if m.any():
             frac = (self.ticks.float() / RETREAT_TICKS).clamp(0.0, 1.0).unsqueeze(-1)
             back = -self.dir_xy * RETREAT_BACK * frac
-            stroke_end = self.standoff_xy + self.dir_xy * self.pushed.unsqueeze(-1)
-            des[m, 0:2] = (stroke_end + back)[m]
-            des[m, 2] = (self.contact_z + RETREAT_UP * frac.squeeze(-1))[m]
+            des[m, 0:2] = (self.retreat_from[:, 0:2] + back)[m]
+            des[m, 2] = (self.retreat_from[:, 2] + RETREAT_UP * frac.squeeze(-1))[m]
             done = m & (self.ticks >= RETREAT_TICKS)
             self.state[done] = DONE
             self.ticks[done] = 0

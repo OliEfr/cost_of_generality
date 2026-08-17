@@ -30,7 +30,16 @@ def puck_on_target(
     max_lin_vel: float = 0.02,
 ) -> torch.Tensor:
     """True when the puck centre is within ``success_radius`` (planar) of the target
-    centre and has essentially stopped moving."""
+    centre and has essentially stopped moving.
+
+    A blade-clearance clause ("the pusher has backed off", the non-prehensile analogue of
+    T1/T2's `released`) was TRIED and REVERTED on 2026-08-17: it cost 5-35 points of expert
+    SR across levels, because episodes that legitimately succeed as the puck settles were
+    then also required to complete a full retreat inside the episode budget. Its purpose --
+    keeping mid-stroke, disk-edge successes out of the SOURCE demos -- is better served by
+    selecting sources on final placement error at recording time, which costs nothing and
+    does not distort the success definition the whole study is measured against.
+    """
     obj: RigidObject = env.scene[object_cfg.name]
     marker: RigidObject = env.scene[target_cfg.name]
 

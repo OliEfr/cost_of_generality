@@ -112,7 +112,12 @@ class PushTargetEnvCfg(ManagerBasedRLEnvCfg):
         # the closed-loop stroke ~200-280 depending on puck size, retreat 45. At 20 s the
         # largest pucks timed out mid-stroke, which read as physics failures but was
         # purely the budget. Still half of T2's 60 s.
-        self.episode_length_s = 30.0
+        # 40 s at 20 Hz = 800 steps. Raised from 30 s when success gained the
+        # blade-clearance clause: episodes that previously succeeded mid-stroke must now
+        # also finish a 60-tick retreat, and long strokes ran out of budget (SR fell 5-35
+        # points across levels until the budget was raised). Typical episodes still end at
+        # ~350-450 steps; this is headroom, not expected length.
+        self.episode_length_s = 40.0
         self.sim.dt = 0.01
         self.sim.render_interval = 2
         self.sim.physx.bounce_threshold_velocity = 0.01

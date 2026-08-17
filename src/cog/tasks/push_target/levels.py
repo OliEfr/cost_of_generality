@@ -29,7 +29,12 @@ PUCK_RANGE = {"x": (0.36, 0.48), "y": (-0.16, -0.04)}      # 12 x 12 cm
 # Bearing of the target from the puck, radians, measured from +x. pi/2 = straight +y,
 # which is the direction the 2026-08-17 probe verified a blade push works in.
 BEARING_FIXED = math.pi / 2
-BEARING_RANGE = (math.pi / 2 - 0.70, math.pi / 2 + 0.70)    # +-40 deg
+# +-25 deg, set by MEASUREMENT not taste. Expert SR binned by |bearing - 90 deg|
+# (L2, 80 episodes, 2026-08-17): 0-10 deg 94%, 10-25 deg 95%, 25-45 deg 75%. Beyond ~25 deg
+# the stroke runs toward the edge of the arm's comfortable workspace and reliability falls
+# off a cliff, so the axis is capped at the arc the robot can actually service. A 50 deg
+# arc of push directions is still a genuine generality axis.
+BEARING_RANGE = (math.pi / 2 - 0.44, math.pi / 2 + 0.44)    # +-25 deg
 
 
 @dataclass(frozen=True)

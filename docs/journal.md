@@ -1042,3 +1042,66 @@ rather than being uniform.
 by tracing decision-time state rather than by reasoning about the mechanism. The two
 times I predicted a cause without a trace (lateral squirt, then the timeout) I was wrong
 about which variable mattered.
+
+### 2026-08-17 21:20-23:10 — Task 3 expert: final gate numbers and three more traced fixes
+
+Continuing the push expert. Gate, 80 episodes per level (SE ~3.5 points):
+
+| level | expert SR | |
+|---|---|---|
+| L0 | 93.8 % | pass |
+| L1 | 93.8 % | pass |
+| L2 | 85.0 % | 5 short |
+| L3v00 (r 0.032) | 77.5 % | worst variant |
+| L3v04 (r 0.045, h 0.040) | 92.5 % | pass |
+| L3v09 (r 0.045, h 0.055) | 88.8 % | borderline |
+
+Fixes since the last entry, all trace-driven:
+
+9. **Retreat lurch.** At the push->retreat transition the commanded pose jumped to a
+   PROJECTION-derived point that sits ahead of the arm whenever it lags, so the retreat
+   began with a forward shove. Failing episodes overran to 25-36 cm of travel against a
+   20 cm nominal. Now the retreat starts from the MEASURED TCP.
+10. **Bearing axis capped by measurement.** Binned expert SR by |bearing - 90 deg| on L2:
+    0-10 deg 94 %, 10-25 deg 95 %, 25-45 deg 75 %. Beyond ~25 deg the stroke runs toward
+    the edge of the arm's comfortable workspace. BEARING_RANGE narrowed +-40 -> +-25 deg,
+    which is a 50 deg arc of push directions -- still a real axis, now a serviceable one.
+    **Method note:** my first bearing diagnostic reported the MEAN bearing of failures
+    (98 deg vs 89 deg for successes) and I read that as exonerating the bearing axis. It
+    was uninformative, not exculpatory: the sampled range is symmetric about 90 deg, so any
+    bearing-driven loss still averages ~90. Binned SR was the measurement that separated
+    them. Reporting a mean where the mechanism predicts a symmetric split proves nothing.
+11. **Geometry axis capped by measurement.** Expert SR falls monotonically with radius:
+    0.032 -> 88 %, 0.045 -> 92-94 %, 0.052 -> 73-83 %, 0.058 -> 63-75 %. A ~2 cm blade
+    cannot keep a 12 cm-wide disc on line -- contact is a short chord of a shallow arc, so
+    lateral offset spins the puck rather than translating it. PUCK_RADII re-spaced across
+    the reliable band 0.032-0.045 (1.4x range, vs T2's 1.2x box edge), still ten variants.
+12. **Hidden coupling: standoff <- MAX_PUCK_RADIUS.** Re-spacing the radii silently shrank
+    the descent stand-off from 3.0 cm to 1.7 cm, so the descending blade clipped the puck's
+    rim and the SAME physical variant went from 92 % to 69 %. The stand-off is a DESCENT
+    CLEARANCE and is now its own constant, not a function of the variant set. Lesson: a
+    constant derived from a data set changes meaning when the data set changes.
+
+**A change tried and REVERTED, recorded because the reasoning was sound but the cost was
+not:** success gained a blade-clearance clause (the non-prehensile analogue of T1/T2's
+`released`), motivated by real evidence -- episodes were succeeding mid-stroke the instant
+a puck stalled at the disk edge, having travelled 15 of 20 cm, and such demos are poor
+Mimic sources because every generated copy inherits a ~5 cm error against a 5 cm gate. But
+the clause cost 5-35 points of expert SR (L2 92 -> 55 %), because episodes that legitimately
+succeed as the puck settles then also had to finish a full retreat inside the episode
+budget. Raising the budget 30 -> 40 s recovered only part of it. Reverted: the goal is
+better served by SELECTING sources on final placement error at recording time, which costs
+nothing and does not distort the success definition the study is measured against. The
+40 s budget was kept as harmless headroom.
+
+**Recurring mistake, three times in one build:** I wrote a gate tighter than the motion
+could achieve -- descent gate 4 mm vs 6 mm tracking error; push stop 1.8 cm vs a braking law
+that faded to zero at 3 cm; retreat 6 cm vs an 8 cm clearance requirement. Each looked
+correct in isolation. The check that would have caught all three: before adding a
+threshold, compute what the motion actually delivers and require margin.
+
+**Next:** decide whether to close the L2/L3v00 gap or accept ~85-90 % (sources are recorded
+on ONE level and reused per D9, so 85 % suffices to produce ~20 clean sources); then camera
+QA, source recording, annotation, generation smoke, and the pipeline seams (`gen_stats.py`
+T3_ prefix, converter TASK_SPECS entry, `dataset_qa.py` qa_push_target, `freeze_eval_sets.py`
+task_kind branch, ops wave scripts).
