@@ -79,12 +79,16 @@ attempt costs roughly 2x a T1 attempt before the SR difference is even counted.
 
 | Leg | demos | gen SR | wall time | notes |
 |---|---|---|---|---|
-| T2 L0 | 400 | 54.5 % | 2 h 16 min | fixed cabinet + fixed object pose |
-| T2 L1 | 400 | 43.9 % | 2 h 50 min | + object pose randomized |
-| T2 L2 | 400 | 30.3 % | 4 h 08 min | + cabinet pose randomized |
-| T2 L3 x10 variants | 10 x 40 | ~28 % (v00 in flight) | ~6 h projected | + object size/colour; adds a ~3.5 min Kit boot per variant |
+| T2 L0 | 400 | 54.9 % | 2 h 16 min | fixed cabinet + fixed object pose |
+| T2 L1 | 400 | 44.2 % | 2 h 50 min | + object pose randomized |
+| T2 L2 | 400 | 30.6 % | 4 h 08 min | + cabinet pose randomized |
+| T2 L3 x10 variants | 10 x 40 | 33.3 % (v00, exact) | ~4 h projected (v00 = 24 min) | + object size/colour; adds a ~3.5 min Kit boot per variant |
 
 Planning rule of thumb that falls out of this: on T2, budget **~35 min of 4090 wall
 time per 100 demos at L0 and ~62 min per 100 at L2**. Camera-enabled Kit boot is
 ~3.5-4 min and is paid once per generate_dataset.py invocation, so many small
 per-variant jobs (L3) lose ~35 min of pure startup across ten launches.
+
+SR figures above are exact (success + `_failed` episode counts per D16), not scraped
+from generator logs — log tails understate by up to 19 demos because the final
+progress flush is lost at shutdown.

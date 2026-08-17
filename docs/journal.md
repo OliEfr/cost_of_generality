@@ -449,3 +449,70 @@ Disk: 455 G free. `T2_L2_failed.hdf5` came out at 17.3 G (the 883 failed attempt
 the failed companions now total 34 G and are the largest single reclaimable block in
 the repo. Their only remaining value was the attempt counts, which are now recorded
 in the table above, so they can be dropped whenever space matters.
+
+### 2026-08-17 13:20 — GitHub remote wired up; history rewritten to strip 3 GB of committed checkpoint weights
+
+User created `git@github.com:OliEfr/cost_of_generality.git` and asked to use it. The
+repo could not be pushed as it stood: `.git` was **2.8 GB** because commit 75daa95
+("Journal: train smoke done...") had committed the G4 smoke checkpoint, including
+`optimizer_state.safetensors` (**2035 MB**) and `model.safetensors` (**1018 MB**).
+GitHub hard-rejects any blob over 100 MB anywhere in pushed history, so those two
+objects had to leave the history — a rewrite was unavoidable, not a preference.
+
+Done non-destructively, in this order:
+
+1. Backed up `.git` (2.8 G) and the whole 3 G checkpoint dir to
+   `data/_prepush_backup/` (gitignored, still on disk). Verified the backup repo
+   replays: 60 commits, HEAD `ec4dfbc`.
+2. Secret-scanned every tracked file before anything left the machine — clean, the
+   only hit was a doc *mentioning* `.netrc`, no credentials.
+3. `git clone --bare --no-local` into a scratch clone (`--no-local` is required or
+   filter-repo refuses: it wants a freshly-packed repo), then
+   `git filter-repo --strip-blobs-bigger-than 50M` **inside the clone**, leaving the
+   working repo untouched. Result: 2.8 G -> **3.4 MB**, all 61 commits preserved.
+4. Verified the rewrite surgically: file lists of original vs cleaned HEAD differ by
+   exactly those two paths; the md5 of (blob hash, path) over every *other* tracked
+   file is identical in both; all 61 commit subjects identical in order.
+5. Pushed to `origin/main` = `25c7a0e`.
+6. Re-pointed this working repo without discarding anything: renamed the old branch
+   to **`main-prefilter`** (all 61 original commits, big blobs included, still
+   reachable locally) and created `main` tracking `origin/main`. Restored the two
+   weight files to disk from backup, now covered by
+   `experiments/runs/**/*.safetensors` in `.gitignore`.
+
+**Consequence for provenance:** commit hashes quoted in journal entries written
+before this point (e.g. b091e9a, f57ee06, 87abc90, ec4dfbc) no longer resolve on
+`main` — they live on `main-prefilter` and in
+`data/_prepush_backup/git_before_filter_repo`. Commit *messages* are unchanged, so
+`git log --grep` finds any of them on either branch.
+
+The running T2 wave was never at risk: it writes only to `data/hdf5/` and `ops/`,
+both gitignored, and none of the above touched the tmux session (verified alive and
+writing throughout).
+
+### Exact generation SR — stop scraping logs
+
+`T2_L3v00_EXIT=0` at 13:12, and it exposed a measurement bug in how I had been
+reporting gen SR. The last progress line visible in the log **understates** the
+result, because carb buffers the final prints until shutdown: v00's last visible
+line was 21/74 while the file actually holds the full 40 demos.
+
+The `_failed.hdf5` companion is the exact record: attempts = successes + failures.
+Counting episodes in both files gives ground truth, and it is cheap (HDF5 key count,
+no payload read). Corrected table — the numbers move by only ~0.4 points, but these
+are the ones that go in the paper:
+
+| Leg | successes | failures | attempts | gen SR (exact) | log-scraped |
+|---|---|---|---|---|---|
+| T2 L0 | 400 | 328 | 728 | **54.9 %** | 54.5 % |
+| T2 L1 | 400 | 506 | 906 | **44.2 %** | 43.9 % |
+| T2 L2 | 400 | 906 | 1306 | **30.6 %** | 30.3 % |
+| T2 L3v00 | 40 | 80 | 120 | **33.3 %** | 28.4 % |
+
+L3v00 took 12:48 -> 13:12 = **24 min** for 40 demos (623-743 step episodes), so the
+ten-variant wave should finish ~17:00-17:30. v01 booted at 13:12.
+
+Note L3v00's 33.3 % sits *above* L2's 30.6 %: an L3 variant fixes one object size and
+colour while keeping L2's pose randomization, so it is narrower than L2, not wider.
+The L3 *aggregate* over all ten variants is the L2-plus-object-variation condition —
+that aggregate, not any single variant, is what belongs on the gen-SR-vs-level curve.

@@ -170,3 +170,39 @@ ramp every long translation, SLERP orientation only where the branch needs
 guiding (obj leg yes, handle approach no), never route paths through the open
 drawer's swept volume, and treat wrist-branch selection as set by the FIRST
 large motion after reset.
+
+## D15 — Git history rewritten once, before the first push (2026-08-17)
+
+**Decision:** strip blobs >50 MB from the entire history via `git filter-repo`, and
+keep training weights out of git permanently (`experiments/runs/**/*.safetensors`).
+
+**Why:** the G4 smoke checkpoint had been committed (3 GB across two safetensors
+files). GitHub refuses any blob >100 MB in pushed history, so publishing the repo was
+impossible without a rewrite. Weights are regenerable and belong on disk/the cluster;
+git holds code, configs, docs, small JSON provenance and eval sets.
+
+**How it was made safe:** full `.git` + checkpoint backup under
+`data/_prepush_backup/`; rewrite performed in a scratch bare clone rather than in
+place; verified that original and cleaned HEAD differ by exactly the two stripped
+paths with every other blob hash identical and all 61 commit subjects preserved; the
+pre-rewrite branch is retained locally as `main-prefilter`.
+
+**Cost accepted:** commit hashes cited in journal entries before 2026-08-17 13:20 do
+not resolve on `main`. Messages are unchanged, so `git log --grep` still finds them.
+This is a one-time cost paid at the first push, when the repo had no other clones.
+
+## D16 — Generation SR is computed from episode counts, never from logs (2026-08-17)
+
+**Decision:** report Mimic generation success rate as
+`n(<name>.hdf5) / (n(<name>.hdf5) + n(<name>_failed.hdf5))`, counting HDF5 episode
+keys.
+
+**Why:** the generator's progress line is buffered by carb and the final flush is
+lost at shutdown, so the last line in the log understates the true count — by 19
+demos on T2_L3v00 (21/74 visible vs 40/120 actual). Every gen SR quoted before this
+entry was scraped from logs and is therefore ~0.4 points low (L3 variants worse). The
+`_failed` companion that has been an operational nuisance all along is in fact the
+exact attempt ledger.
+
+**Consequence:** `_failed.hdf5` files must not be deleted until their episode count
+is recorded in `docs/timings.md`.
