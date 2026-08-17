@@ -32,6 +32,19 @@ against these numbers (CLAUDE.md rule 5 applies).
 | T2 datagen, 400 successes visuomotor (L0) | **2 h 17 min** @ ~54.5% gen SR | 8.1 GB; wave SR ≈ 1.8× the state-env smoke |
 | T2 datagen full wave (3×400 + 10×40 visuomotor) | est ~8-10 h (measured L0 leg × SR-adjusted) | was est 13-16 h pre-measurement |
 
+## GPU utilization (RTX 4090, measured 2026-08-16/17)
+
+| Workload | GPU util | VRAM (process) | Note |
+|---|---|---|---|
+| Mimic visuomotor generation, 8 envs (T2 wave) | **56-65%** | ~6.4 GB | steady across L0/L1 legs; room for a co-located job |
+| DP training, bs 64 (G4 smoke, shared with gen) | data-bound | ~8 GB | updt_s 0.085 vs data_s 0.26: pyav decode is the bottleneck, GPU mostly idle-waiting |
+| State-env expert/eval runs | <20% | ~5-6 GB | negligible load; safe to run beside generation |
+| Idle overheads observed | — | foreign eval job ~1.6 GB; orphaned frames_qa PID 2083049 ~4.8 GB | orphan killable by user |
+
+Practical: generation + a light state-env job co-exist comfortably; generation +
+training both fit in VRAM (~21/24 GB with the orphan still resident) at ~40-50%
+mutual slowdown (measured on the T1 L2 leg).
+
 ## Conversion / validation (CPU, nice -n 10, sharing box with sim)
 
 | Operation | Measured |
