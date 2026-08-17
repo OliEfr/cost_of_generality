@@ -41,16 +41,21 @@ STATE_NAMES = {v: k for k, v in vars(Sm).items() if isinstance(v, int)}
 finished = 0
 succ = 0
 step = 0
-while finished < args_cli.episodes and step < 3000:
+last_drawer = [0.0] * env.num_envs
+last_depth = [0.0] * env.num_envs
+ep_steps = [0] * env.num_envs
+req = 0.03 + 0.012 + variant.half_size + 0.004
+while finished < args_cli.episodes and step < 6000:
     _, _, terminated, truncated, _ = env.step(actions)
     dones = terminated | truncated
     if dones.any():
         ids = dones.nonzero(as_tuple=False).squeeze(-1)
         for i in ids.tolist():
             s_flag = bool(env.termination_manager.get_term("success")[i])
-            dj = float(env.scene["cabinet"].data.joint_pos[i, cab_joint_ids[0]])
             print(f"[smoke] episode end env{i}: success={s_flag} sm_state={STATE_NAMES.get(int(sm.state[i]), '?')} "
-                  f"drawer_joint={dj:.3f}", flush=True)
+                  f"drawer_pre_reset={last_drawer[i]:.3f} depth={last_depth[i]:.3f} req={req:.3f} "
+                  f"ep_steps={ep_steps[i]}", flush=True)
+            ep_steps[i] = 0
             finished += 1
             succ += int(s_flag)
         sm.reset_idx(ids)
@@ -71,6 +76,14 @@ while finished < args_cli.episodes and step < 3000:
     abs_target = sm.compute(ee_pose, handle_pose, drawer_joint, object_pose, drawer_body_pose,
                             grasp_z_offset=variant.grasp_z_offset, object_half_size=variant.half_size)
     actions = convert_abs_to_rel_actions(abs_target, tcp_pos, tcp_quat)
+    back = -torch.nn.functional.normalize(
+        torch.stack([torch.cos(torch.zeros(env.num_envs, device=env.device)),
+                     torch.zeros(env.num_envs, device=env.device)], dim=-1), dim=-1)
+    for i in range(env.num_envs):
+        last_drawer[i] = float(drawer_joint[i])
+        d = float(((tcp_pos[i, 0:2] - handle_pose[i, 0:2]) * torch.tensor([1.0, 0.0], device=env.device)).sum())
+        last_depth[i] = d
+        ep_steps[i] += 1
     step += 1
     if step % 200 == 0:
         print(f"[smoke] step {step}: sm states={[STATE_NAMES.get(int(x), '?') for x in sm.state]} "

@@ -48,9 +48,14 @@ CABINET_CFG = ArticulationCfg(
         # stiffness 0: stock's 10.0 acts as a return spring toward joint 0 and
         # silently re-closes the drawer after release; strong viscous damping
         # holds it (8.0 let release momentum drift it 4+ cm closed)
+        # friction (static) is what actually HOLDS the drawer: some residual
+        # closing force creeps it shut through any viscous damping (~3 cm over
+        # a long episode), moving the handle-referenced stow geometry until the
+        # descent-clearance gate fails on slow episodes
         "drawers": ImplicitActuatorCfg(
             joint_names_expr=["drawer_top_joint", "drawer_bottom_joint"],
             effort_limit=87.0, velocity_limit=100.0, stiffness=0.0, damping=25.0,
+            friction=1.0,
         ),
         "doors": ImplicitActuatorCfg(
             joint_names_expr=["door_left_joint", "door_right_joint"],

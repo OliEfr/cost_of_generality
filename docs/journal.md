@@ -323,3 +323,15 @@ the walls catch the falling cube; a cube rests identically on any face, and
 the success check is position+settled, not gentleness. This eliminates the
 entire wedge-prone wall-crossing descent that consumed runs 14-20.
 4-episode state-env confirmation smoke running.
+
+**T2 L1/L2 GATE DIAGNOSIS (2026-08-17 ~04:30):** instrumented per-episode
+pre-reset readouts ended three wrong hypotheses (carry-quat yaw, time budget,
+drawer creep -- each a partial factor at best): successes pull the drawer to
+0.31-0.34, failures to 0.15-0.29, and the descent-clearance gate then honestly
+refuses. The pull's stall depth varies with the reset joint jitter
+(elbow-branch luck; one episode showed a handle slip at 0.148). Fix: PULL
+RETRY -- after the retreat, if the opening is < 0.30 and retries < 2, re-grasp
+the handle (now nearer, easier) and pull the remaining travel. Fresh arm
+configuration each attempt. Lesson recorded: instrument before theorizing;
+pre-reset state must be captured explicitly (post-reset reads are the new
+episode).

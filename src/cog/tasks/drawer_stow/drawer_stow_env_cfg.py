@@ -118,7 +118,8 @@ class DrawerStowEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         self.decimation = 5
-        self.episode_length_s = 40.0  # 800 policy steps at 20 Hz (two grasp cycles)
+        self.episode_length_s = 60.0  # 1200 policy steps at 20 Hz: the ramp-paced
+        # expert needs ~670 steps for the NEAR object draw; far draws add ~150
         self.sim.dt = 0.01
         self.sim.render_interval = 2
         self.sim.physx.bounce_threshold_velocity = 0.01
