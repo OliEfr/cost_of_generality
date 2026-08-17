@@ -749,3 +749,45 @@ competing with.
 Operational rule: after any `--enable_cameras` Isaac script finishes writing its
 output, confirm the process actually exited; if it is still spinning, SIGKILL it.
 Otherwise these accumulate and quietly eat the GPU for days.
+
+### 2026-08-17 18:05 — What the generality ladder actually varies: poses and paint, never geometry
+
+Prompted by the user asking whether the drawer varies too. Auditing both tasks'
+level definitions against the code:
+
+**T2 scene contents.** Manipulated object: one cube, 4.0 or 4.8 cm edge, 0.12 kg, five
+colours. Fixtures: the stock Isaac Lab **Sektion** cabinet (root x=0.9, yawed 180 deg to
+face the robot; its top drawer is the target), a fixed plinth 24x30x40 cm at
+(0.24, 0.45) whose top at z=0.40 holds the box, an 8 cm pedestal under the Franka, and
+the ground plane.
+
+**What varies, per level:**
+
+| | robot start | box pose | cabinet pose | box size/colour | drawer geometry | drawer start |
+|---|---|---|---|---|---|---|
+| L0 | joint noise | fixed | fixed | fixed | same | closed |
+| L1 | joint noise | 10x18 cm, yaw +-45 deg | fixed | fixed | same | closed |
+| L2 | joint noise | 10x18 cm, yaw +-45 deg | +-5 cm x, +-6 cm y, +-7.5 deg yaw | fixed | same | closed |
+| L3 | joint noise | 10x18 cm, yaw +-45 deg | +-5 cm x, +-6 cm y, +-7.5 deg yaw | 2 sizes x 5 colours | same | closed |
+
+So the drawer **does** vary in *where it is* -- and that is the most expensive axis in
+the whole study, costing 13 points of generation SR (44.2 -> 30.6 %), more than the
+object-pose axis (10.7 points) and far more than the object axis (~1 point). But the
+drawer never varies in *what it is*: same Sektion asset, same drawer box, same handle,
+same 0-0.4 m travel, and the reset always writes every cabinet joint to 0, so it always
+starts fully closed. Never partially open, never a different cabinet.
+
+**The honest characterization of the ladder is therefore: it varies pose and
+appearance, never geometry or kinematics.** That is one coherent story rather than two
+separate gaps (the thin object axis is just the visible symptom), and it is the right
+framing for both the paper's limitations section and the open decision: the missing
+axis is not "mug meshes", it is *shape/kinematic variation* as a class -- different
+object geometries, different cabinets, partially-open starting drawers.
+
+This strengthens the recommendation already on the table: describe the current ladder
+as pose+appearance, and add geometry as a distinct additional level rather than trying
+to retrofit it into the existing one. It also suggests the cheapest possible geometry
+axis for T2 is not a second cabinet asset (another cloud-asset dependency) but
+**randomizing the drawer's initial opening** -- one line in the reset event, no new
+assets, and it directly attacks the kinematic-state assumption the expert leans on.
+Noted for the user's decision; not implemented.
