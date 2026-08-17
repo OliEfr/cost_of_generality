@@ -44,6 +44,9 @@ step = 0
 last_drawer = [0.0] * env.num_envs
 last_depth = [0.0] * env.num_envs
 ep_steps = [0] * env.num_envs
+drawer_at_release = [0.0] * env.num_envs
+drawer_at_traverse = [0.0] * env.num_envs
+prev_states = [0] * env.num_envs
 req = 0.03 + 0.012 + variant.half_size + 0.004
 while finished < args_cli.episodes and step < 6000:
     _, _, terminated, truncated, _ = env.step(actions)
@@ -53,9 +56,12 @@ while finished < args_cli.episodes and step < 6000:
         for i in ids.tolist():
             s_flag = bool(env.termination_manager.get_term("success")[i])
             print(f"[smoke] episode end env{i}: success={s_flag} sm_state={STATE_NAMES.get(int(sm.state[i]), '?')} "
-                  f"drawer_pre_reset={last_drawer[i]:.3f} depth={last_depth[i]:.3f} req={req:.3f} "
+                  f"drawer@release={drawer_at_release[i]:.3f} drawer@traverse={drawer_at_traverse[i]:.3f} "
+                  f"drawer_end={last_drawer[i]:.3f} depth_end={last_depth[i]:.3f} req={req:.3f} "
                   f"ep_steps={ep_steps[i]}", flush=True)
             ep_steps[i] = 0
+            drawer_at_release[i] = 0.0
+            drawer_at_traverse[i] = 0.0
             finished += 1
             succ += int(s_flag)
         sm.reset_idx(ids)
@@ -80,6 +86,13 @@ while finished < args_cli.episodes and step < 6000:
         torch.stack([torch.cos(torch.zeros(env.num_envs, device=env.device)),
                      torch.zeros(env.num_envs, device=env.device)], dim=-1), dim=-1)
     for i in range(env.num_envs):
+        st_i = int(sm.state[i])
+        if st_i != prev_states[i]:
+            if st_i == Sm.RELEASE_HANDLE:
+                drawer_at_release[i] = float(drawer_joint[i])
+            if st_i == Sm.APPROACH_ABOVE_DRAWER:
+                drawer_at_traverse[i] = float(drawer_joint[i])
+            prev_states[i] = st_i
         last_drawer[i] = float(drawer_joint[i])
         d = float(((tcp_pos[i, 0:2] - handle_pose[i, 0:2]) * torch.tensor([1.0, 0.0], device=env.device)).sum())
         last_depth[i] = d

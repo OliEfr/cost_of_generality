@@ -335,3 +335,12 @@ the handle (now nearer, easier) and pull the remaining travel. Fresh arm
 configuration each attempt. Lesson recorded: instrument before theorizing;
 pre-reset state must be captured explicitly (post-reset reads are the new
 episode).
+
+**T2 DECISION-TIME DIAGNOSIS + PEDESTAL (2026-08-17 ~05:30):** proper
+instrumentation (drawer@release / drawer@traverse) showed EVERY pull reaches
+exactly 0.350 — the variance was post-release: transit corridors clipping the
+opened drawer volume + draw-dependent creep, and the constraint algebra
+(face-handle offset fixed at 13.15 cm) proves the ground-mounted stow window
+is empty by ~2 cm at any pull depth. D14: 0.20 m robot pedestal — the
+systemic fix. Carry heights raised (traverse cmd 0.92), pull target relaxed
+to 0.28, retry threshold 0.24. Pedestal-geometry gate running.

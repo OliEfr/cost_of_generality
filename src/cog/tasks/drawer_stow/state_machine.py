@@ -65,7 +65,9 @@ WAIT = {
 }
 
 HANDLE_APPROACH_DIST = 0.10     # in front of the handle, handle frame -z
-RETRY_MIN_OPEN = 0.30           # re-grasp and pull again below this opening
+RETRY_MIN_OPEN = 0.24           # re-grasp and pull again below this opening -- checked
+                                # right after the retreat, BEFORE the drawer's slow creep
+                                # (~4-6 cm over a long episode) eats the margin
 MAX_PULL_RETRIES = 2
 PULL_RATE = 0.12                # m/s commanded pull speed
 PULL_OVERSHOOT = 0.02           # command a little past the joint target (limit 0.40)
@@ -76,13 +78,13 @@ OBJECT_DROP_CLEARANCE = 0.02    # object bottom above cavity floor at release
 # 2026-08-17): rotate to the down-quat LOW and CLOSE (RETREAT_WP), hover the
 # plinth low (OBJ_HOVER_Z), climb to stow height at SMALL radius (STAGE_WP),
 # then translate out over the drawer wall at constant z.
-RETREAT_WP = (0.20, 0.20, 0.80)
-STAGE_END = (0.21, 0.10, 0.82)  # z: the arm's practical hold ceiling (higher unwraps the elbow);
+RETREAT_WP = (0.20, 0.20, 0.88)
+STAGE_END = (0.21, 0.10, 0.92)  # z: the arm's practical hold ceiling (higher unwraps the elbow);
                                 # x: carried-box leading edge (x+half) must clear the wall line
                                 # 0.575-open during the ascent -- 0.25 clipped it at open 0.30
 OBJ_HOVER_Z = 0.62
-STOW_TRAVERSE_Z = 0.86          # COMMANDED wall-crossing height; DLS sags ~2-4 cm below it, and
-                                # the sagged actual (~0.82-0.84) is what must clear the 0.779 wall
+STOW_TRAVERSE_Z = 0.92          # with the 0.20 m pedestal this is mid-workspace: the carried
+                                # box crosses the 0.785 wall top with ~10 cm to spare at any x
 HANDLE_TO_FACE = 0.03           # handle frame sits 3 cm in front of the drawer face
 STOW_BEHIND_FACE = 0.08         # drop well clear of the wall's inner face: the descent
                                 # starts with up to ~2 cm XY lag, and a box edge that
@@ -325,7 +327,10 @@ class DrawerStowSm:
         retry = ((s0 == Sm.RETREAT_FROM_HANDLE) & waited & near
                  & (drawer_joint < RETRY_MIN_OPEN)
                  & (self.pull_retries < MAX_PULL_RETRIES))
-        self.state[retry] = Sm.APPROACH_INFRONT_HANDLE
+        # retries go STRAIGHT to the handle: with a part-open drawer the handle
+        # sits near x~0.22 and the in-front staging point (-0.10 further) is
+        # unreachable; the short remaining stroke doesn't need staging
+        self.state[retry] = Sm.APPROACH_HANDLE
         self.wait[retry] = 0.0
         self.pull_retries[retry] += 1
         self.pull_progress[retry] = 0.0

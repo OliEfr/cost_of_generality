@@ -15,7 +15,7 @@ from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg
 from isaaclab.utils import configclass
 
 from . import mdp
-from .assets import PLINTH_CENTER, PLINTH_SPAWN
+from .assets import PEDESTAL_HEIGHT, PEDESTAL_SPAWN, PLINTH_CENTER, PLINTH_SPAWN
 
 
 @configclass
@@ -26,6 +26,11 @@ class DrawerStowSceneCfg(InteractiveSceneCfg):
     cabinet_frame: FrameTransformerCfg = MISSING
     # object is added by the franka config subclass (variant-dependent)
 
+    pedestal = RigidObjectCfg(
+        prim_path="{ENV_REGEX_NS}/Pedestal",
+        init_state=RigidObjectCfg.InitialStateCfg(pos=[0, 0, PEDESTAL_HEIGHT / 2], rot=[1, 0, 0, 0]),
+        spawn=PEDESTAL_SPAWN,
+    )
     plinth = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/Plinth",
         init_state=RigidObjectCfg.InitialStateCfg(pos=list(PLINTH_CENTER), rot=[1, 0, 0, 0]),

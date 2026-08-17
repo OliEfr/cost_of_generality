@@ -56,6 +56,7 @@ class FrankaDrawerStowIKRelEnvCfg(DrawerStowEnvCfg):
 
         # robot + IK-Rel actions (identical to cup_place / stack)
         self.scene.robot = FRANKA_PANDA_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot.init_state.pos = (0.0, 0.0, 0.20)  # on the pedestal
         self.scene.robot.spawn.semantic_tags = [("class", "robot")]
         self.actions.arm_action = DifferentialInverseKinematicsActionCfg(
             asset_name="robot",

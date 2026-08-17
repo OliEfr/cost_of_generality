@@ -74,6 +74,23 @@ DRAWER_CAVITY_RIM_Z = 0.062      # wall top rel drawer_top body origin
 DRAWER_CAVITY_HALF_X = 0.22
 DRAWER_CAVITY_HALF_Y = 0.30
 
+# --- robot pedestal: raising the Franka base 0.20 m moves every cabinet
+# interaction (handle 0.73, walls 0.785, carry ~0.9) from the arm's upper
+# workspace fringe into mid-workspace. Without it the carry height ceiling
+# (~0.82 at the needed radii) makes the stow geometry structurally infeasible
+# by ~2 cm (18 debug runs of evidence; the handle-to-wall offset is asset-fixed
+# at 13.15 cm, so no pull depth closes the window). ---
+PEDESTAL_HEIGHT = 0.20
+PEDESTAL_SPAWN = sim_utils.CuboidCfg(
+    size=(0.25, 0.25, PEDESTAL_HEIGHT),
+    rigid_props=RigidBodyPropertiesCfg(kinematic_enabled=True, disable_gravity=True),
+    collision_props=sim_utils.CollisionPropertiesCfg(),
+    visual_material=sim_utils.PreviewSurfaceCfg(
+        diffuse_color=(0.35, 0.35, 0.38), roughness=0.7, metallic=0.1
+    ),
+    semantic_tags=[("class", "pedestal")],
+)
+
 # --- plinth (side table the object starts on; static, offline-safe) ---
 PLINTH_CENTER = (0.24, 0.45, 0.20)
 PLINTH_SIZE = (0.24, 0.30, 0.40)   # top surface z=0.40, x in [0.12,0.36], y in [0.30,0.60]

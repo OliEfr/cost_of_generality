@@ -143,3 +143,13 @@ set to 4.0/4.8 cm (was 4.5/5.8); DEFAULT_BOX = box_m_red (4.8 cm). The 20%%
 size spread keeps the variant axis meaningful. Descent gate now checks the
 physical clearance condition (handle-relative, pull-direction projected,
 variant-aware) instead of target-distance proxies.
+
+## D14 — 2026-08-17: Franka on a 0.20 m pedestal for drawer_stow
+Ground-mounted, the arm's carry envelope tops out at z~0.82 at the radii the
+stow needs, while the drawer walls top at 0.785 and the handle-to-wall offset
+is asset-fixed at 13.15 cm — the (pull depth, wall clearance, carry height)
+window is structurally empty by ~2 cm no matter the pull target (18 debug-run
+constraint map). A 0.20 m pedestal moves every cabinet interaction into
+mid-workspace: wall crossing gains ~10 cm clearance at any x, the deep pull
+becomes unnecessary (target back to 0.28), and the sag/wedge failure class
+disappears. Scene change only for Task 2; Task 1 unaffected.
