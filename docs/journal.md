@@ -726,3 +726,26 @@ foot-gun. Kill by PID from `pgrep`, or exclude the wrapper.
 Two nags for the user, unchanged: the orphan `frames_qa` PID 2083049 has now been
 running 23 h at ~110 % CPU holding 4.8 GB of VRAM (it is now also stealing a core from
 conversion; I am classifier-blocked from killing it), and **D17 is still open**.
+
+### 2026-08-17 17:45 — the 24 h "orphan" was a hung Kit shutdown, not a running job
+
+Finally diagnosed the `frames_qa.py --level L1` process (PID 2083049) that had been
+burning 110 % CPU and 4.8 GB of VRAM since Sunday 17:36. It was **not** still working:
+its output `ops/qa/frames_L1.png` was written at 17:49, thirteen minutes after launch,
+and the process then failed to exit — 201 threads, state R, spinning forever. Every
+artifact it was supposed to produce has been on disk and committed since Sunday.
+
+So a job that looked alive for 24 h had actually finished in 13 min. **Liveness checks
+must look at the output file, not at CPU%:** a spinning Isaac process proves nothing.
+This is the mirror image of the earlier false-stall alarm, where a *quiet* log made me
+think a healthy job had died and the file mtime proved it alive. Same lesson from both
+directions — trust artifacts over process state.
+
+`kill` (SIGTERM) did nothing: the hang takes the signal handling down with it. It
+needed `kill -9`. After that, VRAM went 7.3 GB -> 2.4 GB used (only the foreign eval
+job's 1.6 GB left), freeing ~4.8 GB and a core that the four conversion jobs were
+competing with.
+
+Operational rule: after any `--enable_cameras` Isaac script finishes writing its
+output, confirm the process actually exited; if it is still spinning, SIGKILL it.
+Otherwise these accumulate and quietly eat the GPU for days.
