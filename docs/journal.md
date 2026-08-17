@@ -351,3 +351,10 @@ retreat->ramped+slerped object leg->box grasp (0.023)->stage->traverse at
 z 0.879 (1.2 cm tracking, 7.5 cm wall clearance)->drop-release->success term.
 Joints mid-range all episode. The 0.20 m pedestal detour (runs 22-28) and its
 lessons recorded in D14-revised. Full 16-episode L0/L1/L2 gate running.
+
+**G2-T2 PASSED 48/48 (2026-08-17 ~09:40):** expert SR 16/16 on each of L0, L1,
+L2 (zero failures; gate bar >=90%). The drawer_stow expert is robust across
+object pose (10x18 cm + yaw +-45 deg) and cabinet pose (+-5 cm, +-7.5 deg yaw)
+randomization. Next: L2 source recording (single-env, over-record 18 keep 15,
+D9) -> annotate --auto (VERIFY d: Articulation object_ref) -> camera QA ->
+Mimic gen smoke.
