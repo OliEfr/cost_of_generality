@@ -206,3 +206,28 @@ exact attempt ledger.
 
 **Consequence:** `_failed.hdf5` files must not be deleted until their episode count
 is recorded in `docs/timings.md`.
+
+## D17 (OPEN — needs user decision) — L3 has 2 geometries, not the specified mesh set
+
+**Finding:** `L3_VARIANTS` in both tasks is 2 sizes x 5 colours. Colour has no
+physical effect, proven by identical generation SR and attempt counts within each size
+group across independent runs (T1: 40/45 x5 then 40/46 x5; T2: 40/120 x4 so far). The
+plan specifies L3 = 4 mug meshes x 5 colours x scale 0.9-1.1; D1 deferred the meshes
+pending grasp/render QA and that QA never ran before P3 closed.
+
+**Why it matters:** L3 is the study's object-generality axis. As built it varies
+appearance plus a 10 % (T1) / 20 % (T2) scale step. A small measured data cost at L3
+would then be ambiguous between "object generality is cheap" and "this axis barely
+varies anything".
+
+**Timing:** decide before P6. No training has run; regenerating L3 costs ~26 min (T1)
+and ~4 h (T2) now, and is unaffordable after the matrix.
+
+**Options:** (a) add mug meshes and regenerate L3 + re-freeze its eval sets;
+(b) leave and stay silent (rejected — misrepresents the axis); (c) keep the data,
+describe L3 as "appearance + mild scale", and add a separate L4 geometry level after
+the Task-1 matrix. **Recommended: (c)** — additive, touches no frozen benchmark, and
+separates appearance cost from geometry cost, which is a stronger result than either.
+
+**Status:** awaiting user decision. Do not regenerate L3 or edit `L3_VARIANTS` until
+it is made.

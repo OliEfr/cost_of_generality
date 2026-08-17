@@ -555,3 +555,62 @@ Mean episode length is the other half of the cost story and is now in the CSV to
 T1 ~187-207 steps vs T2 ~675-705, so a T2 attempt costs ~3.5x a T1 attempt in sim
 time *before* the SR gap multiplies it. T2 L2 needed 1306 attempts x ~677 steps for
 400 demos; T1 L2 needed 470 x ~187.
+
+### 2026-08-17 14:45 — L3 is a weaker generality axis than the plan specifies (needs a user decision)
+
+Four consecutive T2 L3 variants landed at *exactly* 40/120 attempts and 23 min each.
+Identical to the attempt is not luck, so I checked the definitions:
+
+- T2 `L3_VARIANTS = [box_{s}_{c} for s in ("s","m") for c in 5 colours]`
+  -> v00-v04 = size 0.040 in five colours, v05-v09 = size 0.048 in five colours.
+- T1 `L3_VARIANTS = [cyl_{s}_{c} for s in ("s","m") for c in 5 colours]`
+  -> same structure: radius 0.027/0.031, height 0.080/0.090.
+
+Colour is a material property with no physical effect, so within a size group the
+dynamics are bit-identical and, at a fixed seed, the generator reproduces the same
+attempt sequence. The data shows exactly that, in both tasks independently:
+
+| | v00-v04 (size s) | v05-v09 (size m) |
+|---|---|---|
+| T1 cup_place | 40/45 = 88.9 % (x5, identical) | 40/46 = 87.0 % (x5, identical) |
+| T2 drawer_stow | 40/120 = 33.3 % (x4 so far, identical) | not yet generated |
+
+**Prediction to check when v05 lands:** it should break the 40/120 pattern and then
+repeat identically for v06-v09. If v05-v09 also come out at 40/120, the size axis is
+doing nothing either and L3 is *purely* cosmetic.
+
+Two consequences.
+
+*The good one:* this is a free determinism check on the whole Mimic pipeline. Same
+seed + same physics reproduces the same success/failure sequence across ten separate
+process launches, hours apart.
+
+*The problem:* **L3 as built is 2 geometries x 5 colours, not the "4 mug meshes x 5
+colours x scale 0.9-1.1" the plan specifies.** D1 deferred the mug meshes ("join
+L3_VARIANTS only if grasp+render QA passes") and that step was never executed before
+P3 closed, so L3's geometric spread is a 10 % (T1) / 20 % (T2) size difference plus
+appearance. If an L3 policy turns out to need barely more data than L2, the honest
+reading may be "this axis is nearly trivial", not "object generality is cheap" — a
+confound sitting directly under a headline claim.
+
+**This is the cheap moment to fix it:** no training has run yet (P6 is blocked on G0),
+and regenerating T1 L3 costs ~26 min, T2 L3 ~4 h. After the matrix runs it is
+unaffordable. Recorded as **D17 (OPEN)** — needs the user's call, because it changes
+what a level *means* in the paper and would require re-freezing the L3 eval sets,
+which rule 8 otherwise forbids touching.
+
+My recommendation is option (c) below: don't disturb the finished data phase, describe
+L3 honestly, and add geometry as its own level later — that keeps the schedule and
+turns the gap into an extra result rather than a caveat.
+
+(a) Regenerate L3 with mug meshes added (2 cyl + 2 mug geometries). Truest to the
+    plan. Costs the mug grasp/render QA D1 asked for, a T1+T2 L3 regeneration, an
+    L3 eval-set re-freeze, and mug USD is Nucleus-cloud-only, adding cluster
+    staging risk.
+(b) Leave L3 as is and say nothing. Cheapest, and wrong — the paper would claim an
+    object-variation axis it does not have.
+(c) Leave L3's data as is, rename the level honestly ("appearance + mild scale") in
+    the paper, cite the identical-gen-SR evidence that 5 of 10 variants are
+    pixel-only, and add a separate **L4 geometry** level with the mug meshes after
+    the Task-1 matrix. Purely additive: touches no frozen benchmark, and directly
+    tests appearance-vs-geometry cost, which is a better result than either alone.
