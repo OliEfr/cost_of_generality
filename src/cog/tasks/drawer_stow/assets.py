@@ -74,13 +74,12 @@ DRAWER_CAVITY_RIM_Z = 0.062      # wall top rel drawer_top body origin
 DRAWER_CAVITY_HALF_X = 0.22
 DRAWER_CAVITY_HALF_Y = 0.30
 
-# --- robot pedestal: raising the Franka base 0.20 m moves every cabinet
-# interaction (handle 0.73, walls 0.785, carry ~0.9) from the arm's upper
-# workspace fringe into mid-workspace. Without it the carry height ceiling
-# (~0.82 at the needed radii) makes the stow geometry structurally infeasible
-# by ~2 cm (18 debug runs of evidence; the handle-to-wall offset is asset-fixed
-# at 13.15 cm, so no pull depth closes the window). ---
-PEDESTAL_HEIGHT = 0.20
+# --- robot pedestal, 0.08 m: the MINIMAL lift. Ground-mounted, the carry
+# ceiling (~0.82) misses the stow requirement by 1-2 cm (runs 12-21); 8 cm
+# raises the ceiling past it while keeping the arm in the SAME kinematic
+# branch as the fully-proven ground trajectory. A 0.20 m pedestal mirrored
+# the wrist branch and broke every phase (runs 22-28). ---
+PEDESTAL_HEIGHT = 0.08
 PEDESTAL_SPAWN = sim_utils.CuboidCfg(
     size=(0.25, 0.25, PEDESTAL_HEIGHT),
     rigid_props=RigidBodyPropertiesCfg(kinematic_enabled=True, disable_gravity=True),

@@ -24,10 +24,8 @@ class EventCfg:
         func=franka_stack_events.set_default_joint_pose,
         mode="reset",
         params={
-            # stock FRANKA_PANDA_CFG default (cabinet-task ready pose): TCP high,
-            # pointing forward-down, j6=3.04 -- approaching the handle from above
-            # keeps the wrist in the branch where the post-pull lift is feasible
-            # (from cup_place's low ready pose, j6 pins at its 3.75 limit)
+            # stock cabinet ready pose: proven for the (near-)ground-mounted
+            # handle phase across 20+ debug runs
             "default_pose": [0.0, -0.569, 0.0, -2.81, 0.0, 3.037, 0.741, 0.0400, 0.0400]
         },
     )
@@ -56,7 +54,7 @@ class FrankaDrawerStowIKRelEnvCfg(DrawerStowEnvCfg):
 
         # robot + IK-Rel actions (identical to cup_place / stack)
         self.scene.robot = FRANKA_PANDA_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
-        self.scene.robot.init_state.pos = (0.0, 0.0, 0.20)  # on the pedestal
+        self.scene.robot.init_state.pos = (0.0, 0.0, 0.08)  # on the pedestal
         self.scene.robot.spawn.semantic_tags = [("class", "robot")]
         self.actions.arm_action = DifferentialInverseKinematicsActionCfg(
             asset_name="robot",

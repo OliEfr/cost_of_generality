@@ -36,6 +36,7 @@ class Sm:
     APPROACH_OBJECT = 8
     GRASP_OBJECT = 9
     LIFT_OBJECT = 10
+    UNWIND = 18
     STAGE_FOR_STOW = 11
     APPROACH_ABOVE_DRAWER = 12
     LOWER_INTO_DRAWER = 13
@@ -53,6 +54,7 @@ WAIT = {
     Sm.PULL_DRAWER: 0.0,           # joint-gated
     Sm.RELEASE_HANDLE: 0.4,
     Sm.RETREAT_FROM_HANDLE: 0.3,
+    Sm.UNWIND: 0.3,
     Sm.APPROACH_ABOVE_OBJECT: 0.4,
     Sm.APPROACH_OBJECT: 0.5,
     Sm.GRASP_OBJECT: 0.4,
@@ -78,19 +80,34 @@ OBJECT_DROP_CLEARANCE = 0.02    # object bottom above cavity floor at release
 # 2026-08-17): rotate to the down-quat LOW and CLOSE (RETREAT_WP), hover the
 # plinth low (OBJ_HOVER_Z), climb to stow height at SMALL radius (STAGE_WP),
 # then translate out over the drawer wall at constant z.
-RETREAT_WP = (0.20, 0.20, 0.88)
-STAGE_END = (0.21, 0.10, 0.92)  # z: the arm's practical hold ceiling (higher unwraps the elbow);
+RETREAT_WP = (0.20, 0.20, 0.84)
+STAGE_END = (0.21, 0.10, 0.88)  # z: the arm's practical hold ceiling (higher unwraps the elbow);
                                 # x: carried-box leading edge (x+half) must clear the wall line
                                 # 0.575-open during the ascent -- 0.25 clipped it at open 0.30
 OBJ_HOVER_Z = 0.62
-STOW_TRAVERSE_Z = 0.92          # with the 0.20 m pedestal this is mid-workspace: the carried
-                                # box crosses the 0.785 wall top with ~10 cm to spare at any x
+STOW_TRAVERSE_Z = 0.88          # ground ceiling was ~0.82; the 0.08 m pedestal lifts it past
+                                # this, and the carried box clears the 0.785 wall top by ~7 cm
 HANDLE_TO_FACE = 0.03           # handle frame sits 3 cm in front of the drawer face
 STOW_BEHIND_FACE = 0.08         # drop well clear of the wall's inner face: the descent
                                 # starts with up to ~2 cm XY lag, and a box edge that
                                 # overlaps the wall wedges it shut (run 14: drawer 0.31->0)
 STOW_RAMP_RATE = 0.09           # m/s ascent ramp (stage leg; free space, sag non-critical)
 TRAVERSE_RATE = 0.03            # m/s wall-crossing leg: slower = tighter z tracking (less sag)
+
+
+def _slerp(q0: torch.Tensor, q1: torch.Tensor, f: torch.Tensor) -> torch.Tensor:
+    """Shortest-path slerp, (N,4) wxyz, f in [0,1] shaped (N,1)."""
+    d = (q0 * q1).sum(-1, keepdim=True)
+    q1 = torch.where(d < 0, -q1, q1)
+    d = d.abs().clamp(max=1.0)
+    theta = torch.acos(d)
+    sin_t = torch.sin(theta).clamp(min=1e-6)
+    w0 = torch.sin((1.0 - f) * theta) / sin_t
+    w1 = torch.sin(f * theta) / sin_t
+    out = w0 * q0 + w1 * q1
+    lerp = (1.0 - f) * q0 + f * q1  # numerically safer when nearly parallel
+    out = torch.where(d > 0.9995, lerp, out)
+    return out / out.norm(dim=-1, keepdim=True).clamp(min=1e-8)
 
 
 def _yaw_quat(yaw: torch.Tensor) -> torch.Tensor:
@@ -131,6 +148,15 @@ class DrawerStowSm:
         self.lower_progress = torch.zeros(num_envs, device=device)
         self.lower_start = torch.zeros(num_envs, 3, device=device)
         self.pull_retries = torch.zeros(num_envs, dtype=torch.long, device=device)
+        self.approach_progress = torch.zeros(num_envs, device=device)
+        self.approach_start = torch.zeros(num_envs, 3, device=device)
+        self.approach_qstart = torch.zeros(num_envs, 4, device=device)
+        self.obj_leg_progress = torch.zeros(num_envs, device=device)
+        self.obj_leg_start = torch.zeros(num_envs, 3, device=device)
+        self.obj_leg_qstart = torch.zeros(num_envs, 4, device=device)
+        self.unwind_progress = torch.zeros(num_envs, device=device)
+        self.unwind_start = torch.zeros(num_envs, 3, device=device)
+        self.unwind_qstart = torch.zeros(num_envs, 4, device=device)
         self.latched_handle = torch.zeros(num_envs, 7, device=device)
         self.latched_grasp = torch.zeros(num_envs, 7, device=device)
 
@@ -145,6 +171,15 @@ class DrawerStowSm:
         self.lower_progress[env_ids] = 0.0
         self.lower_start[env_ids] = 0.0
         self.pull_retries[env_ids] = 0
+        self.approach_progress[env_ids] = 0.0
+        self.approach_start[env_ids] = 0.0
+        self.approach_qstart[env_ids] = 0.0
+        self.obj_leg_progress[env_ids] = 0.0
+        self.obj_leg_start[env_ids] = 0.0
+        self.obj_leg_qstart[env_ids] = 0.0
+        self.unwind_progress[env_ids] = 0.0
+        self.unwind_start[env_ids] = 0.0
+        self.unwind_qstart[env_ids] = 0.0
         self.latched_handle[env_ids] = 0.0
         self.latched_grasp[env_ids] = 0.0
 
@@ -165,14 +200,13 @@ class DrawerStowSm:
         des[:, 7] = 1.0  # default open
 
         # latch handle target until the grasp begins; latch object grasp likewise.
-        # The grasp roll is flipped 180 deg about the approach (z) axis: the
-        # frame-transformer orientation as-is drives panda_joint6 to its 3.75 rad
-        # limit, which then blocks the post-release lift (DLS cannot escape).
-        flip_z = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device).expand(N, 4)
-        handle_grasp = torch.cat(
-            [handle_pose[:, 0:3], quat_mul(handle_pose[:, 3:7], flip_z)], dim=-1)
+        # Grasp roll: the handle bar admits two rolls 180 deg apart and the
+        # feasible one depends on the BASE HEIGHT (which arm branch reaches a
+        # horizontal TCP at the handle). From the 0.20 m pedestal the raw
+        # frame-transformer orientation keeps j6 mid-range; the flipped roll
+        # (needed for a ground-mounted base) pins j6 at 3.75.
         pre_handle = s <= Sm.APPROACH_HANDLE
-        self.latched_handle[pre_handle] = handle_grasp[pre_handle]
+        self.latched_handle[pre_handle] = handle_pose[pre_handle]
         obj_grasp = torch.cat(
             [object_pose[:, 0:2],
              (object_pose[:, 2] + grasp_z_offset).unsqueeze(-1),
@@ -211,10 +245,21 @@ class DrawerStowSm:
 
         m = s == Sm.REST
         assign(m, ee_pose[:, 0:3], ee_pose[:, 3:7], 1.0)
+        self.approach_start[m] = ee_pose[m, 0:3]
+        self.approach_qstart[m] = ee_pose[m, 3:7]
 
+        # ramped approach: a far target makes DLS fold the elbow upward into a
+        # trapped branch (j4 -2.8, j6 pinned) when raising the TCP to handle
+        # height from the ready pose
         m = s == Sm.APPROACH_INFRONT_HANDLE
         approach = lh[:, 0:3] + pull_dir * HANDLE_APPROACH_DIST
-        assign(m, approach, lh[:, 3:7], 1.0)
+        segA = approach - self.approach_start
+        segA_len = segA.norm(dim=-1).clamp(min=1e-6)
+        fracA = (self.approach_progress / segA_len).clamp(max=1.0)
+        approach_ramp = self.approach_start + segA * fracA.unsqueeze(-1)
+        assign(m, approach_ramp, lh[:, 3:7], 1.0)
+        self.approach_progress[m] = self.approach_progress[m] + STOW_RAMP_RATE * self.dt
+        rampA_done = fracA >= 1.0
 
         m = (s == Sm.APPROACH_HANDLE) | (s == Sm.GRASP_HANDLE)
         assign(m, lh[:, 0:3], lh[:, 3:7], 1.0)
@@ -234,11 +279,46 @@ class DrawerStowSm:
         # into elbow-extension local minima
         retreat_pos = torch.tensor(RETREAT_WP, device=dev).expand(N, 3)
         assign(s == Sm.RELEASE_HANDLE, release_pos, lh[:, 3:7], 1.0)
-        assign(s == Sm.RETREAT_FROM_HANDLE, retreat_pos, lg[:, 3:7], 1.0)
+        # pure translation (handle quat): rotating to the down-quat here
+        # pins j2/j5/j6 simultaneously from the pull's exit branch
+        assign(s == Sm.RETREAT_FROM_HANDLE, retreat_pos, lh[:, 3:7], 1.0)
 
+        in_retreat = s == Sm.RETREAT_FROM_HANDLE
+        self.obj_leg_start[in_retreat] = ee_pose[in_retreat, 0:3]
+        self.obj_leg_qstart[in_retreat] = ee_pose[in_retreat, 3:7]
+
+        # UNWIND: retrace to the latched ready-pose TCP (position AND quat) --
+        # the post-pull arm is cornered against j2/j5/j6 limits, and any direct
+        # move to the object phase reconfigures violently; retracing unwinds
+        # the wrist the way it wound, restoring the proven neutral branch
+        m = s == Sm.UNWIND
+        ready = torch.cat([self.approach_start, self.approach_qstart], dim=-1)
+        segU = ready[:, 0:3] - self.unwind_start
+        segU_len = segU.norm(dim=-1).clamp(min=1e-6)
+        fracU = (self.unwind_progress / segU_len).clamp(max=1.0)
+        unwind_pos = self.unwind_start + segU * fracU.unsqueeze(-1)
+        unwind_quat = _slerp(self.unwind_qstart, ready[:, 3:7], fracU.unsqueeze(-1))
+        assign(m, unwind_pos, unwind_quat, 1.0)
+        self.unwind_progress[m] = self.unwind_progress[m] + STOW_RAMP_RATE * self.dt
+        rampU_done = fracU >= 1.0
+
+
+
+        # ramped descent toward the plinth; the horizontal->down rotation
+        # happens early in this leg, at shrinking radius (the friendly fold)
         m = s == Sm.APPROACH_ABOVE_OBJECT
         above_obj = torch.cat([lg[:, 0:2], torch.full((N, 1), OBJ_HOVER_Z, device=dev)], dim=-1)
-        assign(m, above_obj, down, 1.0)
+        segB = above_obj - self.obj_leg_start
+        segB_len = segB.norm(dim=-1).clamp(min=1e-6)
+        fracB = (self.obj_leg_progress / segB_len).clamp(max=1.0)
+        obj_leg_pos = self.obj_leg_start + segB * fracB.unsqueeze(-1)
+        # SLERP the orientation along the leg: snapping the command from
+        # horizontal to down makes DLS swing a violent arc from this branch
+        # (observed: TCP z 1.02 excursion, j6 3.75->0.82 snap, drawer batted shut)
+        obj_leg_quat = _slerp(self.obj_leg_qstart, down, fracB.unsqueeze(-1))
+        assign(m, obj_leg_pos, obj_leg_quat, 1.0)
+        self.obj_leg_progress[m] = self.obj_leg_progress[m] + STOW_RAMP_RATE * self.dt
+        rampB_done = fracB >= 1.0
 
         m = (s == Sm.APPROACH_OBJECT) | (s == Sm.GRASP_OBJECT)
         assign(m, lg[:, 0:3], lg[:, 3:7], 1.0)
@@ -337,6 +417,12 @@ class DrawerStowSm:
         for from_state, to_state in NEXT.items():
             if from_state == Sm.PULL_DRAWER:
                 go = (s0 == from_state) & pull_done
+            elif from_state == Sm.APPROACH_INFRONT_HANDLE:
+                go = (s0 == from_state) & waited & near & rampA_done
+            elif from_state == Sm.UNWIND:
+                go = (s0 == from_state) & waited & near & rampU_done
+            elif from_state == Sm.APPROACH_ABOVE_OBJECT:
+                go = (s0 == from_state) & waited & near & rampB_done
             elif from_state == Sm.STAGE_FOR_STOW:
                 go = (s0 == from_state) & waited & near & ramp1_done
             elif from_state == Sm.APPROACH_ABOVE_DRAWER:
