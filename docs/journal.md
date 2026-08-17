@@ -413,3 +413,39 @@ Disk: 473 G free on `/`, `data/hdf5` at 53 G. Note the RecorderManager `_failed`
 companions are the bulk of it (L0 6.5 G, L1 10.2 G, L2 4.9 G so far) — they are
 regenerable and only needed until per-level gen SR is extracted, so they are the
 obvious reclaim target if the 150 G project budget gets tight during T3.
+
+### 2026-08-17 13:05 — T2 WAVE: L2 LEG DONE (400 demos, 30.3 % gen SR); L3 variant wave started
+
+`GEN_T2_L2_EXIT=0` at 12:48. Verified in HDF5: `T2_L2.hdf5` holds **400 episodes**,
+action-sequence length min/mean/max = 618/677/743 steps. Final generation counter
+384/1267 = **30.3 % gen SR**; wall time 08:39:34 -> 12:48 = **4 h 08 min**.
+
+That closes the three main T2 levels and the per-level gradient is now complete
+and measured, not extrapolated:
+
+| Level | successes/attempts | gen SR | wall time |
+|---|---|---|---|
+| T2 L0 | 381/699 | **54.5 %** | 2 h 16 min |
+| T2 L1 | 394/897 | **43.9 %** | 2 h 50 min |
+| T2 L2 | 384/1267 | **30.3 %** | 4 h 08 min |
+
+Compare Task 1, same Mimic machinery, same source-demo discipline: L0 88.0 / L1 85.5
+/ L2 86.4 / L3 87.9 % — **flat**. So the generality tax on data *production* is a
+property of the task, not of the generator: on a long-horizon articulated task each
+randomization axis costs 11-15 points of generation SR, while on a short pick-place
+task extra randomization is free. Every attempt costs the same GPU time, so the L2
+dataset cost 1.8x the wall-clock of L0 for the identical 400 demos. This is a
+first-class result for the paper (new figure: gen SR vs level, two tasks overlaid)
+and it is also a practical warning for anyone planning a Mimic data budget.
+
+L3 variant wave started 12:48 (`Cog-DrawerStow-L3v00`, 40 successes per variant x 10
+variants). At 13:05 v00 is at 21/74 = 28.4 %, i.e. ~1.24 successes/min, so ~32 min of
+generation plus a ~3.5 min camera-enabled Kit boot per variant -> **~6 h for the ten
+variants, landing ~18:45**. Total T2 wave then ~15 h 15 min for 800 demos across 13
+sub-levels, which is in line with the 13-16 h estimate written into
+`scripts/ops/gen_t2_waves.sh` before launch.
+
+Disk: 455 G free. `T2_L2_failed.hdf5` came out at 17.3 G (the 883 failed attempts) --
+the failed companions now total 34 G and are the largest single reclaimable block in
+the repo. Their only remaining value was the attempt counts, which are now recorded
+in the table above, so they can be dropped whenever space matters.

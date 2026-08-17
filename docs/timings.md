@@ -70,3 +70,21 @@ mutual slowdown (measured on the T1 L2 leg).
 3. GPU sharing (gen + train) works on the 4090 (~21/24 GB) and costs each side
    ~40–50%; fine for smokes, avoid for benchmark runs whose wall time is reported.
 4. Generation SR ~85–86% at L0–L2 → plan ~1.17× attempts per target success.
+
+### T2 (drawer + stow) datagen wave — measured 2026-08-17
+
+Visuomotor Mimic, `--num_envs 8`, `--enable_cameras`, 4090 shared with a foreign
+eval job. Episodes are 618-743 steps (31-37 s at 20 Hz) vs ~350 for T1, so a T2
+attempt costs roughly 2x a T1 attempt before the SR difference is even counted.
+
+| Leg | demos | gen SR | wall time | notes |
+|---|---|---|---|---|
+| T2 L0 | 400 | 54.5 % | 2 h 16 min | fixed cabinet + fixed object pose |
+| T2 L1 | 400 | 43.9 % | 2 h 50 min | + object pose randomized |
+| T2 L2 | 400 | 30.3 % | 4 h 08 min | + cabinet pose randomized |
+| T2 L3 x10 variants | 10 x 40 | ~28 % (v00 in flight) | ~6 h projected | + object size/colour; adds a ~3.5 min Kit boot per variant |
+
+Planning rule of thumb that falls out of this: on T2, budget **~35 min of 4090 wall
+time per 100 demos at L0 and ~62 min per 100 at L2**. Camera-enabled Kit boot is
+~3.5-4 min and is paid once per generate_dataset.py invocation, so many small
+per-variant jobs (L3) lose ~35 min of pure startup across ten launches.
