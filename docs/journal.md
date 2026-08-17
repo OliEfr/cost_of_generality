@@ -1211,3 +1211,36 @@ decomposition and reference frames before spending three on generation compute.
 
 **Next:** the T3 datagen wave (13 sub-levels; at 93 % SR and ~300-step episodes this should
 be far cheaper than T2's 13 h -- estimate ~3-4 h), then conversion, QA and eval-set freeze.
+
+### 2026-08-18 00:00 — T3 datagen wave launched (third attempt); two tmux-environment traps
+
+The wave is running: L0 at **97.3 % generation SR** a few minutes in, GPU 57 %, output
+growing. Estimated ~3 h for all 13 legs (~33 min per 400-demo level, plus the ten L3 boots),
+so it should land around 03:00. Watcher armed.
+
+It took three launches, and both failures were environment, not logic:
+
+1. **`python: command not found`, all 13 legs exit 1 instantly.** `isaaclab.sh` shells out
+   to `python` and needs it ON PATH; a tmux bash has no conda function. The earlier T2 wave
+   only worked because it inherited an already-activated environment from the launching
+   shell. Fixed by exporting the env's bin onto PATH inside the script -- more robust than
+   `conda activate`, which needs the shell hook sourced. This is the same trap that killed
+   the first T2 conversion launch; the lesson had been journaled and I still hit it, because
+   last time the fix was "call the absolute interpreter" and that does not work when a
+   third-party script insists on the bare name.
+2. **Hung forever on Kit's EULA prompt.** `Do you accept the EULA? (Yes/No):` blocks when
+   Kit sees a TTY -- which a tmux pane provides and the piped Bash-tool shell does not. That
+   is precisely why the identical command ran fine interactively minutes earlier and then
+   hung in tmux, with the session alive, no GPU use, and no output file: a stall that looks
+   like a slow boot. Fixed with `export OMNI_KIT_ACCEPT_EULA=YES` **and** `< /dev/null` on
+   every launch.
+
+**Rule for this repo: a tmux/cron launch differs from an interactive one in at least three
+ways -- no conda, a TTY, and a clean env -- so any script meant for tmux must set its own
+PATH, accept the EULA explicitly, and redirect stdin from /dev/null.**
+
+**Also repeated a foot-gun I had already written down:** `pkill -f <pattern>` where the
+pattern appears in my own command line killed my own shell mid-sequence (exit 144), leaving
+the edit and relaunch un-run. Replaced with: `pgrep`, then verify each candidate's
+`/proc/<pid>/cmdline`, then `kill` by PID. Worth noting that the first attempt at even that
+was wrong -- I quoted the PID list so `/proc/$PIDS/cmdline` expanded to a single bogus path.
