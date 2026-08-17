@@ -697,3 +697,32 @@ Relaunched 16:44, converting T2_L0 -> `data/lerobot/T2_L0` with validation
 (`--expect_episodes 400`) chained per level. T2 episodes average ~680 frames vs T1's
 ~190, so expect roughly 3.5x T1's per-level conversion cost; will record the measured
 number in timings.md when L0 lands.
+
+### 2026-08-17 16:58 — T2 conversion parallelized four ways (8 h -> ~1 h)
+
+The sequential chain's first progress checkpoint gave the real rate: 25/400 episodes
+in 7.3 min, i.e. **~2 h per level and ~8 h for all four**. Checked the machine before
+accepting that: the converter runs at ~103 % CPU (h264 encode is single-core) on a
+32-thread box at load ~4. Nothing about this job is inherently serial — the four
+levels are independent datasets — so serializing them wasted ~24 of 32 threads.
+
+Restarted as four independent tmux sessions (`cog_cv_T2_L0..L3`), one level each,
+after removing the 12-min-old partial `T2_L0` root (the converter refuses to write
+into an existing root, by design). `scripts/ops/convert_t2_all.sh` now takes optional
+level keys, so `... T2_L1` runs one level and no arguments keeps the old all-levels
+behaviour.
+
+Aggregate throughput is ~4x with per-level speed *unchanged* (L0: 33 MB in 5 min
+parallel vs 38 MB in 7.3 min sequential), load only ~5.5/32. All four should land
+~17:45 instead of ~00:45.
+
+**Self-inflicted lesson worth writing down:** the stop step used
+`pkill -f "hdf5_to_lerobot"`, and that pattern also matched *my own shell command
+line*, so pkill killed the shell running it (exit 144) before it reached the cleanup
+`rm`. No damage — the converters did die as intended and only the cleanup was lost —
+but `pkill -f <pattern>` inside a command that itself contains the pattern is a
+foot-gun. Kill by PID from `pgrep`, or exclude the wrapper.
+
+Two nags for the user, unchanged: the orphan `frames_qa` PID 2083049 has now been
+running 23 h at ~110 % CPU holding 4.8 GB of VRAM (it is now also stealing a core from
+conversion; I am classifier-blocked from killing it), and **D17 is still open**.
