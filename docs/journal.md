@@ -382,3 +382,11 @@ L3v00-09 x 40, all from the same annotated L2 sources (D9). Estimate 13-16 h
 ~54.5% gen SR (visuomotor wave SR well above the ~30% state smoke), 8.1 GB.
 L1 generating at ~40% SR — the object randomization costs ~15 points of
 generation SR, first per-level generation-difficulty signal for T2.
+
+**T2 WAVE: L1 LEG DONE (2026-08-17 ~09:05):** 400 successes at ~44% gen SR
+(final visible 394/897), ~3 h 15 min. L2 now generating at ~31% SR. The
+per-level generation-SR gradient is emerging clearly: L0 54.5 / L1 ~44 /
+L2 ~31 — each T2 randomization axis costs ~11-15 points of generation SR,
+in sharp contrast to T1's flat 85-88% across all levels. Strong candidate
+finding for the paper: generation-side difficulty scales with task complexity
+AND with distribution breadth for long-horizon tasks.
