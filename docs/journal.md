@@ -614,3 +614,24 @@ turns the gap into an extra result rather than a caveat.
     pixel-only, and add a separate **L4 geometry** level with the mug meshes after
     the Task-1 matrix. Purely additive: touches no frozen benchmark, and directly
     tests appearance-vs-geometry cost, which is a better result than either alone.
+
+### 2026-08-17 15:36 — D17 prediction confirmed: the size axis is real but small
+
+Predicted at 14:45 that T2 L3v05 would break the 40/120 pattern (it starts the
+0.048 m box group) and then repeat identically for v06-v09. Both halves held:
+
+| variant group | box size | attempts | gen SR | mean ep len |
+|---|---|---|---|---|
+| v00-v04 | 0.040 m | 120 (x5, identical) | 33.3 % | 675 |
+| v05-v06 | 0.048 m | 125 (x2 so far, identical) | 32.0 % | 679 |
+
+So L3 does contain two genuinely distinct physical conditions — the bigger box costs
+5 extra attempts per 40 demos and runs 4 steps longer per episode — but the effect is
+small (1.3 points of gen SR) and there are only two of them, five colours deep each.
+That sharpens D17 rather than changing it: the axis is not null, it is thin. Option
+(b) "leave it and say nothing" is now definitively out, since I can quantify exactly
+how thin it is.
+
+The within-group determinism across ten independent process launches is now confirmed
+in both directions (identical inside a group, reproducibly different between groups),
+which is a stronger pipeline-determinism check than I could have designed on purpose.
