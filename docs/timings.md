@@ -98,3 +98,23 @@ progress flush is lost at shutdown.
 (regenerate with `python scripts/dev/gen_stats.py`). The tables in this file are a
 human-readable digest; if they ever disagree with the CSV, the CSV is right because it
 is recomputed from the HDF5 pairs.
+
+### T2 HDF5 -> LeRobot conversion — measured 2026-08-17
+
+Four levels run **concurrently** as separate tmux sessions (`convert_t2_all.sh <KEY>`).
+h264 encode is single-core, so one level per core; the box has 32 threads and load
+stayed ~4-5.
+
+| | episodes | frames | output | wall (parallel) |
+|---|---|---|---|---|
+| T2_L0 | 400 | 281,987 | 356 MB | 2 h 02 min |
+| T2_L1 | 400 | 277,661 | 351 MB | 1 h 58 min |
+| T2_L2 | 400 | 270,744 | 343 MB | 1 h 53 min |
+| T2_L3 | 400 (10 x 40) | 270,745 | 344 MB | 1 h 53 min |
+
+All four `VALIDATE_OK` with `--expect_episodes 400`.
+
+**Planning numbers:** ~3.5 episodes/min or ~2,500 frames/min per core for T2-length
+episodes (~680 frames). One level is ~2 h; running the four in parallel costs the same
+2 h instead of 8 h, so **always convert levels concurrently**. T1's shorter episodes
+(~190 frames) convert roughly 3.5x faster per episode.

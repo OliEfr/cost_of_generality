@@ -889,3 +889,25 @@ about object generality.
 
 `paper/limitations.md` is the running list from here on — new limitations get appended
 as they land rather than reconstructed at writing time.
+
+### 2026-08-17 18:56 — T2 CONVERSION COMPLETE: 4/4 levels, 400 eps each, all VALIDATE_OK
+
+All four `CONVERT_T2_*_EXIT=0` and `VALIDATE_T2_*_EXIT=0`, 16:53 -> 18:55.
+
+| dataset | episodes | frames | size |
+|---|---|---|---|
+| T2_L0 | 400 | 281,987 | 356 MB |
+| T2_L1 | 400 | 277,661 | 351 MB |
+| T2_L2 | 400 | 270,744 | 343 MB |
+| T2_L3 | 400 | 270,745 | 344 MB |
+
+Parallelizing paid off exactly as predicted: **2 h wall instead of ~8 h**, load never
+above 5 of 32 threads.
+
+L3 merge verified from `conversion_manifest.json`: exactly **40 episodes per variant**,
+and the episode order cycles v00..v09 repeatedly, so every nested-N prefix is
+variant-balanced (N=10 -> one per variant, N=200 -> twenty each). That is the property
+D2 promised and it is now checked rather than assumed.
+
+Remaining for the T2 data phase: dataset QA (adapt `scripts/dev/dataset_qa.py`, which
+asserts T1's cup-to-goal final distance) and freezing the 13 T2 eval sets.
