@@ -123,9 +123,12 @@ surface (exact height from empirical inspection). Facts driving implementation:
   ISAAC_NUCLEUS_DIR (cup_place's COG_ASSET_ROOT is rooted at ISAACLAB_NUCLEUS_DIR).
 - No isaaclab_mimic env for any articulated object exists -> greenfield subclass
   of FrankaCubeStackIKRelMimicEnv per cup_place pattern.
-- VERIFY (d): SubTaskConfig.object_ref="cabinet" (an Articulation) is untested in
-  the datagen pose-transform path — smoke-test before committing to the subtask
-  split; fallback: use a rigid proxy frame or drawer body as ref.
+- VERIFY (d) CLOSED (2026-08-17): the base get_object_poses enumerates RIGID
+  objects only — the cabinet Articulation was silently absent from
+  datagen_info.object_pose. Fixed by overriding get_object_poses in
+  FrankaDrawerStowIKRelMimicEnv to append the cabinet root pose from the
+  articulation state (same root_pose layout). Annotation now records all four
+  refs; generation with object_ref="cabinet" is unblocked.
 - Stock open_cabinet_sm.py: world-frame offsets (break under cabinet yaw ->
   compose in handle frame), single -1.5 cm pull (insufficient -> ramped/segmented
   pull to >=0.2 m), IK-Abs driver conventions match our converter.
