@@ -16,7 +16,8 @@ parser.add_argument("--task", type=str, required=True)
 parser.add_argument("--out", type=str, required=True)
 parser.add_argument("--batches", type=int, default=10)
 parser.add_argument("--base_seed", type=int, default=5000)
-parser.add_argument("--task_kind", choices=("cup_place", "drawer_stow"), default="cup_place")
+parser.add_argument("--task_kind", choices=("cup_place", "drawer_stow", "push_target"),
+                    default="cup_place")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
@@ -40,6 +41,12 @@ def snapshot(kind):
             "cup_pos": arr(env.scene["cup"].data.root_pos_w),
             "cup_quat": arr(env.scene["cup"].data.root_quat_w),
             "goal_pos": arr(env.scene["goal_marker"].data.root_pos_w),
+        }
+    if kind == "push_target":
+        return {
+            "object_pos": arr(env.scene["object"].data.root_pos_w),
+            "object_quat": arr(env.scene["object"].data.root_quat_w),
+            "target_pos": arr(env.scene["target_marker"].data.root_pos_w),
         }
     return {
         "object_pos": arr(env.scene["object"].data.root_pos_w),

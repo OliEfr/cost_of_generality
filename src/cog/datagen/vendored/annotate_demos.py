@@ -65,6 +65,7 @@ import torch
 import isaaclab_mimic.envs  # noqa: F401
 import cog.tasks.cup_place  # noqa: F401  (COG: registers Cog-CupPlace-* env IDs)
 import cog.tasks.drawer_stow  # noqa: F401  (COG: registers Cog-DrawerStow-* env IDs)
+import cog.tasks.push_target  # noqa: F401  (COG: registers Cog-PushTarget-* env IDs)
 
 if args_cli.enable_pinocchio:
     import isaaclab_mimic.envs.pinocchio_envs  # noqa: F401

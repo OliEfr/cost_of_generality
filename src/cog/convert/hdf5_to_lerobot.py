@@ -47,6 +47,16 @@ TASK_SPECS = {
             "info.drawer_joint_pos": ("drawer_joint_pos", 1, ["drawer"]),
         },
     },
+    "push_target": {
+        "task_str": "push the puck onto the green target marker",
+        "privileged": {
+            "info.object_pos": ("object_pos", 3, ["x", "y", "z"]),
+            "info.object_quat": ("object_quat", 4, ["w", "x", "y", "z"]),
+            # the target moves every episode, so its pose is privileged state the vision
+            # policy must instead read off the table camera
+            "info.target_pos": ("target_pos", 3, ["x", "y", "z"]),
+        },
+    },
 }
 
 BASE_FEATURES = {

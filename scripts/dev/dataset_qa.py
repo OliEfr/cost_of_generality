@@ -172,7 +172,72 @@ def qa_drawer_stow(name, files, outdir):
     assert np.abs(objT_rel[:, 1]).max() < 0.15, f"{name}: an episode ends with the box off to the side of the drawer"
 
 
-QA = {"cup_place": qa_cup_place, "drawer_stow": qa_drawer_stow}
+def qa_push_target(name, files, outdir):
+    """T3 end state: puck inside the target disk, and the stroke actually happened.
+
+    Checked in the PUSH frame (start->target direction) rather than world coordinates,
+    because the push bearing is randomized from L2 on: a world-frame measurement would
+    just re-measure the bearing distribution.
+    """
+    obj0, tgt0, travel, final_err, lengths = [], [], [], [], []
+    amin, amax = np.full(7, np.inf), np.full(7, -np.inf)
+    frames = []
+    n_eps = count_episodes(files)
+    grid_idx = set(np.linspace(0, n_eps - 1, 16, dtype=int).tolist())
+    for i, (_path, _demo, g) in enumerate(episodes(files)):
+        start = g["initial_state/rigid_object/object/root_pose"][0, :3]
+        target = g["initial_state/rigid_object/target_marker/root_pose"][0, :3]
+        end = g["obs/object_pos"][-1]
+        obj0.append(start[:2])
+        tgt0.append(target[:2])
+        d = target[:2] - start[:2]
+        n = np.linalg.norm(d)
+        unit = d / max(n, 1e-6)
+        travel.append(float(np.dot(end[:2] - start[:2], unit)))
+        final_err.append(float(np.linalg.norm(end[:2] - target[:2])))
+        a = g["actions"][:]
+        lengths.append(a.shape[0])
+        amin, amax = np.minimum(amin, a.min(0)), np.maximum(amax, a.max(0))
+        if i in grid_idx:
+            frames.append(g["obs/table_cam"][0])
+    obj0, tgt0 = np.array(obj0), np.array(tgt0)
+    travel, final_err, lengths = np.array(travel), np.array(final_err), np.array(lengths)
+
+    save_grid(name, frames, outdir)
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.scatter(obj0[:, 0], obj0[:, 1], s=6, label="puck init")
+    ax.scatter(tgt0[:, 0], tgt0[:, 1], s=6, label="target")
+    ax.set_aspect("equal")
+    ax.legend()
+    ax.set_title(f"{name} coverage (XY, world)")
+    fig.savefig(f"{outdir}/{name}_coverage.png", dpi=110)
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.hist(travel * 100, bins=40)
+    ax.axvline(20, color="k", ls="--", label="nominal 20 cm")
+    ax.set_xlabel("puck travel along the push axis (cm)")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(f"{outdir}/{name}_travel.png", dpi=110)
+    plt.close(fig)
+
+    print(f"== {name}: {n_eps} eps, len min/med/max {lengths.min()}/{int(np.median(lengths))}/{lengths.max()}")
+    print(f"   puck init {box(obj0)}")
+    print(f"   target    {box(tgt0)}")
+    print(f"   travel along push axis: med {np.median(travel)*100:.1f} cm, "
+          f"min {travel.min()*100:.1f}, max {travel.max()*100:.1f} (nominal 20.0)")
+    print(f"   final |puck-target|: med {np.median(final_err)*100:.2f} cm, "
+          f"p95 {np.percentile(final_err,95)*100:.2f} cm, max {final_err.max()*100:.2f} cm (gate 5 cm)")
+    print(f"   action min {np.round(amin,3)}")
+    print(f"   action max {np.round(amax,3)}")
+
+    assert final_err.max() < 0.05 + 1e-6, f"{name}: an episode ends outside the success radius"
+    # the puck must actually have been pushed, not merely spawned near the target
+    assert travel.min() > 0.10, f"{name}: an episode's puck barely moved along the push axis"
+
+
+QA = {"cup_place": qa_cup_place, "drawer_stow": qa_drawer_stow, "push_target": qa_push_target}
 
 LEVELS = {
     "cup_place": {
@@ -186,6 +251,12 @@ LEVELS = {
         "T2_L1": ["data/hdf5/T2_L1.hdf5"],
         "T2_L2": ["data/hdf5/T2_L2.hdf5"],
         "T2_L3": [f"data/hdf5/T2_L3v{i:02d}.hdf5" for i in range(10)],
+    },
+    "push_target": {
+        "T3_L0": ["data/hdf5/T3_L0.hdf5"],
+        "T3_L1": ["data/hdf5/T3_L1.hdf5"],
+        "T3_L2": ["data/hdf5/T3_L2.hdf5"],
+        "T3_L3": [f"data/hdf5/T3_L3v{i:02d}.hdf5" for i in range(10)],
     },
 }
 

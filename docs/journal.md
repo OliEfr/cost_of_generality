@@ -1105,3 +1105,52 @@ on ONE level and reused per D9, so 85 % suffices to produce ~20 clean sources); 
 QA, source recording, annotation, generation smoke, and the pipeline seams (`gen_stats.py`
 T3_ prefix, converter TASK_SPECS entry, `dataset_qa.py` qa_push_target, `freeze_eval_sets.py`
 task_kind branch, ops wave scripts).
+
+### 2026-08-17 22:36-23:20 — T3 pipeline seams, source demos, and the source-quality trap
+
+Machine was idle (T2 done, cluster blocked), so continued the Task-3 build.
+
+**Four pipeline seams patched**, all of which the recon had flagged as silent-failure risks:
+- `gen_stats.py`: prefix table `{T2_: drawer_stow, T3_: push_target}`. Unpatched, every
+  `T3_*.hdf5` would have been filed as `cup_place` with level `T3_L0` -- no error, just a
+  wrong CSV, and that CSV is the study's source of truth for generation SR.
+- `hdf5_to_lerobot.py`: `push_target` TASK_SPECS entry (privileged `object_pos/quat` plus
+  `target_pos`, since the target moves every episode and the vision policy must read it
+  off the camera).
+- `freeze_eval_sets.py`: a real `push_target` branch. The existing `snapshot()` had no
+  default, so merely adding the choice would have returned the drawer_stow dict and failed
+  on `scene['cabinet']`.
+- `dataset_qa.py`: `qa_push_target` + the T3 level table. It measures travel in the PUSH
+  frame, not world coordinates -- a world-frame measurement from L2 on would just
+  re-measure the bearing distribution.
+- `setup_vendored.sh`: patches the `cog.tasks.push_target` import into the vendored
+  annotate/generate scripts (3 cog imports now); re-run and verified.
+
+**Source demos recorded: `data/hdf5/T3_L2_source.hdf5`, 20 demos.** Getting them usable
+exposed the sharpest issue of the build:
+
+The first recording run reported a perfect **expert SR of 1.00 (20/20)** with a **median
+final placement error of 5.01 cm** -- exactly the 5 cm success gate, with 18 of 20 demos
+worse than 2.5 cm. Success fires the instant the puck stalls just inside the disk, ending
+the episode before the expert pushes to centre. Those episodes are genuine successes and
+useless as Mimic templates: Mimic replays a source rigidly, so every generated copy would
+inherit ~5 cm of error against a 5 cm gate and fail on any slip. **A perfect expert SR was
+hiding systematically bad data** -- the metric I had been tuning against for fifteen cycles
+was not the metric that matters for source demos.
+
+Fixed in the right place: the recorder tightens the success radius to 2 cm FOR RECORDING
+ONLY (`--source_success_radius`), leaving the level's real 5 cm gate untouched for
+generation and evaluation. Re-recorded: **median final error 1.93 cm, 0 of 20 above the
+2.5 cm bar**, at an expert SR of 0.69 against the harder 2 cm gate (the 5 cm gate still
+scores 85-94%). This also retires the reverted blade-clearance clause for good -- the same
+goal, achieved by selection at recording time instead of by distorting the success
+criterion.
+
+**One latent bug found by reading rather than by failing:** APPROACH_XY had no tick budget,
+though DESCEND and PUSH both got one. Its gate is XY_TOL = 6 mm and the arm's steady-state
+tracking error is ~6 mm, so it could hang indefinitely; the traverse height had been
+masking it. Given a 160-tick budget.
+
+**Next:** annotate the sources (`--auto`) and run a generation smoke test. That is the
+first real test of D19's single-subtask design -- whether Mimic accepts a one-element
+`subtask_configs` and whether the synthetic push frame reproduces strokes at new bearings.

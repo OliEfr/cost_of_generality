@@ -84,6 +84,11 @@ XY_TOL = 0.006
 Z_TOL = 0.008
 DESCEND_PRESS = 0.010
 DESCEND_TIMEOUT = 140
+# APPROACH needs a budget for the same reason DESCEND does: its gate is XY_TOL = 6 mm while
+# the arm's steady-state tracking error is ~6 mm, so it could hang forever waiting to be
+# "close enough". Found by review rather than by a failure -- the traverse height makes
+# tracking easier there, so it had not bitten yet.
+APPROACH_TIMEOUT = 160
 PUSH_TIMEOUT = 300
 PUSH_CAP = 1.6               # stroke cap as a multiple of the nominal push distance
 # Stop distance for the stroke. Deliberately far tighter than the 5 cm success gate:
@@ -228,7 +233,8 @@ class PushSm:
             frac = (self.approach / leg_len).clamp(0.0, 1.0).unsqueeze(-1)
             des[m, 0:3] = (self.approach_from + leg * frac)[m]
             err = torch.linalg.vector_norm(goal[:, 0:2] - tcp[:, 0:2], dim=1)
-            done = m & (self.approach >= leg_len - 1e-6) & (err < XY_TOL)
+            arrived = (self.approach >= leg_len - 1e-6) & (err < XY_TOL)
+            done = m & (arrived | (self.ticks >= APPROACH_TIMEOUT))
             self.state[done] = DESCEND
             self.ticks[done] = 0
 

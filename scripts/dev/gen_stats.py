@@ -35,10 +35,16 @@ FIELDS = [
 ]
 
 
+TASK_PREFIXES = {"T2_": "drawer_stow", "T3_": "push_target"}
+
+
 def parse_name(stem: str) -> tuple[str, str, str]:
     """`T2_L3v07` -> (drawer_stow, L3, v07); `L1` -> (cup_place, L1, -)."""
-    task = "drawer_stow" if stem.startswith("T2_") else "cup_place"
-    rest = stem[3:] if stem.startswith("T2_") else stem
+    task, rest = "cup_place", stem
+    for prefix, name in TASK_PREFIXES.items():
+        if stem.startswith(prefix):
+            task, rest = name, stem[len(prefix):]
+            break
     m = re.match(r"^(L\d)(v\d+)?$", rest)
     if not m:
         return task, rest, "-"
