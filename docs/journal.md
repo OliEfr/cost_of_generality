@@ -429,8 +429,8 @@ and measured, not extrapolated:
 | T2 L1 | 394/897 | **43.9 %** | 2 h 50 min |
 | T2 L2 | 384/1267 | **30.3 %** | 4 h 08 min |
 
-Compare Task 1, same Mimic machinery, same source-demo discipline: L0 88.0 / L1 85.5
-/ L2 86.4 / L3 87.9 % — **flat**. So the generality tax on data *production* is a
+Compare Task 1, same Mimic machinery, same source-demo discipline: L0 86.4 / L1 85.8
+/ L2 85.5 / L3 87.9 % — **flat** (spread 2.4 points, and non-monotone, i.e. noise). So the generality tax on data *production* is a
 property of the task, not of the generator: on a long-horizon articulated task each
 randomization axis costs 11-15 points of generation SR, while on a short pick-place
 task extra randomization is free. Every attempt costs the same GPU time, so the L2
