@@ -1552,7 +1552,8 @@ So even the moment G0 passes, **no job will start until this clears** — the as
 the drain are independent blockers. Neither is actionable from here; both are CINECA-side.
 The reservations list shows only long-standing `cin_sanity`/MAINT entries (nothing that
 explains a cluster-wide GPU drain), so this looks like an unplanned incident, not a scheduled
-window.
+window. **-> WRONG, corrected 30 min later: it is the scheduled Slurm upgrade. See the
+2026-08-18 17:55 entry below before acting on anything in this paragraph.**
 
 Planning impact: none on the critical path yet, because the association is still the outer
 blocker and all local data phases are closed. But the drain is the thing to check *first*
@@ -1560,3 +1561,46 @@ after G0 passes — submitting the A100 render gate into a fully drained partiti
 queue indefinitely and look like a broken sbatch script on its unverified first use, which is
 exactly the confusion to avoid. Check `sinfo -p boost_usr_prod -t idle,mix` before believing
 any queue behaviour.
+
+### 2026-08-18 17:55 — Correction: the drain is the announced Slurm upgrade, not a GPU fault
+
+User forwarded the CINECA notice ("Leonardo: Slurm upgrade - UPDATE", 18 Aug 2026): the
+upgrade had been delayed by "complications encountered during the preparatory activities", so
+Slurm stayed up all morning, and they are *now* upgrading **the controller and database
+daemons**. Job submission and queue queries unavailable; running jobs unaffected; pending jobs
+stay queued and will not start until the service is restored.
+
+**What I got wrong:** I read `gres/gpu count reported lower than configured (0 < 4)` across
+every node plus a dead slurmdbd as an unplanned hardware/driver incident. It is the announced
+maintenance. The node-side symptom is what a Slurm upgrade looks like from a login node —
+slurmd restarting under a version transition stops reporting its GRES, so slurmctld drains the
+node. I over-read a maintenance artifact as a fault, on the strength of "no reservation
+explains it" — but a daemon upgrade needs no node reservation, so absence of a reservation was
+never evidence for a fault. Cheap lesson: check the service-status mail before diagnosing the
+cluster.
+
+Confirming evidence 20 min later — the node states are churning, which a hardware fault would
+not do:
+
+```
+17:20   drained$ 1  draining 173  drained 348                      (522 visible)
+17:45   drained$ 1  maint 3  completing 1  draining 20  drained 188  reserved 9   (222 visible)
+```
+
+`sinfo --version` still reports `slurm 23.11.10-BullSequana.1.2.1`, i.e. mid-flight.
+`squeue -u ohausdoe` answers (empty, as expected). `sacctmgr` still refuses.
+
+**Standing correction to the G0 procedure:** while slurmdbd is down, a G0 failure is
+**uninformative** — associations live in slurmdbd, so a `sbatch --test-only` rejection during
+the upgrade says nothing about whether the PI added us. The three-hourly check keeps running
+(it is the restoration detector), but its negatives are to be logged, not interpreted, until
+`sacctmgr` answers again. **The first meaningful G0 probe is the first one after `sacctmgr`
+responds** — and it is worth taking seriously, because a controller/DB upgrade reloads
+associations from the database, so if the UserDB request has already been processed it could
+appear at exactly that moment.
+
+The two-independent-blockers point from the previous entry still stands in substance (a passing
+G0 does not imply a schedulable partition, so check `sinfo -p boost_usr_prod -t idle,mix`
+before trusting queue behaviour on the sbatch scripts' unverified first use) — only the *cause*
+of the drain was misattributed, and the expected clearing is now "when maintenance ends"
+rather than "unknown".
