@@ -1450,3 +1450,15 @@ templates, launch matrix, sync up/down, watchdog. Everything from G0 onward is a
 **unverified against the real cluster** -- the first post-G0 actions should be, in order:
 `sbatch --test-only` (G0 itself), the A100 render gate (G5b), ONE training cell (G5a), and only
 then `launch_matrix.py`.
+
+### 2026-08-18 08:35 — Leonardo certificate has EXPIRED
+
+`~/cineca_login.sh --status` now reports NO VALID CERTIFICATE (it lapsed at 08:33 as
+predicted). Consequences, none of them data-threatening: no `ssh leonardo`, so no `squeue`,
+no `saldo -b` budget ledger, no `sbatch --test-only` G0 probe, and no sync in either
+direction. The hourly watchdog's cluster checks will report unavailable until it is renewed.
+
+Nothing local is affected -- all three tasks' datasets, eval sets and the full toolchain are
+complete and committed. Renewal needs the user's laptop (tunnelled session, then
+`~/cineca_login.sh`); the plain form works fine on an expired cert since it treats it as zero
+seconds remaining.

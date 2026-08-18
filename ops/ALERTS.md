@@ -9,3 +9,5 @@
 - 2026-08-18 05:07  Leonardo cert <3h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-18 06:07  Leonardo cert <2h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-18 07:07  Leonardo cert <1h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-18 08:07  Leonardo cert <0h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-18 08:35  Leonardo cert EXPIRED - cluster monitoring unavailable until renewed from laptop
