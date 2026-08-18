@@ -1462,3 +1462,30 @@ Nothing local is affected -- all three tasks' datasets, eval sets and the full t
 complete and committed. Renewal needs the user's laptop (tunnelled session, then
 `~/cineca_login.sh`); the plain form works fine on an expired cert since it treats it as zero
 seconds remaining.
+
+### 2026-08-18 08:40 — Cert renewed; G0 probed precisely and still FAILING (but informatively)
+
+Certificate renewed by the user: **valid 47 h 58 m** (until 2026-08-20 08:36). `ssh leonardo`
+works again (`ohausdoe` on login05).
+
+G0 probed properly for the first time in days, and the two halves disagree in a way that is
+worth quoting verbatim to CINECA support:
+
+- `sacctmgr -n show assoc user=ohausdoe` returns **only `euhpc_b34+`** (the expired B34
+  project). There is NO association for B38.
+- `sbatch --test-only -A euhpc_b38_106 -p boost_usr_prod --gres=gpu:1` ->
+  **"allocation failure: Invalid account or account/partition combination specified"**.
+- BUT `saldo -b` **does** list `EUHPC_B38_106`, 112,000 local hours, 0 consumed, valid
+  20260729-20261029.
+
+So the grant exists, is funded and is unconsumed, and the user is attached to it in the
+ACCOUNTING database -- but Slurm has no association for them on it, which is what actually
+authorises job submission. That is a sharper request for the PI or support than "I can't
+submit": *saldo shows me EUHPC_B38_106 but sacctmgr shows no association for my user on that
+account, so sbatch rejects it as an invalid account/partition combination.*
+
+Scheduling changed per user request: the hourly pipeline watch (c08cfc1f) is **cancelled** --
+nothing runs locally any more and all three data phases are closed, so it only produced noise.
+Replaced with a **three-hourly compute-access check** (1676c977) that probes G0, and on
+success writes `ops/G0_PASSED`, syncs code up, runs the A100 render gate, and then STOPS to
+check with the user before anything expensive. Session-only, auto-expires in 7 days.
