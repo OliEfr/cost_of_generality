@@ -1604,3 +1604,44 @@ G0 does not imply a schedulable partition, so check `sinfo -p boost_usr_prod -t 
 before trusting queue behaviour on the sbatch scripts' unverified first use) — only the *cause*
 of the drain was misattributed, and the expected clearing is now "when maintenance ends"
 rather than "unknown".
+
+### 2026-08-18 20:20 — Upgrade phase 2: slurmdbd back, slurmctld down. Association still absent.
+
+Three-hourly check. The failure mode has moved, which is why this one is worth recording rather
+than logging as another negative.
+
+```
+sacctmgr -n show assoc user=ohausdoe   ->  euhpc_b34_046  boost_qos_bprod,boost_qos_dbg+
+sbatch --test-only -A euhpc_b38_106 ...  ->  (no output)   RC=124   <- killed by `timeout`
+scontrol ping                            ->  (no output)   RC=124   <- killed by `timeout`
+sinfo --version                          ->  slurm 23.11.10-BullSequana.1.2.1  (local binary)
+sinfo -p boost_usr_prod                  ->  empty
+```
+
+So **slurmdbd is back** (sacctmgr answers, and answers correctly — it still lists the B34
+association) while **slurmctld is now unreachable** (`scontrol ping` hangs). That matches the
+notice's "controller and database daemons" as a two-stage rollout, DB first.
+
+**What this means for G0, and it is a genuine change:** `sacctmgr` talks to slurmdbd directly,
+not through the controller, so **the association read is trustworthy again even though the
+sbatch probe cannot run.** As of now there is still **no `euhpc_b38_106` association for
+ohausdoe** — a real negative, not an artifact like the 17:20 one. The PI/UserDB request has not
+landed yet. (Mild caveat: the DB is freshly restarted mid-upgrade; confirm with sbatch once the
+controller returns.)
+
+**Two diagnostic traps caught here, both worth remembering:**
+
+1. **`sbatch --test-only` printing nothing is NOT a pass.** On success it prints
+   `sbatch: Job N to start at <time> using <n> processors on nodes <list>`; on rejection it
+   prints an allocation-failure line. Silence means it never reached the controller — here,
+   `timeout` killing a hang. The first probe of this round returned empty output and I nearly
+   had a "no error" reading on my hands; the RC settled it. **Always capture the RC** — G0 is
+   `RC==0 AND a "Job N to start" line`, never "no error text".
+2. **I piped `sinfo`/`squeue` through `head`, so their `$?` was head's, not theirs** — those two
+   RC=0 values in the probe output mean nothing. Only the two unpiped commands
+   (`sbatch --test-only`, `scontrol ping`) carried real exit codes, and both were 124. Same
+   family of mistake as reading a stale error message after an auto-reset: check *what* the
+   number you are reading is actually attached to.
+
+No action taken; nothing submitted (nothing could be). Next check continues on the three-hourly
+schedule. The probe to trust is `scontrol ping` succeeding -> then re-run the full G0.
