@@ -26,3 +26,10 @@
    generator logs (carb drops the final progress flush, so log tails understate --
    see D16). After any datagen leg lands, re-run `python scripts/dev/gen_stats.py`
    and commit the CSV.
+10. **Every long-running job gets a tmux session, an event watcher, AND an hourly
+    fallback check.** All three, because each has failed alone: a watcher that never
+    fires leaves a finished job unnoticed for hours, and an hourly poll alone can miss a
+    job that dies seconds after it starts. "Long-running" means anything over ~10 min:
+    datagen waves, conversions, training, eval sweeps. See `docs/running_jobs.md` for the
+    launch checklist -- read it BEFORE launching anything in tmux, because a tmux shell
+    differs from an interactive one in at least three ways that have each cost hours here.

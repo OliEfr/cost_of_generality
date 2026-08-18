@@ -1489,3 +1489,25 @@ nothing runs locally any more and all three data phases are closed, so it only p
 Replaced with a **three-hourly compute-access check** (1676c977) that probes G0, and on
 success writes `ops/G0_PASSED`, syncs code up, runs the A100 render gate, and then STOPS to
 check with the user before anything expensive. Session-only, auto-expires in 7 days.
+
+### 2026-08-18 08:50 — Monitoring discipline written into the agent instructions
+
+User: "remember to set up hourly health watchers for all larger jobs. Also write this in the
+project documentation / agent instructions for future agents."
+
+- **CLAUDE.md rule 10:** every job over ~10 min gets all THREE of a tmux session, an event
+  watcher, and an hourly cron fallback -- because each has failed alone here (a watcher that
+  never fired left a finished wave unnoticed; an hourly poll alone would have missed the T3
+  wave dying one second after launch).
+- **New `docs/running_jobs.md`**, the launch checklist, written from the failures rather than
+  from principle. Eight sections: the three monitoring layers with copy-pasteable snippets;
+  the three ways a tmux shell differs from an interactive one (no conda hook, it HAS a TTY so
+  Kit blocks on its EULA prompt, clean env) with the symptom and fix for each; exit codes lie
+  and markers do not; liveness is an artifact question (mtime), not a process question
+  (a spinning process ran 24 h after finishing its work in 13 min); never `pkill -f` with a
+  pattern your own command line contains; never glob HDF5 inputs; parallelise across levels
+  not within; and where the measured numbers live.
+
+Rule 10 points at the doc explicitly, and the doc's opening line is "every rule here was paid
+for", with dates back to the journal entries holding the traces -- so a future agent can check
+the evidence rather than take it on faith.
