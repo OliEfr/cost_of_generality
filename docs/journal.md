@@ -1645,3 +1645,51 @@ controller returns.)
 
 No action taken; nothing submitted (nothing could be). Next check continues on the three-hourly
 schedule. The probe to trust is `scontrol ping` succeeding -> then re-run the full G0.
+
+### 2026-08-18 23:20 — Upgrade DONE, partition healthy, G0 still fails: association is the sole blocker
+
+The post-upgrade probe I flagged as "the first meaningful one" has now run. It is negative, and
+this time nothing is confounding it.
+
+**Slurm is fully back:**
+```
+scontrol ping                      -> Slurmctld(primary) at slurm-controller is UP   RC=0
+sacctmgr -n show assoc ohausdoe    -> euhpc_b34_046  boost_qos_bprod,boost_qos_dbg,+  RC=0
+sinfo -p boost_usr_prod            -> idle 702 | mixed 319 | allocated 2214 | draining 17 | ...
+```
+The GPU drain from the 17:20 entry is gone (702 idle nodes vs zero schedulable), confirming
+again that it was the upgrade, not hardware.
+
+**G0 fails, with a control to prove the probe itself is sound:**
+```
+-A euhpc_b38_106 -> "allocation failure: Invalid account or account/partition combination
+                     specified"                                              RC=1
+-A euhpc_b34_046 -> "sbatch: error: invalid account or expired budget"
+                     "allocation failure: Unspecified error"                 RC=1
+```
+Ran the expired B34 account as a control deliberately. The two accounts fail with **different
+messages**, which is the informative part: B34 (which *has* an association) reaches
+account/budget validation and is rejected for the expired budget, while B38 is rejected one step
+earlier as an invalid account/partition combination. So the `-p boost_usr_prod --gres=gpu:1
+--cpus-per-task=8 --mem=64G` parts of the submit line are well-formed and accepted -- the
+rejection is specifically about the missing association, not my sbatch syntax. (Caveat: with no
+valid account available I still cannot exercise the *success* path, so the "Job N to start at"
+branch of the G0 criterion remains untested.)
+
+**Why this probe mattered more than the previous ones:** a controller+DB upgrade reloads
+associations from the database, so if the UserDB request had been processed at any point it would
+be visible now. It is not. That excludes the "it exists but is not propagated" hypothesis that
+made the 17:20 check uninterpretable. **The Slurm association for `EUHPC_B38_106` has genuinely
+not been created.** Both cluster-side blockers are now resolved down to one, and it is the one
+only the PI or CINECA support can clear.
+
+Exact wording for the request (unchanged, still the sharpest framing):
+> `saldo -b` lists EUHPC_B38_106 for my user (112,000 local h, 0 consumed, valid 20260729-
+> 20261029), but `sacctmgr show assoc user=ohausdoe` shows no association on that account --
+> only the expired euhpc_b34_046 -- so `sbatch -A euhpc_b38_106 -p boost_usr_prod` is rejected
+> as an invalid account/partition combination. Please add ohausdoe to EUHPC_B38_106 in Slurm.
+
+Everything on our side is ready and waiting: all three tasks' data phases closed (4,800 demos,
+39 frozen eval sub-levels), and the cluster scripts authored but unverified. First action the
+moment G0 passes is still `sync_up.sh code` + the ~30 min A100 render gate on `boost_qos_dbg`,
+then STOP for user approval before the 8 GPU-h calibration run.
