@@ -1376,3 +1376,45 @@ and there was no launch or sync tooling; now:
 comes from `docs/PINS.md` and the plan, not from a successful run. Noted in the file headers.
 First use after G0 must be a SINGLE cell, not the matrix, and the A100 render gate before any
 sim work is planned there.
+
+### 2026-08-18 05:50 — Analysis module built, and a Monte Carlo of the study's RESOLUTION
+
+`src/cog/analysis/curves.py` written and tested end-to-end against synthetic eval files with
+a known ground-truth logistic: it reads the `eval_<level>_n<N>_<step>.json` schema
+`rollout_eval.py` writes, collapses checkpoints to best-of-last-three (carrying the
+last-checkpoint SR alongside), fits a logistic in log N, and reports N*(50/80/90 %) plus cost
+ratios, printing ">400" rather than extrapolating when a curve never crosses in range.
+
+Then, because a single synthetic draw suggested the fit-based N* was systematically low, I
+ran a proper Monte Carlo (`scripts/dev/nstar_resolution.py`, 400 trials per condition):
+
+| estimator | bias | \|err\| p90 (100 eval eps) | \|err\| p90 (200 eval eps) |
+|---|---|---|---|
+| interpolated crossing | **+3 to +5 %** | 27-30 % | 22-23 % |
+| logistic fit | **0.0 %** | 15-23 % | 12-15 % |
+
+**The fit is unbiased and ~40 % tighter**; the interpolated crossing is biased high because a
+single noisy cell moves it a long way when the grid doubles between cells. So the paper should
+report the FIT as primary N*, with the interpolated crossing as an assumption-free secondary.
+The module now prints both.
+
+**This also corrects a conclusion I had drawn two steps earlier from ONE draw**, where the fit
+looked systematically 13-23 % low. It was noise. Comparing two estimators on a single sample
+is worthless -- the same error class as judging expert SR from a 64-episode run earlier
+tonight. If I am comparing estimators or configurations, it needs many trials or it needs no
+conclusion.
+
+### What the study can and cannot resolve
+
+For a true cost ratio of 2.0x between two levels, at 100 eval episodes per cell:
+**median estimate 2.03x, with 90 % of estimates in [1.57x, 2.65x]**.
+
+So the design comfortably resolves a 2x data-cost difference, and **an effect below about
+1.3x is not distinguishable from no effect at all** at this eval budget. That matters for how
+the results must be worded: if a level's measured ratio comes out near 1.2x, the honest
+statement is "below our resolution", not "generality is free". Doubling to 200 episodes (the
+protocol's headline rerun) cuts N* error p90 from ~17 % to ~13 % -- worth spending on the
+cells that carry a claim.
+
+Worth having run this BEFORE the matrix rather than after: it is a statement about the design,
+and while the eval budget is still a choice it is actionable.

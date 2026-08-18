@@ -122,20 +122,38 @@ purpose-built pusher, or a closed-loop learned expert, would widen both. Any mea
 cost at Task 3's L2 and L3 therefore describes generality over the serviceable range, and
 should not be extrapolated to wider ranges.
 
-## 4. One seed per cell
+## 4. The design resolves ~2x data-cost effects, not ~1.3x ones
+
+Quantified by Monte Carlo before the matrix was run
+(`scripts/dev/nstar_resolution.py`, 400 trials per condition, true logistic slope
+2.2 logit/decade over the 6-cell grid 10..400):
+
+- N* from the **logistic fit** is unbiased with |error| p90 of 15-23 % at 100 eval episodes
+  per cell, improving to 12-15 % at 200. N* from an **interpolated crossing** is biased
+  +3 to +5 % with |error| p90 of 27-30 %, because one noisy cell moves the crossing far when
+  the demo grid doubles between cells. The fit is therefore the primary estimator and the
+  crossing a secondary, assumption-free check.
+- For a **true 2.0x** cost ratio, the median estimate is 2.03x with 90 % of estimates in
+  **[1.57x, 2.65x]**.
+
+Consequently a measured ratio near 1.2-1.3x cannot be distinguished from 1.0x at this
+evaluation budget, and results in that range must be reported as *below the resolution of the
+design* rather than as evidence that generality is free.
+
+## 5. One seed per cell
 
 Every training cell runs a single seed (0), so per-cell success rates carry run-to-run
 variance that is not measured. Mitigations: frozen pre-sampled evaluation sets, nested
 demo subsets so curves are monotone in data rather than resampling noise, and
 best-of-last-three-checkpoints as the primary metric.
 
-## 5. Fixed step budget, not converged training
+## 6. Fixed step budget, not converged training
 
 All cells train for the same 80k steps rather than to convergence, so results describe
 success rate at a fixed compute budget. Large-N cells may be under-trained relative to
 small-N cells.
 
-## 6. Evaluation set sizes differ between levels
+## 7. Evaluation set sizes differ between levels
 
 L0-L2 use a 100-episode standard evaluation (5 batches x 20 environments, 100 distinct
 initial states); L3 uses 200 episodes, because it must cover ten appearance variants,
@@ -144,7 +162,7 @@ therefore carries a tighter confidence interval than the other levels' standard
 evaluation. Cross-level headline comparisons use each level's 200-episode set, which have
 equal spatial coverage (see D18).
 
-## 7. In-distribution evaluation, simulation only
+## 8. In-distribution evaluation, simulation only
 
 Policies are evaluated on held-out initial states drawn from the *same* level they were
 trained on, so the study measures data cost of fitting a distribution, not
