@@ -1418,3 +1418,20 @@ cells that carry a claim.
 
 Worth having run this BEFORE the matrix rather than after: it is a statement about the design,
 and while the eval budget is still a choice it is actionable.
+
+### 2026-08-18 06:45 — Figures module, and the study's first finished paper figure
+
+`src/cog/analysis/figures.py`: one independent function per figure, each skipped with a
+message rather than faked when its inputs are absent. `fig_sr_vs_n` waits on
+`experiments/curves.csv` (needs evals, so it is correctly skipped today); **`fig_gen_sr` is
+ready now from real data** and is written to `paper/figures/fig_gen_sr_vs_level.png`.
+
+It plots generation SR against generality level for all three tasks -- T1 flat at 85-88 %,
+T2 collapsing 54.9 -> 30.6 %, T3 near-flat at 88-98 % -- with the 30 % G3 floor marked. The
+figure makes the point visually that the ordering is not by task difficulty: T3, the hardest
+task to control, generates best, because its design matches Mimic's single rigid reference.
+That is the study's first complete, publishable result, drawn entirely from measurements
+rather than estimates.
+
+Small fix after inspecting the render: T1 and T3 converge at L3 (87.9 vs 88.5) and their value
+labels overlapped, so per-task label offsets now push them apart.
