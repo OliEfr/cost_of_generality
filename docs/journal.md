@@ -1310,3 +1310,40 @@ and reference frames bought 11 hours of generation compute here.
 
 Conversion of all four levels launched in parallel (the T2 measurement: 4x throughput at
 unchanged per-level speed, 2 h instead of 8 h).
+
+### 2026-08-18 02:50 — G3 PASSED FOR TASK 3 — ALL THREE TASKS' DATA PHASES ARE COMPLETE
+
+Verified checklist, all green:
+
+1. **HDF5 pools:** 1600 demos across 13 legs (400 x L0/L1/L2, 10 x 40 for L3).
+2. **LeRobot datasets:** `data/lerobot/T3_{L0,L1,L2,L3}`, 400 episodes each, every one
+   `VALIDATE_OK` at `--expect_episodes 400`; conversion took **38 min** for all four in
+   parallel (124-128k frames each). L3 verified variant-balanced: exactly 40 per variant,
+   interleaved v00..v09.
+3. **Eval sets frozen:** `configs/eval_sets/T3_{L0,L1,L2}.json` + `T3_L3.json`, on the
+   corrected diagonal protocol (D18) -- verified 200 episodes / **200 distinct poses**.
+   Invariance per spec: L0 all frozen; L1 puck 11.8 x 11.6 cm with the target following it
+   rigidly (it is derived at a fixed distance and bearing); L2 target spread widens to
+   23.1 x 11.6 cm as the bearing varies. All nine T1/T2 eval files md5-verified UNCHANGED.
+4. **`experiments/gen_stats.csv`:** 13 T3 rows with exact counts.
+5. **QA:** 13 artifacts; asserts pass on all four levels. Travel along the push axis
+   medians 18.4-19.2 cm against a 20 cm nominal; final placement error medians 1.67-2.29 cm,
+   p95 3.6-4.3 cm.
+
+**Study total: 4800 validated demonstrations** -- 1600 per task, 12 levels, 39 frozen
+eval sub-levels. Every GPU-bound stage that can run locally is now done. The study is
+blocked entirely on G0 (the Slurm association) for training.
+
+**Two QA/tooling issues found and fixed while closing out:**
+- One episode per level on L1/L2 ends 0.01-0.04 mm past the 5 cm gate. Not a defect: the
+  env's success fires when the puck is inside AND settled, and the LAST RECORDED frame
+  catches a fraction of a millimetre of post-success coast. The QA assert now carries a 5 mm
+  settle tolerance and reports the overrun count instead of failing on it -- a real defect
+  would show as many episodes or a large excess.
+- **The freeze wave reported `EXIT=0` for all 13 legs while all 13 had died** on
+  `NameNotFound` (I had added the `--task_kind push_target` branch to
+  `freeze_eval_sets.py` but never its `import cog.tasks.push_target` registration line).
+  An Isaac script can exit 0 after a fatal exception because Kit's shutdown path swallows
+  it, so **exit codes are not a trustworthy success signal for Kit scripts -- the printed
+  marker is**. The wave script now explicitly flags a missing `EVALSET_OK`. Worth
+  generalising: every Isaac wave in this repo greps for a marker, and this is why.

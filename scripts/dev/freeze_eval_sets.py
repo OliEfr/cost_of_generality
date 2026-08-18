@@ -27,6 +27,7 @@ import gymnasium as gym
 
 import cog.tasks.cup_place  # noqa: F401
 import cog.tasks.drawer_stow  # noqa: F401
+import cog.tasks.push_target  # noqa: F401
 from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
 env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=20)

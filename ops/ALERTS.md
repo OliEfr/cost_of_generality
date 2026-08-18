@@ -1,3 +1,6 @@
 - 2026-08-17 21:07  Leonardo cert <11h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-17 22:07  Leonardo cert <10h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-17 23:07  Leonardo cert <9h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-18 00:07  Leonardo cert <8h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-18 01:07  Leonardo cert <7h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-18 02:07  Leonardo cert <6h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
