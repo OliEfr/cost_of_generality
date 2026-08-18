@@ -1347,3 +1347,32 @@ blocked entirely on G0 (the Slurm association) for training.
   it, so **exit codes are not a trustworthy success signal for Kit scripts -- the printed
   marker is**. The wave script now explicitly flags a missing `EVALSET_OK`. Worth
   generalising: every Isaac wave in this repo greps for a marker, and this is why.
+
+### 2026-08-18 04:40 — Cluster-side artifacts authored ahead of G0 (UNVERIFIED)
+
+Everything local is finished and the study is blocked on the Slurm association, so the hour
+went on the artifacts that sit on the critical path the moment G0 clears. `slurm/` was empty
+and there was no launch or sync tooling; now:
+
+- **`slurm/train.sbatch`** — one study cell, `sbatch slurm/train.sbatch T1 L0 25`.
+  `-A euhpc_b38_106` explicit (CLAUDE.md rule 4), 1 GPU / 8 cpus / 64 G / 24 h,
+  auto-`--resume` if a checkpoint exists, `WANDB_MODE=offline` + `HF_HUB_OFFLINE=1` (a
+  single online call would hang the job on a compute node with no internet), and the
+  nested-subset episode list generated as `0..N-1` from the committed shuffle order (D4), so
+  a larger cell is a strict superset of a smaller one.
+- **`slurm/debug_a100_render.sbatch`** — the G5b gate on `boost_qos_dbg`, 30 min. Runs
+  `frames_qa.py` inside the Singularity image and decides PASS/FAIL on **whether the frame
+  artifact exists**, not on the exit code, because Kit can exit 0 after a fatal exception
+  (learned tonight from the freeze wave). Sets `OMNI_KIT_ACCEPT_EULA=YES` and redirects
+  stdin, the two things that stalled the T3 wave.
+- **`scripts/ops/launch_matrix.py`** — submits a task's 24-cell grid as one parallel wave,
+  writes a registry row per cell with its job id, and SKIPS cells already present and not
+  failed, so re-running after a partial submission is idempotent. Dry-run verified: 24
+  cells for T1.
+- **`scripts/ops/sync_up.sh`** — code to `$WORK/cog/repo` (excluding data, third_party,
+  ops), datasets to `$FAST/cog/datasets` per task.
+
+**All four are UNVERIFIED against the real cluster** -- every path, module name and flag
+comes from `docs/PINS.md` and the plan, not from a successful run. Noted in the file headers.
+First use after G0 must be a SINGLE cell, not the matrix, and the A100 render gate before any
+sim work is planned there.
