@@ -1264,3 +1264,49 @@ The 13-leg T3 wave should therefore finish in ~3 h against T2's 13 h 10 min, for
 1600 demos -- a 4.4x saving that comes almost entirely from designing the task around
 Mimic's transform rather than from the task being easier (it is not; its expert took 15 fix
 cycles against T2's 29 but at a far lower success ceiling).
+
+### 2026-08-18 02:06 — T3 DATAGEN WAVE COMPLETE: 13/13 legs, 1600 demos in 2 h 09 min
+
+All thirteen `GEN_T3_*_EXIT=0`, `T3_WAVES_DONE`. Wave ran 23:56 -> 02:05 = **2 h 09 min**
+for the same 1600 demos that took T2 **13 h 10 min** -- a **6.1x** speed-up.
+
+Exact per-leg SR (D16, from the HDF5 pairs):
+
+| level | successes/attempts | gen SR | wall |
+|---|---|---|---|
+| T3 L0 | 400/406 | **98.5 %** | 29 min |
+| T3 L1 | 400/422 | **94.8 %** | 32 min |
+| T3 L2 | 400/421 | **95.0 %** | 31 min |
+| T3 L3 (pooled 10 variants) | 400/452 | **88.5 %** | 3-4 min each |
+
+Per-variant L3 SR ranges 80.0-93.0 % with no monotone trend in radius or height, i.e. the
+residual spread is sampling noise at n=40-50, not a geometry effect. Notably the expert's
+own SR *did* fall monotonically with radius -- which is why the radii were re-spaced into
+0.032-0.045 -- and having done that, GENERATION is now flat across the geometry axis.
+
+### Three tasks, three distinct generation-SR signatures
+
+| level | T1 cup_place | T2 drawer_stow | T3 push_target |
+|---|---|---|---|
+| L0 | 86.4 % | 54.9 % | **98.5 %** |
+| L1 | 85.8 % | 44.2 % | 94.8 % |
+| L2 | 85.1 % | 30.6 % | 95.0 % |
+| L3 | 87.9 % | 32.7 % | 88.5 % |
+| **pattern** | flat | steep collapse | near-flat, high |
+
+This is now a three-point result rather than a two-point contrast, and it says the
+determining factor is not task difficulty but **how many independent pose-dependent
+relations the task requires versus how many a single rigid reference per subtask can
+express**. T2 chains three subtasks over a cabinet pose, a drawer opening and a box pose,
+so every added randomization axis degrades an already-approximating transform. T3 needs
+exactly one relation and encodes it in the reference frame, so its curve barely moves --
+despite being the hardest task to control (15 expert fix cycles, and a scripted expert that
+tops out at 85-94 % where T1's exceeds 98 %).
+
+**The paper claim this supports:** generation SR is a property of the DATA PIPELINE's fit to
+the task, not of the task's intrinsic difficulty, and it is therefore a design variable. The
+practical corollary for anyone budgeting Mimic data: a day spent on subtask decomposition
+and reference frames bought 11 hours of generation compute here.
+
+Conversion of all four levels launched in parallel (the T2 measurement: 4x throughput at
+unchanged per-level speed, 2 h instead of 8 h).

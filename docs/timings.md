@@ -131,3 +131,23 @@ episodes (~680 frames). One level is ~2 h; running the four in parallel costs th
 Episodes are 265-342 steps (13-17 s at 20 Hz) -- roughly half T1's step count and a
 **quarter** of T2's. Combined with a 93 % generation SR versus T2's 31 %, a T3 level of 400
 demos should cost well under an hour, against T2's 2-4 h per level.
+
+### T3 (push-to-target) datagen wave — measured 2026-08-18
+
+Visuomotor Mimic, `--num_envs 8`, `--enable_cameras`, 4090 shared with the foreign eval job.
+
+| Leg | demos | gen SR | wall |
+|---|---|---|---|
+| T3 L0 | 400 | 98.5 % | 29 min |
+| T3 L1 | 400 | 94.8 % | 32 min |
+| T3 L2 | 400 | 95.0 % | 31 min |
+| T3 L3 x10 variants | 10 x 40 | 88.5 % pooled | 3-4 min each |
+| **T3 wave total** | **1600** | — | **2 h 09 min** |
+
+Compare T2: same 1600 demos, **13 h 10 min**. The 6.1x difference is ~2.2x from episode
+length (311-319 steps vs 677-705) and ~2.8x from generation SR (95 % vs 31-55 %).
+
+**Planning rule:** budget ~30 min of 4090 wall time per 400-demo T3 level, against ~2-4 h
+for T2 and ~25 min for T1. A camera-enabled Kit boot is ~3-4 min and is paid once per
+`generate_dataset.py` invocation, so the ten L3 variants spend ~35 min of their ~70 min in
+startup.
