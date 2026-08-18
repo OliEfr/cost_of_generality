@@ -1435,3 +1435,18 @@ rather than estimates.
 
 Small fix after inspecting the render: T1 and T3 converge at L3 (87.9 vs 88.5) and their value
 labels overlapped, so per-task label offsets now push them apart.
+
+### 2026-08-18 07:40 — Cluster tooling complete (all still unverified)
+
+Closed the last two gaps: **`slurm/eval.sbatch`** (evaluates a cell's 40k/60k/80k checkpoints
+on the frozen eval set, skipping results that already exist so a requeue is idempotent, and
+deciding success on the RESULT FILE rather than the exit code because Kit can exit 0 after a
+fatal exception) and **`scripts/ops/sync_down.sh`** (deliberately narrow: eval JSONs freely,
+but only the 80k and last checkpoints per run, never whole checkpoint trees).
+
+The full toolchain now exists end to end: datagen waves, conversion + validation, dataset QA,
+eval-set freezing, rollout eval, curves/N* analysis, figures, Slurm train/eval/render-gate
+templates, launch matrix, sync up/down, watchdog. Everything from G0 onward is authored but
+**unverified against the real cluster** -- the first post-G0 actions should be, in order:
+`sbatch --test-only` (G0 itself), the A100 render gate (G5b), ONE training cell (G5a), and only
+then `launch_matrix.py`.
