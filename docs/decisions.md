@@ -342,3 +342,21 @@ alone works. Everything below follows from designing around that.
 segment (the reference is sampled once at segment start); IK-Rel action scale 0.5 plus one
 waypoint per step means the EEF lags under contact friction; MIN_SEPARATION must exceed a
 full stroke so the puck cannot start inside the target region.
+
+## D19-addendum — 2026-08-18: Task 3 axis ranges set by measurement; design validated
+
+The D19 design survived contact with the simulator; the two range choices in it did not, and
+were replaced with measured ones (evidence in docs/journal.md 2026-08-17/18):
+
+- Bearing range +-40 deg -> **+-25 deg**: expert SR 94-95 % inside 25 deg, 75 % beyond.
+- Puck radii (0.032 ... 0.058) -> **(0.032, 0.035, 0.038, 0.042, 0.045)**: expert SR falls
+  monotonically with radius above ~0.045.
+- Success radius, episode budget and the recording gate also moved: 30 s -> 40 s episodes,
+  and source demos are recorded against a **2 cm** success radius while the level keeps its
+  5 cm gate, because recording at 5 cm produced templates with a median 5.01 cm placement
+  error — a perfect 20/20 expert score that was hiding systematically unusable data.
+
+**Validated:** Mimic accepts a one-element `subtask_configs`, so the single-subtask design is
+legal; the synthetic `push_frame` reproduces strokes at new bearings and positions; and the
+resulting generation SR (88.5-98.5 %) is the highest of the three tasks. Every load-bearing
+assumption in D19 held.
