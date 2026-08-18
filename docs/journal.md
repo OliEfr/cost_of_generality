@@ -1511,3 +1511,52 @@ project documentation / agent instructions for future agents."
 Rule 10 points at the doc explicitly, and the doc's opening line is "every rule here was paid
 for", with dates back to the journal entries holding the traces -- so a future agent can check
 the evidence rather than take it on faith.
+
+### 2026-08-18 17:20 — Cluster-side blocker is now TWO things, not one (G0 probe degraded)
+
+Routine three-hourly access check turned up two new cluster facts. Both matter for planning,
+so recording them even though no pipeline action was taken.
+
+**1. `sacctmgr` is currently unusable — the G0 probe is degraded, not clean.**
+
+```
+sacctmgr: error: slurm_persist_conn_open_without_init: failed to open persistent
+  connection to host:slurm-slurmdbd.userservices.svc.kube.local:6819: Connection refused
+```
+
+Reproduced on an immediate retry. slurmdbd (the Slurm accounting daemon, which is where
+associations live) is refusing connections. `sbatch --test-only -A euhpc_b38_106` still fails
+with the same "Invalid account or account/partition combination", and `sinfo`/`squeue`/`saldo`
+all work — so slurmctld is healthy and this is specific to slurmdbd.
+
+Consequence for the gate: **today's probe cannot distinguish "the association is still
+missing" from "the association exists but slurmctld can't load it while slurmdbd is down."**
+Previous checks were clean negatives; this one is not. Do not read a failure during a slurmdbd
+outage as evidence about the PI's UserDB action. Re-probe once `sacctmgr` answers again.
+
+**2. The whole `boost_usr_prod` partition is drained — a live GPU-detection incident.**
+
+```
+sinfo -p boost_usr_prod -o "%T %D %E"
+drained$    1  gres/gpu count reported lower than configured (0 < 4)
+draining  173  gres/gpu count reported lower than configured (0 < 4)
+drained   348  gres/gpu count reported lower than configured (0 < 4)
+```
+
+522 of 522 visible nodes, i.e. **zero schedulable nodes**; every node reports 0 GPUs against
+4 configured. 739 jobs are still listed as RUNNING, which is consistent rather than
+contradictory: `draining` nodes keep their current jobs and accept no new ones (739 running on
+~174 draining nodes is ~4 per node = 1-GPU jobs on 4-GPU nodes). Nothing new can start.
+
+So even the moment G0 passes, **no job will start until this clears** — the association and
+the drain are independent blockers. Neither is actionable from here; both are CINECA-side.
+The reservations list shows only long-standing `cin_sanity`/MAINT entries (nothing that
+explains a cluster-wide GPU drain), so this looks like an unplanned incident, not a scheduled
+window.
+
+Planning impact: none on the critical path yet, because the association is still the outer
+blocker and all local data phases are closed. But the drain is the thing to check *first*
+after G0 passes — submitting the A100 render gate into a fully drained partition would just
+queue indefinitely and look like a broken sbatch script on its unverified first use, which is
+exactly the confusion to avoid. Check `sinfo -p boost_usr_prod -t idle,mix` before believing
+any queue behaviour.
