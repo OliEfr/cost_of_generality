@@ -1959,3 +1959,45 @@ had already installed, which is an import-time `.so` failure on the compute node
 does not move torch: 2.7.0+cu128 satisfies its `torch<2.11.0,>=2.2.1`, and `torchcodec`
 0.10.0 -- the one dep that could have dragged torch around -- declares **no** torch
 requirement at all (checked in its METADATA before relying on it).
+
+### 2026-08-19 17:50 — Cluster eval (G5b): the container is mandatory and cannot be built on Leonardo
+
+The user approved attempting the optional cluster-eval path after step 4. Two measurements
+settle *how* it has to be done, and both were cheap:
+
+**1. Leonardo is RHEL 8.8 with glibc 2.28.** Isaac Sim 5.1 needs glibc >= 2.35 (Ubuntu
+22.04). So the cheap route I had hoped for -- repeat the local recipe, `pip install
+isaacsim` into a second conda env on `$WORK`, no container at all -- is **impossible**, not
+merely awkward. The plan's original instinct (Singularity) was right. Recording this because
+"just pip install it like we did locally" is the obvious idea and it would have burned an
+hour to find out.
+
+**2. `singularity build --fakeroot` is not available to this account:**
+
+```
+FATAL: could not use fakeroot: no valid mapping entry found for ohausdoe (133040)
+```
+
+`allow setuid = yes` and the fakeroot CNI config exist in `/etc/singularity/singularity.conf`,
+but there is no subuid/subgid mapping for our user, which is a site decision we cannot change.
+Consequence: **no def-file build (`%post`) can run on the cluster at all.** Any image has to
+arrive already built.
+
+**What still works, and needs neither root nor credentials on the cluster:** unprivileged
+`singularity build` from a *docker archive* is a pure format conversion, no `%post`, so it
+needs no fakeroot. And the login node reaches both `nvcr.io` and `registry-1.docker.io`
+(HTTP 401 on `/v2/` = registry alive, unauthenticated probe -- not a block). Meanwhile this
+workstation has Docker 28.3.0, the user is in the `docker` group, and `~/.docker/config.json`
+**already holds nvcr.io credentials**.
+
+So the chosen route is: build the image **locally** with Docker, `docker save` it, rsync the
+archive up, and `singularity build isaaclab.sif docker-archive://...` on the login node. This
+keeps the NGC credential on the workstation -- it never travels to a shared cluster, which
+the alternative (`SINGULARITY_DOCKER_PASSWORD` on the login node) would have required. Cost
+is ~20 GB of local disk and one ~20 GB upload, 0 GPU-h, and no dependence on a site policy we
+cannot influence.
+
+**Sequencing decision:** this comes *after* the 80k calibration run is submitted. Training
+needs no Isaac whatsoever, the local-4090 eval fallback is already accepted, and G5b is a
+gate that may still fail on its own merits (Isaac Sim is officially unsupported on A100 --
+no RT cores). Building a 20 GB image is not allowed to delay the critical path.
