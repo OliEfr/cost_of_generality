@@ -50,6 +50,32 @@ echo "=== frames_qa inside the container ==="
 # tears itself down (`Recursive unloadAllPlugins()`) and exits **0**, before frames_qa.py's
 # module-level os.makedirs ever runs. That looks identical to "the A100 cannot render" and is not.
 # Fix needs no image rebuild: bind the host ICD directory and point the loader at the NVIDIA ICD.
+# READ-ONLY FILESYSTEM: Kit writes into its OWN install tree, which lives inside the squashfs and
+# is therefore read-only. Its first log lines give it away:
+#   Loading user config located at: '<env>/site-packages/isaacsim/kit/data/Kit/Isaac-Sim/5.1/user.config.json'
+#   [carb] Logging to file: '<env>/site-packages/isaacsim/kit/logs/Kit/Isaac-Sim/5.1/kit_*.log'
+# Locally that tree is a writable conda env, so nobody notices. In a .sif every one of those writes
+# fails, and Kit unwinds (`Recursive unloadAllPlugins()`) and exits **0** before AppLauncher returns
+# -- which is why frames_qa.py's module-level os.makedirs never ran.
+#
+# Fix: bind writable host directories over the three dirs Kit writes (logs, data, cache). NOT
+# --writable-tmpfs: its overlay is capped by `sessiondir max size` (tens of MB) and Kit's shader
+# cache is far larger. $WORK has 3 TB.
+# kit/data is SEEDED from the image first -- binding over it would otherwise hide user.config.json
+# and Kit's extension registry.
+ENV_IN=/home/admin_07/miniconda3/envs/cog_isaac/lib/python3.11/site-packages/isaacsim
+KIT_RW="${COG}/kit_rw"
+if [ ! -d "${KIT_RW}/data" ]; then
+  echo "seeding ${KIT_RW} from the image (first run only)"
+  mkdir -p "${KIT_RW}/logs" "${KIT_RW}/data" "${KIT_RW}/cache"
+  singularity exec "${SIF}" bash -lc "cp -a ${ENV_IN}/kit/data/. /seed_data/ 2>/dev/null || true"     --bind "${KIT_RW}/data:/seed_data" < /dev/null ||   singularity exec -B "${KIT_RW}/data:/seed_data" "${SIF}"     bash -lc "cp -a ${ENV_IN}/kit/data/. /seed_data/ 2>/dev/null || true" < /dev/null
+  singularity exec -B "${KIT_RW}/cache:/seed_cache" "${SIF}"     bash -lc "cp -a ${ENV_IN}/kit/cache/. /seed_cache/ 2>/dev/null || true" < /dev/null
+  echo "seeded: data=$(find ${KIT_RW}/data -type f 2>/dev/null | wc -l) files, cache=$(find ${KIT_RW}/cache -type f 2>/dev/null | wc -l) files"
+fi
+KIT_BINDS=(-B "${KIT_RW}/logs:${ENV_IN}/kit/logs"
+           -B "${KIT_RW}/data:${ENV_IN}/kit/data"
+           -B "${KIT_RW}/cache:${ENV_IN}/kit/cache")
+
 VK_ICD_HOST=/usr/share/vulkan/icd.d
 VK_ICD_JSON="${VK_ICD_HOST}/nvidia_icd.x86_64.json"
 echo "host ICD: $(ls ${VK_ICD_JSON} 2>&1)"
@@ -68,6 +94,7 @@ timeout 1500 srun singularity exec --nv \
   -B "${COG}:${COG}" -B /leonardo_work:/leonardo_work \
   -B "${QA_OUT}:${REPO_IN}/ops" \
   -B "${VK_ICD_HOST}:${VK_ICD_HOST}" \
+  "${KIT_BINDS[@]}" \
   --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES \
   --env VK_ICD_FILENAMES="${VK_ICD_JSON}" \
   "${SIF}" bash -lc "cd ${REPO_IN} && python scripts/dev/frames_qa.py --level L0 --resets 2 --headless --enable_cameras" \
