@@ -1742,6 +1742,11 @@ the remote shell expand it. Had they been login-shell-only, the rsync would have
 to a relative directory named by an empty string instead of failing loudly. Checked
 before first use rather than after.
 
+**-> Half of that inference was WRONG, corrected 15 min later. The ssh-expansion claim
+holds, but rsync never passes its destination path through a shell, so `sync_up.sh` was
+in fact broken and failed on first use. Verifying ssh told me nothing about rsync. See
+the 2026-08-19 15:45 entry before trusting this paragraph.**
+
 Note `$WORK` now points at EUHPC_B38_106; before the association it did not resolve to
 this project's area. Anything cached from an earlier probe of `$WORK` is stale.
 
