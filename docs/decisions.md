@@ -607,7 +607,13 @@ just this one.
 from a git worktree pushed the WRONG (old) config to the cluster while the local branch showed the
 new one. It now honours `COG_REPO`, and prints the source repo it is using.
 
-**VERIFY:** (a) first checkpoint's `train_config.json` shows
-`use_separate_rgb_encoder_per_camera: true` -- pending, ~20k steps in; (b) re-measure steps/s and
-GPU-h per cell on the new architecture and update `docs/timings.md` + `experiments/budget.md`;
-(c) re-check D24 (last-vs-best checkpoint) and L0 saturation on one new-architecture cell.
+**VERIFY:** (a) **DONE 2026-08-19** -- first checkpoint (`t1_L0_n400_s0/checkpoints/020000`) reports
+`sep_enc=True group_norm=True horizon=16 n_act=8 batch=64 steps=80000`, i.e. exactly the frozen
+config; no checkpoint anywhere reports `False`. Verified from the saved `train_config.json`
+artifact, not from the config we shipped and not from an exit code (D6).
+(b) **DONE 2026-08-19** -- 9.45 steps/s on the new architecture vs 11.2 shared (-16%), 2.35 h/cell,
+matrix re-forecast ~56 GPU-h; see `docs/timings.md`. Read live from the `.wandb` datastore at step
+7,200 rather than waiting for a checkpoint. Note this exceeds the +4.2% parameter delta, because the
+second encoder's fwd/bwd is real compute even though the step is decode-gated.
+(c) still open -- re-check D24 (last-vs-best checkpoint) and L0 saturation on one new-architecture
+cell. Costs no GPU-h: checkpoints at 20/40/60/80k are saved anyway, so this is local eval time only.
