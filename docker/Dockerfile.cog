@@ -54,9 +54,24 @@ RUN ln -sf /isaac-sim ${ISAACLAB_PATH}/_isaac_sim \
 
 # LeRobot goes into KIT's python (/isaac-sim/python.sh), not a system python -- eval imports Isaac
 # and the policy in ONE interpreter, which is the whole reason LeRobot is pinned to a
-# py3.11-compatible release (G1b / PINS). numpy is held at 1.26.4 because numpy 2.x segfaults Kit
-# via the pinocchio ABI (D3).
-RUN /isaac-sim/python.sh -m pip install --no-cache-dir "lerobot==0.4.4" "numpy==1.26.4"
+# py3.11-compatible release (G1b / PINS).
+#
+# Two things measured in the base image, both of which simplify this step:
+#   * it already ships **torch 2.7.0+cu128 / torchvision 0.22.0+cu128** -- byte-for-byte our
+#     training pins (D22), so cluster-eval/train parity is automatic and torch is NOT reinstalled.
+#   * it already ships **numpy 1.26.0**, i.e. numpy 1.x, so D3's "numpy 2.x segfaults Kit" hazard
+#     is already avoided. Forcing `numpy==1.26.4` here would perturb isaacsim's own pinned tree
+#     for no benefit, and it is what made the resolver fail: pip reported
+#     "Cannot install imageio[ffmpeg]==2.37.0 and lerobot==0.4.4" even though imageio 2.37.0
+#     satisfies lerobot's >=2.34,<3 -- a resolver artifact of an exactly-pinned EXTRA variant
+#     being re-resolved. Constraining numpy loosely (<2) and restating the installed
+#     imageio[ffmpeg] pin keeps the resolution stable.
+RUN /isaac-sim/python.sh -m pip install --no-cache-dir \
+        "lerobot==0.4.4" "imageio[ffmpeg]==2.37.0" "numpy<2" \
+ && /isaac-sim/python.sh -c "import numpy, torch; \
+        assert numpy.__version__.startswith('1.'), numpy.__version__; \
+        assert torch.__version__.startswith('2.7.0'), torch.__version__; \
+        print('numpy', numpy.__version__, '| torch', torch.__version__)"
 
 # Copy only what eval needs. NOT the whole repo: third_party/IsaacLab is already installed above
 # and would otherwise be duplicated, and data/ is 121 GB (see .dockerignore).
