@@ -55,25 +55,45 @@ print(",".join(str(i) for i in range(int(sys.argv[1]))))
 PY
 )"
 
-RESUME=""
-if [ -d "${OUT}/checkpoints/last" ]; then
-  echo "[train] existing checkpoint found -> resuming"
-  RESUME="--resume=true"
+# Four bugs fixed here on 2026-08-19 by reading the installed 0.4.4 source (see D22 and
+# the journal entry of the same date). All four were silent or late-failing:
+#   1. `python -m lerobot.scripts.train` does NOT exist at 0.4.4 -- the module is
+#      lerobot.scripts.lerobot_train (console script `lerobot-train`).
+#   2. `mkdir -p "${OUT}"` guaranteed a FileExistsError: configs/train.py:119 raises when
+#      output_dir is an existing dir and --resume is not set. Only the PARENT may be made.
+#   3. `--resume=true` alone raises "A config_path is expected when resuming a run"
+#      (configs/train.py:89-95). Resume takes the config FROM the checkpoint, so the resume
+#      invocation must be config_path-only -- other CLI flags are ignored there anyway.
+#   4. `--optimizer.lr` is SILENTLY overwritten: with use_policy_training_preset=true
+#      (the default), validate() replaces cfg.optimizer with policy.get_optimizer_preset()
+#      (configs/train.py:134-136), which reads policy.optimizer_lr. So the real LR knob is
+#      --policy.optimizer_lr. Passing --optimizer.lr would have trained every G5a-scaled
+#      cell at the 1e-4 default with no warning at all.
+# Plus: WandBConfig.mode defaults to None and rl/wandb_utils.py:109 then passes
+# mode="online" EXPLICITLY to wandb.init, overriding the WANDB_MODE=offline env var set
+# above. On an internet-less compute node that hangs. --wandb.mode=offline is mandatory.
+CKPT_CFG="${OUT}/checkpoints/last/pretrained_model/train_config.json"
+if [ -f "${CKPT_CFG}" ]; then
+  echo "[train] existing checkpoint found -> resuming ${RUN_ID} from ${CKPT_CFG}"
+  srun python -m lerobot.scripts.lerobot_train \
+    --config_path="${CKPT_CFG}" \
+    --resume=true
+else
+  mkdir -p "$(dirname "${OUT}")"
+  echo "[train] run=${RUN_ID} dataset=${DS} episodes=0..$((NDEMOS-1)) batch=${COG_DP_BATCH} lr=${COG_DP_LR}"
+  srun python -m lerobot.scripts.lerobot_train \
+    --dataset.repo_id="local/${DS_NAME}" \
+    --dataset.root="${DS}" \
+    --dataset.episodes="[${EPISODES}]" \
+    --dataset.video_backend="${COG_VIDEO_BACKEND:-pyav}" \
+    --output_dir="${OUT}" \
+    --job_name="${RUN_ID}" \
+    --batch_size="${COG_DP_BATCH}" \
+    --policy.optimizer_lr="${COG_DP_LR}" \
+    --wandb.enable=true \
+    --wandb.mode=offline \
+    --wandb.project=cost_of_generality \
+    --wandb.disable_artifact=true \
+    ${COG_DP_FLAGS}
 fi
-
-mkdir -p "${OUT}"
-echo "[train] run=${RUN_ID} dataset=${DS} episodes=0..$((NDEMOS-1)) batch=${COG_DP_BATCH} lr=${COG_DP_LR}"
-srun python -m lerobot.scripts.train \
-  --dataset.repo_id="local/${DS_NAME}" \
-  --dataset.root="${DS}" \
-  --dataset.episodes="[${EPISODES}]" \
-  --output_dir="${OUT}" \
-  --job_name="${RUN_ID}" \
-  --batch_size="${COG_DP_BATCH}" \
-  --optimizer.lr="${COG_DP_LR}" \
-  --wandb.enable=true \
-  --wandb.project=cost_of_generality \
-  --wandb.disable_artifact=true \
-  ${RESUME} \
-  ${COG_DP_FLAGS}
 echo "[train] DONE ${RUN_ID}"

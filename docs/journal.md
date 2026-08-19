@@ -1852,3 +1852,110 @@ no internet, so a login-node install is the only route for pip/conda; if cgroup 
 kill a large install, the fallback is to download wheels on the login node and install
 from cache inside an `srun` step. Not yet attempted -- recorded so the attempt is planned
 rather than improvised.
+
+---
+
+## 2026-08-19 17:35 — Cluster bring-up: queue latency measured (the earlier warning was wrong), A100 node facts, four real bugs in `train.sbatch`
+
+User approved (2026-08-19, after the cycle-11 report) steps 1-4 of the proposed sequence:
+cluster training env, dataset sync, batch/LR utilization smoke, 80k calibration run -- plus
+a go-ahead to attempt the optional cluster-eval path afterwards. Cert renewed by the user
+from their laptop, now valid until **2026-08-21 17:24** (47h59m at 17:24).
+
+### FINDING (retraction): the queue-depth risk I reported does not exist
+
+In the 15:30 entry I flagged `boost_usr_prod`'s 1,575 pending / 2,050 running jobs and the
+`sbatch --test-only` estimate of a start at `2026-08-26T05:17` as "the number most at risk"
+for P6. That estimate is **wrong by five orders of magnitude**, and I could only find that
+out by submitting something.
+
+A 5-minute `nvidia-smi` probe on `boost_qos_dbg` (job 52869585, ~0.02 GPU-h):
+
+```
+submitted 2026-08-19T17:30:12
+started   2026-08-19T17:30:16     <- 4 seconds
+ended     2026-08-19T17:30:18     Elapsed 00:00:02, State COMPLETED
+AllocTRES billing=8,cpu=8,gres/gpu=1,mem=64G
+```
+
+**4 seconds, not 6 days.** `--test-only` reports the reservation-only worst case: it answers
+"when could this start if nothing ahead of it ever finished early and no backfill happened",
+which on a large machine with thousands of short jobs bears no relation to reality. The
+lesson generalises beyond Slurm: *a scheduler's own estimate of itself is not a measurement.*
+The cheapest possible real job (2 s of one GPU) was worth more than any amount of reasoning
+about queue depth. **P6's "training wave completes in ~1 day" assumption stands; there is no
+wall-clock risk to plan around.** I over-warned the user, on a number the machine handed me.
+
+### A100 node facts (lrdn2752, from the same probe)
+
+| Property | Value |
+|---|---|
+| GPU | NVIDIA A100-SXM-64GB, 65536 MiB |
+| Compute capability | 8.0 (sm_80) |
+| Driver | 535.274.02 |
+| Driver's CUDA | 12.2 |
+
+**Implication for the torch pin.** We install torch 2.7.0+**cu128** to match the local eval
+env version-for-version. cu128 > the driver's 12.2, which is fine *only* by CUDA minor
+version compatibility (any 12.x runtime on a >=525 driver), and sm_80 is in the cu128 binary
+so no PTX JIT is needed. This is a genuine assumption, so it is checked empirically in the
+G5a smoke and not before: `torch.cuda.is_available()` plus a real GPU matmul. **Fallback if
+it fails: torch 2.7.0+cu126.** That fallback costs nothing scientifically -- the checkpoint
+format is a build-independent safetensors dir, so a cu126-trained checkpoint still loads in
+the local cu128 eval env. Recorded as D22.
+
+### Four real bugs in `slurm/train.sbatch`, all found by reading the installed 0.4.4 source
+
+The file carried an explicit "UNVERIFIED until G0 clears" banner, and it earned it. None of
+these would have been caught by a syntax check; two fail late, and two fail *silently*.
+
+1. **`python -m lerobot.scripts.train` does not exist at 0.4.4.** The module is
+   `lerobot.scripts.lerobot_train` (console script `lerobot-train`). Verified against the
+   installed tree: `scripts/` contains only `lerobot_train.py` and
+   `lerobot_train_tokenizer.py`. Failure mode: instant `No module named`, 8 h of queue
+   position thrown away per cell.
+2. **`mkdir -p "${OUT}"` guaranteed a crash.** `configs/train.py:119` raises
+   `FileExistsError` when `output_dir` is an existing directory and `--resume` is unset. The
+   script created the very directory that makes LeRobot refuse to start. Now only the parent
+   is created.
+3. **`--resume=true` alone cannot work.** `configs/train.py:89-95` raises "A config_path is
+   expected when resuming a run" -- resume reads the whole config *from the checkpoint*, so
+   the resume invocation must be `--config_path=<ckpt>/pretrained_model/train_config.json
+   --resume=true` and nothing else. This is exactly the path a 24 h-walltime requeue takes,
+   i.e. the bug would have surfaced only after a 24 h job hit its limit, and then again on
+   every requeue: **the G5a resume test would have failed for a reason unrelated to resume.**
+4. **`--optimizer.lr` is silently ignored.** With `use_policy_training_preset=true` (the
+   default) `configs/train.py:134-136` *replaces* `cfg.optimizer` wholesale with
+   `policy.get_optimizer_preset()`, which reads `policy.optimizer_lr` (default 1e-4). So the
+   real knob is **`--policy.optimizer_lr`**. Worst bug of the four by a wide margin: after
+   G5a raises the batch size, every one of the 24 cells would have trained at lr=1e-4
+   instead of the sqrt-scaled value, with no error, no warning, and a plausible-looking loss
+   curve. The scientific claim would have been quietly about the wrong hyperparameter.
+
+Plus one more, of the same silent family: `WandBConfig.mode` defaults to `None`, and
+`rl/wandb_utils.py:109` then passes `mode="online"` **explicitly** to `wandb.init()`, which
+overrides the `WANDB_MODE=offline` env var the script exports. On an internet-less compute
+node that blocks until it times out. `--wandb.mode=offline` is now passed on the CLI. The
+env var was never sufficient; it only looked sufficient.
+
+All five fixed, with the source line numbers in the comment block, and `bash -n` clean.
+
+### Bug in my own new `build_cluster_env.sh`, caught in 8 seconds by the watcher
+
+First launch died immediately: `ERROR: File or directory already exists:
+.../cog/miniforge3`. The directory-tree step in the 15:30 entry had pre-created an *empty*
+`$WORK/cog/miniforge3`, and my guard tested for `${MF}/bin/conda` (absent) so it proceeded to
+install into a prefix the installer refuses to touch. Fixed with `-b -f -p` (`-f` = do not
+error if the prefix exists) rather than by deleting anything. Worth noting that the event
+watcher earned its keep at the 60-second mark on a job I would otherwise have assumed was
+still downloading: **a fast failure looks exactly like a slow start unless something checks.**
+
+### Install order in the cluster env is load-bearing
+
+torch is installed from the cu128 index **first, with its dependencies**, and lerobot
+second. The reverse order (or `--force-reinstall --no-deps` for torch afterwards, which is
+what I first wrote) leaves whatever `nvidia-*-cu12` minor versions the default-PyPI torch
+had already installed, which is an import-time `.so` failure on the compute node. lerobot
+does not move torch: 2.7.0+cu128 satisfies its `torch<2.11.0,>=2.2.1`, and `torchcodec`
+0.10.0 -- the one dep that could have dragged torch around -- declares **no** torch
+requirement at all (checked in its METADATA before relying on it).
