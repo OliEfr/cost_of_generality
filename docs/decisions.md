@@ -521,3 +521,35 @@ the comparison is requested explicitly as `... T1 L0 25 040000 060000 080000`.
 every cell except the comparison one, which is honest rather than untidy.
 
 **Budget effect:** T1 evals ~25 -> ~9 GPU-h; all three tasks ~75 -> ~27 GPU-h.
+
+## D25 — 2026-08-19: T1 evaluation runs LOCALLY on the 4090; cluster eval deferred pending CINECA
+
+**Decision.** Evaluate Task 1 on the local RTX 4090 using `scripts/ops/run_local_eval.sh`. Cluster
+eval is deferred, not abandoned: the image works and is kept, but Isaac Sim cannot get a GPU inside
+Singularity on Leonardo and the remaining question is a site one.
+
+**Why this is now clearly right rather than a concession.** When the plan chose "local eval" as the
+*fallback* it was worth ~2-3 days of 4090 wall-clock, which justified building a container to escape
+it. Two things changed:
+- **D24** cut evaluation from 72 checkpoint-evals to **24+2**.
+- The local path is **measured**: ~14 min per checkpoint sharing the GPU with a foreign job, so all of
+  T1 is **~5-6 h of local wall-clock and 0 GPU-h of grant**.
+So the fallback is now roughly a third of the cost that motivated the container, while the container
+still needs an unresolved Vulkan issue solved.
+
+**What blocks the cluster path** (full evidence in the journal, 2026-08-19 22:15): Kit boots inside
+`cog-env-5.1.0.sif`, IsaacLab parses our env cfg and the scene builds -- but `vkCreateInstance` fails
+with `ERROR_INCOMPATIBLE_DRIVER`, so Kit renders on the CPU (274 s for a ~20 s scene). Five
+hypotheses were disproved by measurement, the host is demonstrably Vulkan-capable, and Kit's bundled
+loader ignores the Vulkan loader environment variables.
+
+**Consequence for the study.** None for validity: eval placement does not change what is measured.
+The frozen eval sets, protocol and metric are identical in both places, and a checkpoint is a
+build-independent safetensors directory. It changes only wall-clock and where the artifacts land.
+
+**Revisit if** Tasks 2-3 make eval throughput binding (48 more cells => ~12 h local), or if CINECA
+confirms Vulkan works in Singularity there. Restart from the *reference-warning diff* and the ticket,
+not from another round of container guesses.
+
+**VERIFY:** none outstanding. The local path is proven end-to-end -- three checkpoints evaluated,
+SR 0.97/0.95/0.98, D24 discharged.

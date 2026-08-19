@@ -2845,3 +2845,121 @@ Two caveats kept on the record rather than buried:
    thing we actually cared about -- a large late-training loss -- and found none.
 
 Registry updated: `sr_40k=0.97 sr_60k=0.95 sr_80k=0.98 sr_best=0.98`, status `done`.
+
+### 2026-08-19 22:15 — G5b, the full Vulkan investigation: one package fixed 99 of 101 errors, five hypotheses disproved, and Kit now runs but on the CPU
+
+Recorded in one entry because an audit found that everything after the 19:50 "stopped at the bound"
+note was missing from this journal -- roughly two hours of findings, including the most useful one.
+The user asked me to reopen this ("easy fixes?", "you are not the first one attempting this"), which
+was the right push: prior art and Kit's own log turned a vague "needs more work" into named causes.
+
+#### The breakthrough that made everything else visible: writable binds
+
+Kit writes its log, `user.config.json`, crash dumps and shader cache **into its own install tree**,
+which sits inside the read-only squashfs. Locally that tree is a writable conda env, so nobody ever
+notices. Binding writable host dirs over `<env>/site-packages/isaacsim/kit/{logs,data,cache}`
+(seeding `data` from the image first, or the bind hides `user.config.json`) fixed it -- Kit promptly
+wrote **310 shader-cache files** and, crucially, **its own log**. Every finding below came out of
+that log; before it, all we had was stdout, which wandb-style redirection and Kit's exit-0 behaviour
+render nearly useless. `--writable-tmpfs` was rejected deliberately: its overlay is capped by
+`sessiondir max size` (tens of MB) and the shader cache is far larger.
+
+#### One missing package explained 99 of 101 errors
+
+From Kit's log, all missing shared objects:
+
+| count | library | nature |
+|---|---|---|
+| 18 | **`libgomp.so.1`** | genuinely missing system lib (`libgomp1`) |
+| 73 | `libomni.usd.so` | cascade from the above |
+| 6 | `libusd_hd.so` | cascade |
+| 1 + 1 | `librtx.hydra.so`, `libosdCPU.so.3.6.0` | cascade |
+
+`ubuntu:24.04` does not ship `libgomp1`; NVIDIA's isaac-sim image does (checked). Rather than rebuild
+24 GB to test, the library was staged on `$WORK` and prepended to `LD_LIBRARY_PATH` -- copied from
+this workstation's Ubuntu 24.04, i.e. the same distro the image is built from, so ABI-exact. Result:
+**libgomp errors 0**, and for the first time our own code executed inside the container
+(`frames_qa.py`'s module-level `os.makedirs` created its output dir). Kit went from dying at 43 s to
+running 5+ minutes, booting IsaacLab, parsing `FrankaCupPlaceVisuomotorEnvCfg_L0` and **building the
+scene**. *(This belongs in the Dockerfile, not a bind, before any production use.)*
+
+#### Where it stands: Kit runs, but on the CPU
+
+```
+[Error] carb.graphics-vulkan: VkResult: ERROR_INCOMPATIBLE_DRIVER
+[Error] vkCreateInstance failed. Vulkan 1.1 is not supported, or your driver requires an update.
+[Error] omni.gpu_foundation_factory: Failed to create any GPU devices, including compatibility mode
+[Error] omni.kit.renderer: GPU Foundation is not initialized!
+[Error] omni.physx: CUDA libs are present, but no suitable CUDA GPU was found!
+[INFO]: Time taken for scene creation : 274.145037 seconds
+```
+
+274 s for a scene that takes ~20 s on a GPU is the signature of the CPU fallback. Note torch uses the
+same A100 perfectly (D22), so this is Kit's Vulkan path alone.
+
+#### Five hypotheses, each disproved by measurement
+
+| # | hypothesis | test | outcome |
+|---|---|---|---|
+| 1 | Vulkan ICD absent in container | host has `nvidia_icd.x86_64.json`; container's `/usr/share/vulkan/icd.d` did not exist | **real** -- bound it; error unchanged |
+| 2 | driver 535.255+ reports its Vulkan version wrongly (NVIDIA's documented workaround) | `--kit_args=--/rtx/verifyDriverVersion/enabled=false` | no effect -- that gates Kit's *own* check, not `vkCreateInstance` |
+| 3 | ICD's bare soname stops resolving because Kit rewrites `LD_LIBRARY_PATH` | rewrote `library_path` to `/.singularity.d/libs/libGLX_nvidia.so.0` | no effect |
+| 4 | the loader never read our ICD at all | put the absolute-path ICD **in** `/usr/share/vulkan/icd.d` via bind | no effect |
+| 5 | `/dev/nvidia-modeset` not bound (Vulkan needs it, CUDA does not) | listed `/dev/nvidia*` inside the container | **already present** -- `--nv` binds all of them |
+
+Facts established along the way, each worth keeping:
+- **The ICD is valid**: `{"library_path": "libGLX_nvidia.so.0", "api_version": "1.3.242"}`, and that
+  library **is** injected (46 libs in `/.singularity.d/libs`) and **dlopens successfully** inside the
+  container.
+- **Kit uses its OWN bundled Vulkan loader** (`omni.gpu_foundation-*/bin/deps/libvulkan.so.1`), and
+  that loader **ignores `VK_LOADER_DEBUG` entirely** -- `=all` produced **zero** LOADER lines even
+  though the container demonstrably receives our `--env` values. If it ignores that, it very likely
+  ignores `VK_ICD_FILENAMES`/`VK_DRIVER_FILES` too, which would retroactively explain why
+  hypotheses 3 and 4 changed nothing: the loader was never reading the file we were editing.
+- **The host is fully Vulkan-capable**: `nvidia_drm` and `nvidia_modeset` loaded, `/dev/nvidia-modeset`
+  and `/dev/nvidia-caps` present, `libGLX_nvidia` / `libnvidia-glcore` / `libnvidia-glvkspirv` all
+  installed, Display Mode Disabled (normal for a datacenter GPU), Compute Mode Default.
+- **`--nvccli` is not an option here**: Apptainer documents it plus
+  `NVIDIA_DRIVER_CAPABILITIES=graphics` as the way to get Vulkan/GL, but `nvidia-container-cli` is
+  not installed on Leonardo. Leonardo's `/etc/singularity/nvliblist.conf` *does* already list the
+  graphics libs, so plain `--nv` injects them -- the libraries were never the problem.
+
+Also fixed while here: `--kit_args` must use the **`=` form** (`--kit_args=--/rtx/...`); argparse
+rejects a space-separated value that begins with `--` and exits 2, so the flag never reaches Kit.
+IsaacLab's own docs show the space-separated form; it does not work.
+
+#### Conclusion and recommendation
+
+**A100 rendering remains formally unanswered** -- five attempts, none of which reached a renderer, so
+nothing here speaks to upstream issues #3421/#1519. Recording a guess would be worse than recording
+nothing.
+
+This is now a **site question**: does Vulkan work inside Singularity on Leonardo at all? CINECA can
+answer that in one reply, and we have exactly what a ticket needs -- a minimal reproduction, the
+exact error, and five documented dead ends. That is a better next step than a sixth guess.
+
+**Recommendation: evaluate T1 locally** (D25). D24 already cut the workload to 24+2 evals, the local
+path is proven end-to-end today, and it costs zero grant hours.
+
+Artifacts kept: `cog-env-5.1.0.sif` (9.8 GB) and `isaac-sim-5.1.0.sif` (7.1 GB) on
+`$WORK/cog/containers`; `slurm/{build_sif,debug_a100_cogenv,probe_vulkan,probe_icd,probe_nvlibs}.sbatch`;
+`docker/Dockerfile.cog_env`; each carrying its findings in comments.
+
+### 2026-08-19 22:15 — Local eval path is production-ready
+
+`scripts/ops/run_local_eval.sh` runs a cell's checkpoints on the 4090 and **waits for GPU headroom
+before starting** (default >= 14 GB free, polled every 2 min). The wait exists because the frozen
+protocol fixes `num_envs=20 x 5 batches` and `num_envs` comes from
+`configs/eval_sets/protocol.json`, **not** a CLI flag -- so our GPU footprint is not adjustable
+without changing which seeds define the benchmark (rule 8). Shrinking was therefore not an option;
+waiting was. The foreign `lp-eval` job is never touched (rule 2).
+
+Measured: **~14 min per checkpoint** (100 episodes) on the 4090 while sharing it, ~6.8 GB VRAM.
+So the full T1 eval under D24 -- 23 cells x 1 checkpoint -- is roughly **5-6 h of local wall-clock
+and zero grant hours**.
+
+Supporting fixes: `slurm/eval.sbatch` gained a container mode (`COG_SIF`) alongside the conda path so
+one script serves cluster and local; `sync_down.sh checkpoints` now pulls **all three** protocol
+checkpoints (it only pulled 080000, which would have silently degraded best-of-3 to last-only) and
+only their `pretrained_model/` subdirs, cutting the transfer from 9 GB to 3 GB per cell because eval
+never reads optimizer state.
