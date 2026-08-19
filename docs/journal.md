@@ -2963,3 +2963,62 @@ one script serves cluster and local; `sync_down.sh checkpoints` now pulls **all 
 checkpoints (it only pulled 080000, which would have silently degraded best-of-3 to last-only) and
 only their `pretrained_model/` subdirs, cutting the transfer from 9 GB to 3 GB per cell because eval
 never reads optimizer state.
+
+## 2026-08-19 (later) -- Cross-version audit of the diffusion-policy defaults (0.4.4 vs 0.6.1)
+
+Question raised: what exactly differs in the DP defaults between our pinned 0.4.4 and the latest
+release? PINS.md already listed five 0.6.0 flips from PR #3202, but that list had never been
+checked against source, and one adjacent claim of mine turned out to be wrong. Verified properly
+this time: downloaded the 0.5.0/0.5.1/0.6.0/0.6.1 wheels, extracted
+`lerobot/policies/diffusion/`, and tabulated **all 29 DiffusionConfig defaults** across the five
+releases (0.4.4 read from the installed `cog_isaac` env).
+
+Result -- six deltas total, no more:
+
+| default | 0.4.4 (ours) | 0.6.1 | lands in |
+|---|---|---|---|
+| `horizon` | 16 | **64** | 0.6.0 |
+| `n_action_steps` | 8 | **32** | 0.6.0 |
+| `pretrained_backbone_weights` | None | **ResNet18_Weights.IMAGENET1K_V1** | 0.6.0 |
+| `use_group_norm` | True | **False** | 0.6.0 |
+| `use_separate_rgb_encoder_per_camera` | False | **True** | 0.6.0 |
+| `gradient_checkpointing` | (absent) | False (new field) | **0.6.1** |
+
+Everything else is byte-stable across all five releases: the optimizer preset (1e-4, betas
+(0.95,0.999), eps 1e-8, wd 1e-6), cosine schedule + 500 warmup steps, DDPM/100 steps/
+squaredcos_cap_v2/epsilon/clip_sample, `num_inference_steps=None`, resnet18, `down_dims`,
+kernel 5, `n_groups` 8, embed dim 128, FiLM scale modulation, 32 spatial-softmax keypoints,
+`crop_is_random`, `n_obs_steps=2`. `__post_init__` validation is identical too.
+
+Four findings the docs did not have:
+
+1. **0.5.0 and 0.5.1 are identical to 0.4.4 on every DP default.** We already knew their
+   `video_utils.py` was byte-identical (D23, so no dataloader gain); now the *policy* side is
+   confirmed unchanged as well. The rejected 0.5 bump was an architectural no-op, not merely a
+   performance no-op -- which is worth knowing if a 0.5-only bugfix ever becomes attractive.
+2. **A correction.** I had earlier written that 0.6.0 flipped `do_mask_loss_for_padding` as well.
+   It does not: that default is `False` in every release 0.4.4 through 0.6.1. `diffusion_base.sh`
+   pins it, which is harmless and still worth keeping, but it counters no upstream flip. The
+   config file's own comment was right; my summary of it was not. Both are now precise.
+3. **The three encoder flips are coupled, and our pins turn a bump into a LOUD failure.**
+   `modeling_diffusion.py:507-511` (0.6.1; :481-485 in 0.4.4) raises `"You can't replace BatchNorm
+   in a pretrained model without ruining the weights!"` when `use_group_norm=True` and
+   `pretrained_backbone_weights` is set. That is *why* 0.6.0 had to flip `use_group_norm` to False
+   in order to default the ImageNet weights on -- the two cannot both be enabled. Since
+   `diffusion_base.sh` pins `use_group_norm=true`, a bump to 0.6.x would abort at model
+   construction rather than silently train a different encoder. This retroactively justifies the
+   decision to leave `pretrained_backbone_weights` unpinned (draccus would risk decoding "null"):
+   the guard rail is the coupling, not the pin.
+4. **An upstream inconsistency in 0.6.x.** `drop_n_last_frames` stayed at 7 while `horizon` went
+   16 -> 64, so 0.6.x's own inline comment (`# horizon - n_action_steps - n_obs_steps + 1`, i.e.
+   64-32-2+1 = 31) contradicts its own default. Anyone training 0.6.x defaults samples windows
+   that pad more than the code claims to intend. Irrelevant to this study because we pin horizon,
+   n_action_steps, n_obs_steps and drop_n_last_frames explicitly -- which is the point of pinning
+   all four rather than relying on the formula.
+
+Net effect on the study: **none of the six deltas touch our runs.** Five of the six are explicitly
+pinned in `configs/train/diffusion_base.sh` and the sixth (`gradient_checkpointing`) does not
+exist in 0.4.4 and is behaviour-neutral where it does. The calibration run's saved `config.json`
+was already verified against these pins at G5a. What changed is the confidence level: the flip
+list is now source-verified rather than release-note-derived, and one wrong adjacent claim is
+retracted.

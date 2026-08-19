@@ -39,11 +39,21 @@ export COG_DP_FLAGS="
 # nothing today. They are written out because lerobot 0.6.0 silently flipped five diffusion
 # defaults -- horizon 16->64, n_action_steps 8->32, use_group_norm True->False,
 # pretrained_backbone_weights None->ImageNet, use_separate_rgb_encoder_per_camera False->True.
-# The first three were already pinned here; these two were not. Any future version bump would
-# otherwise have changed the ARCHITECTURE mid-study with no error and no log line.
+# The first three were already pinned here; use_separate_rgb_encoder_per_camera was not.
+# (do_mask_loss_for_padding is NOT one of the five -- it is False in every release from 0.4.4
+# to 0.6.1; it is pinned here purely defensively.) Any future version bump would otherwise have
+# changed the ARCHITECTURE mid-study with no error and no log line.
 # Still unpinned deliberately: `pretrained_backbone_weights` (None at 0.4.4). Passing None
 # through the CLI risks draccus decoding the string "null", which would be worse than relying
 # on the default -- so it is instead ASSERTED against the calibration run's saved config.json.
+# That is safe for a further reason, verified 2026-08-19: the three encoder flips are COUPLED.
+# modeling_diffusion.py raises "You can't replace BatchNorm in a pretrained model without
+# ruining the weights!" when use_group_norm=True and pretrained_backbone_weights is set, which
+# is exactly why 0.6.0 had to flip use_group_norm to False to default the ImageNet weights on.
+# Since we pin use_group_norm=true, a bump to 0.6.x FAILS LOUDLY at model construction instead
+# of silently training a different encoder. Full 29-default cross-version table: docs/PINS.md.
+# Also verified: lerobot 0.5.0/0.5.1 are identical to 0.4.4 on every diffusion default, so the
+# rejected 0.5 bump would have changed no architecture either.
 
 # --- Frozen by G5a on measured evidence (job 52878355, 200 steps/arm, L0/N=25, one A100) ---
 # batch:  64 -> 0.962 steps/s | 128 -> 0.862 | 256 -> 0.385   (higher batch is SLOWER per step)
