@@ -1,0 +1,82 @@
+# Ship the WORKING local env to the cluster, instead of rebuilding it inside NVIDIA's image.
+#
+# Why this exists (user's suggestion, 2026-08-19): docker/Dockerfile.cog builds FROM
+# nvcr.io/nvidia/isaac-sim:5.1.0 and cannot install LeRobot, because that image keeps `packaging`,
+# `imageio` and friends in /isaac-sim/exts/omni.isaac.ml_archive/pip_prebundle, which pip can
+# neither reuse to satisfy a requirement nor replace -- six attempts, six distinct dead ends
+# (see the journal, 2026-08-19 19:50). Meanwhile the workstation already HAS the combination
+# working, in conda env `cog_isaac`: isaacsim 5.1.0 + IsaacLab v2.3.0 + lerobot 0.4.4 + torch
+# 2.7.0+cu128 coexisting. So do not reconstruct it -- move it.
+#
+# The only reason that env could not simply be rsynced to Leonardo is glibc: Isaac Sim 5.1 needs
+# >= 2.35 and RHEL 8.8 has 2.28. A plain ubuntu:24.04 container supplies glibc 2.39, and this
+# workstation IS Ubuntu 24.04.2 / glibc 2.39 -- the same toolchain the binaries were built against,
+# so nothing is being asked to run on a platform it was not compiled for.
+#
+#   docker build -f docker/Dockerfile.cog_env -t cog-env:5.1.0 \
+#       --build-context condaenv=/home/admin_07/miniconda3/envs/cog_isaac .
+#
+FROM ubuntu:24.04
+
+SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Runtime system libraries Kit needs. The pip isaacsim wheels bundle CUDA and their own Kit
+# extensions, but not the X/GL/Vulkan stack; --nv supplies the NVIDIA driver libs at run time.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgl1 libglu1-mesa libglx-mesa0 libegl1 libgles2 \
+        libxrandr2 libxinerama1 libxcursor1 libxi6 libxt6 libxext6 libxrender1 \
+        libxkbcommon0 libxkbcommon-x11-0 libsm6 libice6 \
+        libglib2.0-0t64 libfontconfig1 libfreetype6 libasound2t64 \
+        libvulkan1 libnss3 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 \
+        libxcomposite1 libxdamage1 libxfixes3 libpango-1.0-0 libcairo2 \
+        ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# IDENTICAL ABSOLUTE PATHS ARE THE WHOLE TRICK. A conda env bakes its prefix into every console
+# script shebang (`#!/home/admin_07/miniconda3/envs/cog_isaac/bin/python3.11`), and `isaaclab`,
+# `isaaclab_tasks`, `isaaclab_mimic`, `isaaclab_assets`, `isaaclab_rl` and `cog` are all EDITABLE
+# installs whose .pth files point at /home/admin_07/cost_of_generality/... Recreating those exact
+# paths means zero relocation and nothing to rewrite -- conda-pack and its prefix surgery are
+# unnecessary.
+COPY --from=condaenv . /home/admin_07/miniconda3/envs/cog_isaac
+
+# The editable targets. third_party/IsaacLab must be present because five installed distributions
+# resolve into it; data/ is excluded by .dockerignore (121 GB) and eval does not read it.
+COPY third_party/IsaacLab /home/admin_07/cost_of_generality/third_party/IsaacLab
+COPY pyproject.toml README.md /home/admin_07/cost_of_generality/
+COPY src /home/admin_07/cost_of_generality/src
+COPY configs /home/admin_07/cost_of_generality/configs
+COPY scripts /home/admin_07/cost_of_generality/scripts
+
+ENV OMNI_KIT_ACCEPT_EULA=YES
+ENV HF_HUB_OFFLINE=1
+ENV WANDB_MODE=offline
+ENV TOKENIZERS_PARALLELISM=false
+ENV PATH=/home/admin_07/miniconda3/envs/cog_isaac/bin:${PATH}
+
+# Singularity runs as the INVOKING user, not root -- the lesson that cost us the first render gate
+# (a mode-750 /isaac-sim gave rc=126 and looked exactly like an A100 rendering failure). Assert
+# world-readability and repair only the offenders, so this cannot copy up 23 GB of layer.
+RUN n=$(find /home/admin_07/miniconda3/envs/cog_isaac /home/admin_07/cost_of_generality \
+              ! -perm -o+r 2>/dev/null | wc -l); \
+    echo "non-world-readable entries before fix: ${n}"; \
+    if [ "${n}" -gt 0 ]; then \
+      find /home/admin_07/miniconda3/envs/cog_isaac /home/admin_07/cost_of_generality \
+           ! -perm -o+r -print0 2>/dev/null | xargs -0 -r chmod a+rX; \
+    fi; \
+    m=$(find /home/admin_07/miniconda3/envs/cog_isaac /home/admin_07/cost_of_generality \
+              ! -perm -o+r 2>/dev/null | wc -l); \
+    echo "non-world-readable entries after fix: ${m}"; test "${m}" -eq 0
+
+# Import check only -- NOT a Kit boot. Importing isaacsim starts the Kit kernel, which needs a GPU
+# and would fail here for reasons unrelated to the image being correct. The GPU-dependent part is
+# what slurm/debug_a100_kit.sbatch is for.
+RUN python -c "\
+import sys, lerobot, numpy, torch; \
+print('python', sys.version.split()[0]); \
+print('lerobot', lerobot.__version__, '| numpy', numpy.__version__, '| torch', torch.__version__); \
+import isaaclab; print('isaaclab importable'); \
+import cog; print('cog importable')"
+
+WORKDIR /home/admin_07/cost_of_generality
