@@ -91,7 +91,11 @@ KIT_BINDS=(-B "${KIT_RW}/logs:${ENV_IN}/kit/logs"
 #    (api_version 1.3.242) and `libGLX_nvidia.so.0` is injected by --nv and dlopens fine inside the
 #    container. It is the documented misreport for **driver 535.255 and newer** -- Leonardo runs
 #    535.274.02 -- for which NVIDIA's workaround is `--/rtx/verifyDriverVersion/enabled=false`.
-#    Passed via IsaacLab's `--kit_args`, so frames_qa.py needs no change.
+#    Passed via IsaacLab's `--kit_args`, so frames_qa.py needs no change. NOTE the `=` form:
+#    argparse rejects a value beginning with `--` when separated by a space (it reads it as the
+#    next option and exits 2), so `--kit_args "--/rtx/..."` never reaches Kit -- the run died
+#    with rc=2 before Kit started, which is why no new Kit log appeared. IsaacLab's own docs
+#    show the space-separated form; it does not work.
 #
 VK_ICD_HOST=/usr/share/vulkan/icd.d
 VK_ICD_JSON="${VK_ICD_HOST}/nvidia_icd.x86_64.json"
@@ -115,7 +119,7 @@ timeout 1500 srun singularity exec --nv \
   --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES \
   --env VK_ICD_FILENAMES="${VK_ICD_JSON}" \
   -B "${COG}/extralibs:/opt/extralibs" \
-  "${SIF}" bash -lc "export LD_LIBRARY_PATH=/opt/extralibs:\${LD_LIBRARY_PATH}; cd ${REPO_IN} && python scripts/dev/frames_qa.py --level L0 --resets 2 --headless --enable_cameras --kit_args \"--/rtx/verifyDriverVersion/enabled=false\"" \
+  "${SIF}" bash -lc "export LD_LIBRARY_PATH=/opt/extralibs:\${LD_LIBRARY_PATH}; cd ${REPO_IN} && python scripts/dev/frames_qa.py --level L0 --resets 2 --headless --enable_cameras --kit_args=\"--/rtx/verifyDriverVersion/enabled=false\"" \
   < /dev/null
 RC=$?
 echo "frames_qa rc=${RC} (124 = timed out)"
