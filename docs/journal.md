@@ -2001,3 +2001,92 @@ cannot influence.
 needs no Isaac whatsoever, the local-4090 eval fallback is already accepted, and G5b is a
 gate that may still fail on its own merits (Isaac Sim is officially unsupported on A100 --
 no RT cores). Building a 20 GB image is not allowed to delay the critical path.
+
+### 2026-08-19 18:05 — G5a batch/LR sweep: the plan's batch-scaling premise is refuted; the loop is decode-bound
+
+Job 52878355, `boost_qos_dbg`, 200 steps per arm on L0/N=25, sqrt-LR scaling from 1e-4 @ 64:
+
+| batch | lr | wall_s | samples/s | steps/s | peak VRAM (MiB) | median GPU util | loss @200 |
+|---|---|---|---|---|---|---|---|
+| 64 | 1e-4 | 208 | 61.5 | **0.962** | 13546 | **0 %** | 0.188 |
+| 128 | 1.41e-4 | 232 | 110.3 | 0.862 | 14482 | **0 %** | 0.164 |
+| 256 | 2e-4 | 519 | 98.7 | 0.385 | 17060 | **0 %** | 0.149 |
+
+Steady-state per-step split (last logged interval, so worker spin-up is excluded):
+
+| batch | updt_s | data_s | data share |
+|---|---|---|---|
+| 64 | 0.071 | 0.458 | 87 % |
+| 128 | 0.098 | 0.904 | 90 % |
+| 256 | 0.450 | 2.438 | 84 % |
+
+**The plan (P5) assumed we would be GPU-bound** and said to "scale batch up as far as A100-64GB
+VRAM/throughput allow (e.g., 64->128->256)". That premise is **false for this workload**:
+
+- Peak VRAM at batch 256 is 17 GB of 65 GB. **VRAM is not remotely a constraint** and never
+  becomes the deciding variable, so the whole "how large a batch fits" question is moot.
+- Median GPU utilization is **0 % at every batch size**. The A100 is idle ~87 % of the time.
+- Samples/s is essentially flat (61 -> 110 -> 99 measured; 121 -> 128 -> ~89 on the
+  steady-state split). Throughput is set by the dataloader, not the GPU, so a bigger batch
+  buys no throughput -- it just makes each of the fixed 80k steps cost proportionally more.
+
+**Decision: batch 64, lr 1e-4.** With the protocol fixed at 80k *steps* (user directive), the
+smallest sensible batch minimises wall-clock: 0.962 steps/s -> ~11.8 h/run, against 22 h at
+128 and 58 h at 256 (which would not even fit the 24 h walltime). lr 1e-4 also happens to be
+`DiffusionConfig.optimizer_lr`'s default, so no sqrt-scaling is applied and the LR-override
+bug found earlier this session is doubly defused. `configs/train/diffusion_base.sh` can now
+have its two placeholder values frozen at exactly the values already written there.
+
+Note the loss ordering (0.188 > 0.164 > 0.149 at equal *steps*) is expected and is **not** an
+argument for a larger batch: at fixed steps a larger batch has seen 2x/4x more samples, so it
+should be further along. Comparing at equal steps across batch sizes compares different
+sample budgets, which is why batch is frozen for every cell rather than tuned per cell.
+
+### Why it is decode-bound -- root cause found in the 0.4.4 source, not guessed
+
+`data_s` of 0.458 s for a batch of 64 means ~1.8 ms per 128x128 frame (64 samples x 2 cameras
+x 2 obs steps = 256 frame fetches). That is far too slow for tiny frames, so I looked instead
+of speculating:
+
+1. **The videos are already nearly all-intra.** `ffprobe` on `L0/videos/.../file-000.mp4`:
+   h264, 128x128, 20 fps, **82,916 frames** in one 43 MB file, with **41,058 keyframes** --
+   the keyframe pattern is literally `1,0,1,0,1,0,...`, i.e. **GOP 2**. So my first idea
+   (re-encode all-intra with `-g 1` to make seeking cheap) would buy nearly nothing. Killed
+   before implementing it.
+2. **The pyav path re-opens the container on every single call.**
+   `datasets/video_utils.py:decode_video_frames_torchvision` constructs a
+   `torchvision.io.VideoReader(video_path, "video")` per call, seeks, decodes, then
+   `reader.container.close()`. Each sample-camera pair therefore pays a full container open
+   and index parse **on an 82,916-frame file** -- ~128 opens per batch of 64.
+3. **The torchcodec path, and only the torchcodec path, has a `VideoDecoderCache`**
+   (`decode_video_frames_torchcodec(..., decoder_cache: VideoDecoderCache | None)`). The
+   decoder is reused across calls, which is exactly the cost the pyav path keeps re-paying.
+
+So the bottleneck is not the codec and not the GPU: it is repeated container opening in the
+one backend we can currently load. **torchcodec fails to import in both our envs**
+(`OSError: libavutil.so.56`) because neither the workstation nor RHEL 8.8 ships ffmpeg shared
+libraries -- which is why PINS chose pyav in the first place.
+
+**And that is a fixable dependency problem, not a design constraint.** torchcodec 0.10.0 ships
+`libtorchcodec_core{4,5,6,7,8}.so`, i.e. it supports ffmpeg majors 4-8; it only needs *an*
+ffmpeg. conda-forge ffmpeg 6.1.2 installs cleanly into a cluster env (verified in the py3.12
+experiment env: `libavutil.so.58` now present). So the likely fix is a one-package install,
+**with no LeRobot migration at all** -- tested next.
+
+### On the LeRobot version question (user, 2026-08-19)
+
+The user asked why we are on 0.4.4 and noted 0.5+ improved the dataloader. The pin was never a
+preference: 0.5.0, 0.6.0 and 0.6.1 all declare `requires_python >=3.12` (checked against PyPI
+today), while Isaac Sim 5.1 requires py3.11, and eval loads the policy in the *same process*
+as Isaac. One version had to serve both, and 0.4.4 is the newest that runs on 3.11 (G1b).
+
+The user's instruction was to measure before committing ("maybe it doesnt improve"), which is
+right, and the extras layout of 0.6.1 already hints at the answer: **`torchcodec` is required
+by the `dataset` extra while `av` (pyav) is a separate opt-in `av-dep` extra.** 0.6 is built
+around torchcodec. If our decode problem is "torchcodec cannot load", then 0.6 does not solve
+it -- ffmpeg does -- and 0.6 without ffmpeg would be *worse* off, not better. Being measured
+head-to-head anyway (env `cog_lerobot06`, py3.12, lerobot 0.6.1 + ffmpeg 6.1.2).
+
+Also worth recording: a bare `pip install lerobot==0.6.1` is **not usable for training** -- no
+video backend, and `lerobot.scripts.lerobot_train` raises ImportError. The correct install is
+`lerobot[dataset,training]`. A migration would therefore not be a version-number change.
