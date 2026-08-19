@@ -145,6 +145,19 @@ print("wrote ICD ->", dst, d["ICD"])
 PYICD
 ls -l "${VK_ICD_DIR}"
 
+# /dev NODES: Vulkan needs /dev/nvidia-modeset (and the nvidia-caps entries); CUDA needs only
+# nvidiactl + nvidia<N> + nvidia-uvm. `--nv` is documented to bind the CUDA set, which would explain
+# the exact split we observe: torch sees the A100 perfectly (D22) while vkCreateInstance reports
+# ERROR_INCOMPATIBLE_DRIVER. The host HAS the modules loaded and the nodes present (checked on
+# lrdn2525: nvidia_drm + nvidia_modeset loaded, /dev/nvidia-modeset exists), so if they are missing
+# INSIDE the container that is the whole story. Bind them explicitly.
+DEV_BINDS=()
+for d in /dev/nvidia-modeset /dev/nvidia-uvm /dev/nvidia-uvm-tools /dev/nvidiactl; do
+  [ -e "${d}" ] && DEV_BINDS+=(-B "${d}:${d}")
+done
+[ -d /dev/nvidia-caps ] && DEV_BINDS+=(-B /dev/nvidia-caps:/dev/nvidia-caps)
+echo "extra /dev binds: ${DEV_BINDS[*]:-none}"
+
 echo "=== container GPU/Vulkan visibility with the ICD bound ==="
 singularity exec --nv \
   -B "${COG}:${COG}" -B "${VK_ICD_DIR}:${VK_ICD_HOST}" \
@@ -153,12 +166,13 @@ singularity exec --nv \
     echo " LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-unset}";
     echo " GLX_nvidia present: $(ls /.singularity.d/libs/libGLX_nvidia* 2>/dev/null | wc -l)";
     echo " glvkspirv present: $(ls /.singularity.d/libs/libnvidia-glvkspirv* 2>/dev/null | wc -l)";
-    echo " ICD visible: $(ls ${VK_ICD_FILENAMES} 2>&1)"' < /dev/null
+    echo " ICD visible: $(ls /usr/share/vulkan/icd.d/ 2>&1 | tr "\n" " ")";
+    echo " /dev/nvidia* inside: $(ls /dev/nvidia* 2>&1 | tr "\n" " ")"' < /dev/null
 
 timeout 1500 srun singularity exec --nv \
   -B "${COG}:${COG}" -B /leonardo_work:/leonardo_work \
   -B "${QA_OUT}:${REPO_IN}/ops" \
-  -B "${VK_ICD_DIR}:${VK_ICD_HOST}" \
+  -B "${VK_ICD_DIR}:${VK_ICD_HOST}" "${DEV_BINDS[@]}" \
   "${KIT_BINDS[@]}" \
   --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES \
   --env VK_ICD_FILENAMES="${VK_ICD_JSON}" --env VK_DRIVER_FILES="${VK_ICD_JSON}" \
