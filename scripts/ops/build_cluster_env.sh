@@ -63,8 +63,13 @@ pip install --no-input torch==2.7.0 torchvision==0.22.0 \
 echo "[env] pip install lerobot==0.4.4"
 pip install --no-input "lerobot==0.4.4"
 
-echo "[env] pinning numpy==1.26.4 and av==15.1.0 to match the local eval env"
-pip install --no-input "numpy==1.26.4" "av==15.1.0"
+# numpy/av/opencv are pinned to the local eval env's exact versions (D22 parity). opencv is
+# in the list because the resolver picked 4.12.0.88 here vs 4.11.0.86 locally; 4.12 imports
+# fine against numpy 1.26.4 despite its metadata claiming numpy>=2 (checked on the login
+# node), so this pin is parity, not a fix. rerun-sdk still warns about numpy>=2 -- it does
+# locally too, and nothing in the training path imports it.
+echo "[env] pinning numpy==1.26.4, av==15.1.0, opencv-python-headless==4.11.0.86 (local parity)"
+pip install --no-input "numpy==1.26.4" "av==15.1.0" "opencv-python-headless==4.11.0.86"
 
 # Artifact-not-exit-code check (CLAUDE.md rule 10 / D6): import everything the training
 # entry point touches and assert the pins, so a silently-clobbered torch fails HERE and not

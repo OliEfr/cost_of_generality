@@ -25,6 +25,10 @@ case "$what" in
   code)
     # data/ and third_party/ are excluded: datasets move separately and IsaacLab is
     # installed on the remote, not copied.
+    # '*.out' protects Slurm job logs: sbatch's default --output=%x-%j.out is relative to the
+    # SUBMIT directory, which is $WORK/cog/repo, so --delete would otherwise erase every job
+    # log on the next code push. An --exclude'd path is skipped in BOTH directions, so
+    # excluding it protects it from --delete (that is what --delete-excluded would override).
     # LEADING SLASHES ARE LOAD-BEARING: an rsync pattern with no '/' in it matches the
     # final path component at ANY depth, so a bare 'ops/' also ate scripts/ops/ and left
     # the cluster without launch_matrix.py (verified 2026-08-19). Anchor to the root.
@@ -32,6 +36,7 @@ case "$what" in
       --exclude '/data/' --exclude '/third_party/' --exclude '.git/' \
       --exclude '/experiments/runs/' \
       --exclude '__pycache__/' --exclude '*.hdf5' --exclude '/ops/' \
+      --exclude '*.out' \
       "${REPO}/" "${REMOTE}:${WORK_REMOTE}/repo/"
     ;;
   datasets)
