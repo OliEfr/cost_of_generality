@@ -66,8 +66,15 @@ RUN ln -sf /isaac-sim ${ISAACLAB_PATH}/_isaac_sim \
 #     satisfies lerobot's >=2.34,<3 -- a resolver artifact of an exactly-pinned EXTRA variant
 #     being re-resolved. Constraining numpy loosely (<2) and restating the installed
 #     imageio[ffmpeg] pin keeps the resolution stable.
+# numpy is deliberately NOT constrained here. Stating `numpy<2` as a requirement made pip
+# re-resolve everything that depends on numpy and it began backtracking through `datasets` and
+# `accelerate` version by version (1.13.0 -> 1.12.0 -> ...), which is unbounded in practice. The
+# installed numpy 1.26.0 already satisfies D3; pip leaves an installed package alone unless a
+# dependency demands otherwise, so the correct move is to let it be and ASSERT afterwards -- if
+# something does drag in numpy 2.x, the assert below fails the build loudly instead of shipping a
+# Kit that segfaults at eval time.
 RUN /isaac-sim/python.sh -m pip install --no-cache-dir \
-        "lerobot==0.4.4" "imageio[ffmpeg]==2.37.0" "numpy<2" \
+        "lerobot==0.4.4" "imageio[ffmpeg]==2.37.0" \
  && /isaac-sim/python.sh -c "import numpy, torch; \
         assert numpy.__version__.startswith('1.'), numpy.__version__; \
         assert torch.__version__.startswith('2.7.0'), torch.__version__; \
