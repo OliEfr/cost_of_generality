@@ -56,3 +56,29 @@ Wall-clock matters more than cost now: with a ~4 s queue latency and independent
 23-cell T1 wave is a **~2 h block**, not a day. The binding constraint on the study has shifted
 from GPU-hours to evaluation throughput -- which is what makes the G5b cluster-eval question
 worth settling.
+
+## ACTUALS -- T1 training wave complete (2026-08-20)
+
+The forecast above is superseded for T1 training: it is now measured, not estimated.
+
+| Stage | Re-forecast | **ACTUAL** | Note |
+|---|---|---|---|
+| T1 training | ~46 (23 cells) | **51.3 (24 cells)** | 24 not 23: D26 re-ran L0/N=25 on the new architecture |
+| Bring-up / gates / smokes / calibration / superseded run | ~3 | **4.3** | includes the 2.0 GPU-h shared-encoder run kept as D24 evidence |
+| T1 evals | ~9 | **0** | D25: eval runs LOCALLY on the 4090, so it costs 0 grant GPU-h |
+| **Spent to date** | | **55.6** | 2.5% of the 2,200 ceiling |
+
+Per-cell actual: 1.84-2.83 h, median 2.03 h (vs 2.0 h forecast from the shared-encoder calibration
+-- so the per-camera-encoder architecture cost ~5%, not the 16% an early warm-up reading suggested).
+
+**Revised Tasks 2-3 projection.** At the measured 2.14 GPU-h mean per cell, 48 cells = **~103
+GPU-h**, plus a little for datagen debug. Total study projection: **~160 GPU-h**, i.e. ~7% of the
+ceiling. The grant is not a constraint on this study at any plausible scope, including the N=800
+extension arms.
+
+**The binding constraint is eval wall-clock, not GPU-hours.** Training all 24 cells took ~2 h of
+wall-clock (fully parallel, ~4 s queue latency). Evaluating them takes ~14 min each SERIALLY on the
+one local 4090 -- **~5.6 h**, i.e. nearly 3x the training time, and it cannot be parallelised
+because the GPU is shared with a foreign job that must not be disturbed (rule 2). For Tasks 2-3
+that becomes ~11 h of local eval. This is what makes the CINECA Vulkan question (docs/
+cineca_ticket_vulkan.md) worth pursuing: it is worth ~11 h of wall-clock, not any GPU-hours.
