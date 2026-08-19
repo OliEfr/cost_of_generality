@@ -2476,3 +2476,49 @@ and still finished in 14 minutes -- the win was RAM and dedicated cores, not loc
 Next: `slurm/debug_a100_kit.sbatch` (job 52921497) runs NVIDIA's own shipped camera example
 headless for 601 steps and judges the PNGs it writes -- existence *and* pixel content, because the
 A100 failure mode on record is degraded rendering, which produces a perfectly valid blank file.
+
+### 2026-08-19 19:25 — G5b stage A failed on a PERMISSION bug, not on A100 rendering
+
+Job 52921497 reported `G5B_A_FAILED: the renderer produced no image at all`. **This is not an
+Isaac-on-A100 verdict.** The renderer was never reached:
+
+```
+=== NVIDIA's own compatibility check ===
+/usr/bin/bash: line 1: /isaac-sim/isaac-sim.compatibility_check.sh: Permission denied
+=== headless camera render, 601 steps ===
+render rc=126        # 126 = "command found but NOT EXECUTABLE"
+[gate] 0 PNG(s) found
+```
+
+Diagnosed inside the container in one command:
+
+```
+uid=133040(ohausdoe) gid=25200(interactive)
+drwxr-x---. 18 root root 1066 Oct 17 2025 /isaac-sim
+ls: cannot access '/isaac-sim/python.sh': Permission denied
+```
+
+**`/isaac-sim` is mode 750 owned by the image's `isaac-sim` user.** Docker runs containers as
+**root** by default, so nobody ever notices; Singularity runs as the **invoking user**, so the
+entire Isaac Sim tree is unreadable. Every path under it fails, and the symptom -- a headless
+render that produces no image -- is indistinguishable at a glance from the A100 rendering failure
+the gate was built to detect. **A gate that cannot separate "no permission" from "cannot render"
+would have produced a completely wrong conclusion**, and the one that mattered: we would have
+abandoned cluster-side eval, and with it ~2 days of the study's critical path, on a chmod.
+
+The repair is trivial once measured. Inspecting the image as root shows the tree is otherwise
+sane: **exactly one directory lacks o+x and only 28 entries lack o+r**; everything else is
+755/644. So `chmod a+rx /isaac-sim` plus an `a+rX` pass over those 28 entries touches ~29 files
+rather than copying up 15 GB of layer -- worth checking, because a naive `chmod -R a+rX /isaac-sim`
+would have forced overlayfs to duplicate the entire image and doubled both the upload and the
+conversion.
+
+Now folded into `docker/Dockerfile.cog`, together with a `test -x /isaac-sim/python.sh` so the
+build fails at build time if the fix ever stops working. Rebuilding the FULL image (Isaac Sim +
+Isaac Lab v2.3.0 + LeRobot 0.4.4 + cog) rather than a chmod-only base, because the round trip
+costs the same and the full image is what eval actually needs.
+
+**Generalisable lesson, third time today:** the failure was in the layer *below* the one the error
+pointed at. `libavutil.so.56` was really a torch ABI mismatch; `BUILD_RC=0` was really `tail`'s
+exit code; "the renderer produced no image" was really a directory mode. In each case the honest
+next step was to look one level down rather than act on the surface message.
