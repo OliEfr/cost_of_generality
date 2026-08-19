@@ -53,14 +53,54 @@ def bench_reused_reader(video: Path, ts_pairs, tolerance_s):
     return dt
 
 
+def compare_backends(video: Path, ts_pairs, tolerance_s):
+    """Assert pyav and torchcodec return the SAME frames, not merely similar timings.
+
+    They disagree by construction: the pyav path seeks and matches by timestamp, while the
+    torchcodec path converts to an index with round(ts * average_fps) and uses
+    seek_mode="approximate". If that ever picks a neighbouring frame, training silently
+    consumes different data and nothing in the pipeline complains -- exactly the class of
+    bug that cost this project real time before (silent frame misalignment in merged
+    episodes). So the switch is not allowed to happen on trust.
+    """
+    n_bad = 0
+    max_diff = 0.0
+    for ts in ts_pairs:
+        a = decode_video_frames(video, ts, tolerance_s, backend="pyav")
+        b = decode_video_frames(video, ts, tolerance_s, backend="torchcodec")
+        if a.shape != b.shape:
+            n_bad += 1
+            print(f"  SHAPE MISMATCH at ts={ts}: {a.shape} vs {b.shape}")
+            continue
+        af = a.float()
+        bf = b.float()
+        d = (af - bf).abs().max().item()
+        max_diff = max(max_diff, d)
+        if not torch.equal(a, b):
+            n_bad += 1
+            if n_bad <= 3:
+                print(f"  FRAME MISMATCH at ts={ts}: max abs diff {d}")
+    print(f"\ncompared {len(ts_pairs)} fetches: {n_bad} mismatched, max abs pixel diff {max_diff}")
+    if n_bad == 0:
+        print("BACKENDS_IDENTICAL")
+    else:
+        print("BACKENDS_DIFFER -- do NOT switch backend without understanding this")
+    return n_bad
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="L0")
     ap.add_argument("--n", type=int, default=60, help="number of item-fetches to simulate")
     ap.add_argument("--fps", type=float, default=20.0)
+    ap.add_argument("--compare-backends", action="store_true",
+                    help="also assert pyav and torchcodec decode identical frames")
+    ap.add_argument("--root", default=None,
+                    help="dataset root override (e.g. $FAST/cog/datasets on the cluster)")
     args = ap.parse_args()
 
-    vids = sorted((REPO / "data" / "lerobot" / args.dataset / "videos").glob("*/chunk-*/file-*.mp4"))
+    root = Path(args.root) if args.root else REPO / "data" / "lerobot"
+    vids = sorted((root / args.dataset / "videos").glob("*/chunk-*/file-*.mp4"))
     if not vids:
         raise SystemExit(f"no videos found for dataset {args.dataset}")
     video = vids[0]
@@ -69,13 +109,16 @@ def main():
     import av
     with av.open(str(video)) as c:
         nframes = c.streams.video[0].frames
-    print(f"video: {video.relative_to(REPO)}")
+    print(f"video: {video}")
     print(f"frames: {nframes}  size: {video.stat().st_size / 1e6:.1f} MB")
 
     random.seed(0)
     idx = [random.randint(1, nframes - 2) for _ in range(args.n)]
     ts_pairs = [[(i - 1) / args.fps, i / args.fps] for i in idx]
     tolerance_s = 1e-4 + 1.0 / args.fps  # generous: we are timing, not validating alignment
+
+    if args.compare_backends:
+        compare_backends(video, ts_pairs, tolerance_s)
 
     a = bench_lerobot_path(video, ts_pairs, tolerance_s)
     b = bench_reused_reader(video, ts_pairs, tolerance_s)
