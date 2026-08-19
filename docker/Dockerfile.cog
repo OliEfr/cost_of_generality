@@ -113,6 +113,17 @@ RUN /isaac-sim/python.sh -m pip install --no-cache-dir --no-deps "rerun-sdk==0.2
 RUN /isaac-sim/python.sh -m pip install --no-cache-dir --upgrade "pip>=25.2" \
  && /isaac-sim/python.sh -m pip --version
 
+# imageio needs the same --ignore-installed treatment as packaging, and for the same underlying
+# reason: the copy Kit ships lives in omni.isaac.ml_archive/pip_prebundle, which pip can neither
+# reuse to satisfy a plain `imageio` requirement nor uninstall. The giveaway was the last line of
+# the resolver error, below the part everyone reads:
+#     "some packages in these conflicts have no matching distributions available for your
+#      environment:  imageio"
+# i.e. not a version conflict at all -- pip simply had no imageio it was willing to use. Putting a
+# normal copy in site-packages gives lerobot's `imageio<3,>=2.34` something to resolve against.
+RUN /isaac-sim/python.sh -m pip install --no-cache-dir --ignore-installed "imageio==2.37.0" \
+ && /isaac-sim/python.sh -c "import imageio; print('imageio', imageio.__version__)"
+
 RUN /isaac-sim/python.sh -m pip install --no-cache-dir \
         "lerobot==0.4.4" \
         "numpy==1.26.4" \
