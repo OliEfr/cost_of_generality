@@ -3136,3 +3136,54 @@ Net: valid ICD (api_version 1.3.242), all support libs present and version-match
 (Vulkan 1.3-capable), device nodes present, CUDA fully working -- and `vkCreateInstance` still
 returns ERROR_INCOMPATIBLE_DRIVER. Every ordinary cause is eliminated, which is what makes this
 worth a CINECA ticket rather than more local guessing. Cost of the check: 14 s on one A100.
+
+## 2026-08-20 (00:50) -- T1 matrix mostly trained; eval started, two bugs found in my own harness
+
+**Training.** 16 of 24 cells COMPLETED, 19 have written `080000`, 8 still RUNNING, **zero FAILED**.
+Elapsed per completed cell **1:50:24 - 2:05:43**, i.e. ~1.95 h -- better than the 2.35 h projected
+from the early-run rate, because throughput improves as the page cache warms. `AllocTRES` is
+`billing=8,cpu=8,gres/gpu=1` on every cell, so 8 billing-h per wall-hour = 1 A100-h per wall-hour,
+and elapsed hours are GPU-h directly. Matrix therefore lands at **~47 GPU-h**, close to the original
+48 estimate rather than the 56 re-forecast.
+
+**Unexpected ordering: the SMALLEST datasets are the slowest.** All four `n10` cells plus
+`L1_n400` are the stragglers, while `n400` cells finished first. With a fixed 80k steps the demo
+count should not change step cost, so this is dataloader behaviour, not model behaviour -- a
+10-episode dataset has very few distinct sampleable windows, so workers cycle the same short
+episode list constantly and get less benefit from readahead than a 400-episode dataset streaming
+through many files. Worth remembering for Tasks 2-3 scheduling: the cheap-looking cells are not the
+fast ones. Not investigated further, since it costs nothing at this scale.
+
+**Eval harness: two bugs, both mine, both caught before any number was recorded.**
+
+1. **Directory-vs-weights race.** My eval driver gated on the checkpoint *directory* existing.
+   rsync creates the directory first and only then transfers the 1.1 GB `model.safetensors`, so the
+   driver raced my own background sync and launched Isaac on a half-pulled checkpoint ->
+   `FileNotFoundError: .../model.safetensors`. Kit still exited **0** (D6 again), so only the
+   missing-artifact check caught it. Fixed to gate on `model.safetensors` being non-empty; rsync
+   renames into place atomically, so the final name appearing does mean the transfer finished.
+2. **Busy-retry with no backoff.** Because a failed cell left no result JSON, the driver's outer
+   loop immediately retried the same cell, booting Isaac every ~10 s. Three iterations ran before I
+   killed the tmux session. Now a cell that fails is recorded in a `FAILED` map and skipped for the
+   rest of the run, and the exit line reports which cells failed.
+
+**A third, more dangerous one: stale eval results from the superseded architecture.**
+`results/eval_L0_n25_{040000,060000,080000}.json` were still present from the shared-encoder
+calibration run. The driver skips a cell whose result JSON exists, so `t1_L0_n25_s0` -- the very
+cell re-run to put L0/N=25 on the new architecture -- would have been silently skipped, and those
+three files would later have been read as new-architecture results. Renamed to
+`*_sharedenc.json` (preserved, not deleted: they are the D24 evidence). This is the same class of
+error as the checkpoint-resume hazard: an artifact from a superseded configuration sitting exactly
+where the new one belongs. Lesson recorded: when an architecture changes, sweep for EVERY artifact
+keyed by run id -- checkpoints, registry rows AND result JSONs.
+
+**Supporting fixes.** `sync_down.sh` and `run_local_eval.sh` now honour `COG_REPO` like
+`sync_up.sh`, so a worktree-isolated session pulls and evaluates in its own tree instead of
+silently in the main checkout. `sync_down.sh` also gained `COG_SYNC_STEPS`, defaulting to
+`080000` alone: D24 made the protocol last-checkpoint-only, so pulling 40k/60k/80k would have
+tripled 1.1 GB x 24 cells for nothing. Verified on one cell: 1.03 GB pulled in ~47 s, only
+`080000` present, and its `config.json` reports `use_separate_rgb_encoder_per_camera: true`.
+
+Eval is now running under tmux (`cog_eval`) on `t1_L0_n25_s0`, gated on >=14 GB free VRAM so the
+foreign eval job is untouched (rule 2). All 44+ cluster checkpoints checked: **44/44 report
+`sep_enc=True`**, no invalid cell anywhere.

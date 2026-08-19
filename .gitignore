@@ -18,3 +18,4 @@ ops/t2_debug/
 experiments/runs/**/*.safetensors
 # local pre-push safety backups
 data/_prepush_backup/
+experiments/runs/

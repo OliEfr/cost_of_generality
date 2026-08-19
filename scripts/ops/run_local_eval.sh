@@ -12,7 +12,10 @@
 # Launch under tmux (rule 10). A tmux shell has no conda, so conda is sourced explicitly here.
 set -uo pipefail
 
-REPO=/home/admin_07/cost_of_generality
+# Overridable so a worktree-isolated session evaluates the checkpoints IT pulled and writes its
+# results into its own tree (see the same change in sync_up.sh / sync_down.sh). The cog package is
+# imported from ${REPO}, so this also decides which code runs the rollout.
+REPO="${COG_REPO:-/home/admin_07/cost_of_generality}"
 RUN_ID="${1:?usage: run_local_eval.sh RUN_ID LEVEL NDEMOS [STEP...]}"
 LEVEL="${2:?}"
 NDEMOS="${3:?}"

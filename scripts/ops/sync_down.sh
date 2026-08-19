@@ -6,7 +6,14 @@
 #   scripts/ops/sync_down.sh checkpoints T1_L0_n100_s0   # one run's best+last
 set -euo pipefail
 REMOTE=leonardo
-REPO=/home/admin_07/cost_of_generality
+# Overridable for the same reason as in sync_up.sh: a worktree-isolated session must be able to
+# land its pulls in its own tree rather than silently in the main checkout.
+REPO="${COG_REPO:-/home/admin_07/cost_of_generality}"
+# Which checkpoint steps to pull. D24 changed the protocol to LAST-CHECKPOINT-ONLY for full-scale
+# runs (the one-off 40k/60k/80k comparison is done, and the last checkpoint won), so the matrix
+# needs 080000 alone -- pulling three would triple 3 GB/cell x 24 cells for nothing. Set
+# COG_SYNC_STEPS="040000 060000 080000" to restore the best-of-3 pull for a comparison run.
+COG_SYNC_STEPS="${COG_SYNC_STEPS:-080000}"
 # See sync_up.sh: rsync never shell-expands the REMOTE path, so resolve $WORK here.
 read -r _work_base < <(ssh "${REMOTE}" 'echo "$WORK"')
 if [ -z "${_work_base:-}" ]; then
@@ -36,12 +43,14 @@ case "$what" in
       # Only pretrained_model/ is pulled: that is all eval loads. training_state/ is ~2 GB per
       # checkpoint of optimizer state used solely for RESUMING, which happens on the cluster, so
       # pulling it would triple the transfer (9 GB -> 3 GB per cell) for nothing.
+      step_includes=()
+      for s in ${COG_SYNC_STEPS}; do
+        step_includes+=(--include "${s}/pretrained_model/**")
+      done
       rsync -az --info=stats1 --prune-empty-dirs \
         --include '*/' \
-        --include '040000/pretrained_model/**' \
-        --include '060000/pretrained_model/**' \
-        --include '080000/pretrained_model/**' \
-        --include 'last/pretrained_model/**' --exclude '*' \
+        "${step_includes[@]}" \
+        --exclude '*' \
         "${REMOTE}:${WORK_REMOTE}/checkpoints/${run}/" "${dest}/"
       echo "[sync] ${run} -> ${dest}"
     done
