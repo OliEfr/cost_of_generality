@@ -2377,3 +2377,67 @@ Noted for when it is time: `--time=04:00:00` in `eval.sbatch` covers **three** c
 (40k/60k/80k) x 100 episodes x up to 600 steps of rendered rollout. That is ~180k rendered env
 steps in one job and the 4 h budget is a guess, not a measurement. Time one checkpoint before
 launching 24 cells' worth.
+
+### 2026-08-19 19:07 — Calibration mid-run: 11.2 steps/s measured, and the run's own config verifies every frozen value
+
+**The user pushed back that the policy "trains so fast", which was the right instinct to check.**
+Answered from the 20k checkpoint's own recorded config rather than from my extrapolation.
+
+**Real rate, end-to-end.** Checkpoint `020000` written at 19:06:46; the training loop started
+~18:37:07 (wandb init 18:36:58 + the ~9 s gap between init and "Start offline training" observed
+in the smoke). 20,000 steps in **1,779 s = 11.2 steps/s**, so 80k steps is **~1.98 h** plus ~2.3
+min of startup -> **~2.0 h and ~2.0 GPU-h per cell** (billing 8 = 1 GPU-h per wall-clock hour).
+
+That is **20 % slower than the 13.89 steps/s** the throughput smoke reported, and the reason is
+CPU allocation, not anything mysterious: `smoke_dataloader.sbatch` requests
+`--cpus-per-task=32` while `train.sbatch` requests 8. With 8 cores, 8 dataloader workers plus the
+main process contend, so `data_s` no longer rounds to zero. Measured CPU draw during the run was
+~5.9 of 8 cores busy.
+
+**8 cores is nevertheless the right choice, by arithmetic rather than preference:** billing scales
+linearly with cores, so 16 cores would buy ~18 % wall-clock for ~2x the cost.
+
+| cpus-per-task | steps/s | h/cell | GPU-h/cell | 23 cells |
+|---|---|---|---|---|
+| **8** | **11.2 (measured)** | **~2.0** | **~2.0** | **~46** |
+| 16 | ~13 (extrapolated) | ~1.7 | ~3.4 | ~79 |
+
+So the earlier "1.6 h / 38 GPU-h" figures were optimistic by the CPU-allocation difference;
+**~2.0 h / ~46 GPU-h is the number to plan with.** Still 5x better than the pyav baseline
+(10.2 h) and well inside the plan's ~200 GPU-h for T1 training.
+
+**Config verification from `checkpoints/020000` -- every frozen value confirmed:**
+
+```
+steps = 80000              batch_size = 64            seed = 0
+save_freq = 20000          num_workers = 8            video_backend = torchcodec
+optimizer = adam / lr=0.0001                          optimizer_lr = 0.0001
+n_obs_steps = 2            horizon = 16               n_action_steps = 8
+vision_backbone = resnet18 crop_shape = [112, 112]    use_group_norm = True
+num_train_timesteps = 100  noise_scheduler_type = DDPM
+pretrained_backbone_weights = None
+use_separate_rgb_encoder_per_camera = False           do_mask_loss_for_padding = False
+dataset.episodes = 25 (0..24)
+```
+
+Three things this settles:
+1. **Nothing was silently reduced.** `steps=80000` at `batch_size=64` with the full architecture.
+   The run is simply a ~2 h job on an A100 at 128x128 -- cheap compared with the original
+   Diffusion Policy setup's 240x320 inputs.
+2. **The LR fix works end-to-end.** `optimizer = adam / lr=0.0001` in `train_config.json` proves
+   `--policy.optimizer_lr` reached the *actual optimizer*. Bug 4 (validate() overwriting
+   `cfg.optimizer` from the policy preset) would have left this at the default silently -- here it
+   is confirmed against the artifact rather than the flag.
+3. **D23 VERIFY (c) discharged:** `pretrained_backbone_weights = None`. That flag is deliberately
+   not passed on the CLI (draccus might decode the string "null"), so asserting it against the
+   saved config was the plan, and it holds.
+
+**Also fixed: my sif build failed and my own diagnostic hid it.** The login-node
+`singularity build` was piped through `tail -15` and then read `$?`, which reports **tail's**
+status -- so a failed build printed `BUILD_RC=0` while producing no image. That is the same
+exit-code-hygiene trap already recorded in this journal for `head`, arriving through a different
+pipe. The conversion is now a compute job (`slurm/build_sif.sbatch`, job 52915767) with no pipe
+before the exit-code capture, 120 GB of RAM, and node-local scratch instead of Lustre -- the
+login node is shared by ~100 users with capped memory, and a Lustre `SINGULARITY_TMPDIR` made
+mksquashfs emit an endless "Unrecognised xattr prefix lustre.lov" stream while unpacking ~17 GB
+of small files.
