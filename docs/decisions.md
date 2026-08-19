@@ -360,3 +360,33 @@ were replaced with measured ones (evidence in docs/journal.md 2026-08-17/18):
 legal; the synthetic `push_frame` reproduces strokes at new bearings and positions; and the
 resulting generation SR (88.5-98.5 %) is the highest of the three tasks. Every load-bearing
 assumption in D19 held.
+
+## D22 — 2026-08-19: cluster training env mirrors the local stack exactly, on torch cu128 over a CUDA-12.2 driver
+
+**Decision.** The cluster training env (`$WORK/cog/miniforge3`, env `cog_lerobot`) is pinned
+version-for-version to the locally verified stack: python 3.11, **torch 2.7.0+cu128**,
+torchvision 0.22.0+cu128, lerobot 0.4.4, numpy 1.26.4, av 15.1.0, `video_backend=pyav`.
+Install order is torch-from-cu128-index first (with deps), lerobot second.
+
+**Why mirror rather than take whatever resolves.** Training happens on the cluster and eval
+happens locally in `cog_isaac`, so a checkpoint must cross environments. Keeping one set of
+pins on both sides removes an entire class of "trained fine, loads wrong" failure, and it is
+free: LeRobot 0.4.4 requires only `torch<2.11.0,>=2.2.1`, so nothing forces a divergence.
+The numpy 1.26.4 pin is not needed on the cluster (its reason, D3, is an Isaac Kit segfault
+and there is no Kit in the training env) but is kept anyway for parity, since it costs
+nothing and makes the two envs diffable.
+
+**The open assumption.** Leonardo's A100 nodes run driver **535.274.02, CUDA 12.2** (measured
+2026-08-19, node lrdn2752), which is *older* than the cu128 wheels' 12.8. This is expected to
+work through CUDA minor version compatibility -- any 12.x runtime on a >=525 driver -- and
+sm_80 is compiled into the cu128 binary, so no PTX JIT is involved. But it is an assumption,
+not a verified fact, so it is **checked in the G5a smoke** with `torch.cuda.is_available()`
+and a real GPU matmul before any 8 h run is submitted.
+
+**Fallback, decided in advance so it is not improvised under time pressure:** if the cu128
+wheels fail on this driver, drop the cluster env to **torch 2.7.0+cu126** and leave every
+other pin alone. This has no scientific cost: a checkpoint is a build-independent
+safetensors directory plus JSON, so a cu126-trained checkpoint loads unchanged in the local
+cu128 eval env. Only the wheel's bundled CUDA differs, not the math, the seed, or the data.
+
+**VERIFY:** cu128-on-535 GPU matmul (G5a smoke). If it fails, switch to cu126 and note it here.
