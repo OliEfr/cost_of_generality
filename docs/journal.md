@@ -2715,3 +2715,67 @@ The file here held 2,567 records: **400 `history`** (= 80,000 / log_freq 200, ex
 `output_raw`: concatenate `rec.output_raw.line` and re-parse LeRobot's own log format. That
 recovered all 400 rows. Recorded because "wandb ate the log" will happen again on every cluster
 run, and syncing to the cloud is not an option from a compute node.
+
+### 2026-08-19 20:50 — G5b: Kit runs in the shipped image but dies during startup; STOPPED at the bound. A100 rendering still UNANSWERED
+
+Two gate attempts against `cog-env-5.1.0.sif` (jobs 52956838, 52959414). Both end the same way:
+
+```
+... [Warning] [carb] Potential plugin preload failed: .../libomni.hydra.rtx.plugin.so
+... [Warning] [carb] Recursive unloadAllPlugins() detected!
+frames_qa rc=0
+[gate] 0 PNG(s)
+```
+
+**Where this actually is, stated precisely.** This is much further than the NVIDIA-image route ever
+got (that failed at `rc=126`, unable to execute anything). Kit now *starts inside the container*:
+it reads its user config, initialises carb, loads extensions, warns about the missing X display as
+expected for headless, and then tears itself down after ~18 s and **exits 0**.
+
+The decisive detail is not the exit code -- it is that `frames_qa.py`'s **module-level**
+`os.makedirs(OUT)` (line 26, immediately after the AppLauncher block) never runs: the writable
+directory bound over the repo's `ops/` stays completely empty. So the process is terminated from
+*inside* the `AppLauncher`/`SimulationApp` constructor, before any of our code executes. Nothing
+our script does is implicated, and no Python traceback is produced -- Kit exits 0 on a fatal
+startup error, which is exactly the D6 pattern this project already knew about and which the gate
+was written to defend against (it judges pixels, not `$?`, which is why it reported honestly
+instead of passing).
+
+**What was found and fixed on the way (a real bug, just not the last one).** The Vulkan ICD was
+genuinely missing. Measured on a compute node (job 52958496):
+
+| | host (lrdn0332) | inside container, `--nv` |
+|---|---|---|
+| `/usr/share/vulkan/icd.d/nvidia_icd.x86_64.json` | present | **directory absent** |
+| `VK_ICD_FILENAMES` | -- | **unset** |
+| `libvulkan.so.1` | -- | loads fine |
+
+A Vulkan loader with no ICD and no driver sees **zero devices**, which alone is enough to stop the
+RTX renderer. Fixed in the gate by binding the host ICD directory and setting
+`VK_ICD_FILENAMES` -- no image rebuild needed -- and verified: `ICD visible: .../nvidia_icd.x86_64.json`.
+Also corrected a false negative of mine: `--nv` *does* inject the driver, 46 libs into
+`/.singularity.d/libs` including `libGLX_nvidia` and `libnvidia-glvkspirv`. My earlier
+`ldconfig -p | grep glvkspirv` returned 0 because **ldconfig reads /etc/ld.so.cache, not
+LD_LIBRARY_PATH** -- the libs were there all along.
+
+**Stopping here, deliberately.** I set a bound of one diagnostic plus one fix on this optional item
+before starting, and both are spent. The remaining gap is a Kit-startup failure inside a
+hand-built ubuntu:24.04 base that is missing something the official Isaac Sim image installs -- the
+`Potential plugin preload failed` lines for the RTX/hydra plugins are the obvious suspects, and the
+honest next step is to obtain the *reference* warning set by running the identical `frames_qa.py`
+locally where it works, and diff. That is tractable but it is not a five-minute job.
+
+**The A100 rendering question is therefore still formally UNANSWERED.** Neither gate attempt ever
+reached a renderer, so nothing here says anything about issues #3421/#1519. I am not recording a
+guess as a result.
+
+**Recommendation unchanged, and now cheaper than when first made:** evaluate T1 on the local 4090.
+D24 cut the workload from 72 checkpoint-evals to 24+2, so the fallback the plan already accepted is
+now a third of the size it was when it was chosen. Revisit the container only if Tasks 2-3 make
+eval throughput binding again -- and if so, start from the *reference-warning diff*, not from
+another round of guessing at apt packages.
+
+**Assets kept for whoever resumes it:** `cog-env-5.1.0.sif` (9.8 GB) and `isaac-sim-5.1.0.sif`
+(7.1 GB) on `$WORK/cog/containers/`; `slurm/build_sif.sbatch`, `slurm/probe_vulkan.sbatch`,
+`slurm/debug_a100_cogenv.sbatch`, `docker/Dockerfile.cog_env` and `docker/Dockerfile.cog`, each
+carrying its findings in comments.
