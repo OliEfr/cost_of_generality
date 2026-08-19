@@ -2090,3 +2090,48 @@ head-to-head anyway (env `cog_lerobot06`, py3.12, lerobot 0.6.1 + ffmpeg 6.1.2).
 Also worth recording: a bare `pip install lerobot==0.6.1` is **not usable for training** -- no
 video backend, and `lerobot.scripts.lerobot_train` raises ImportError. The correct install is
 `lerobot[dataset,training]`. A migration would therefore not be a version-number change.
+
+### 2026-08-19 18:25 — My own num_workers measurement was invalid; draccus takes the LAST flag
+
+Job 52885440 reported num_workers 8 and 16 as **identical** (data_s 0.388 vs 0.386,
+2.18 vs 2.19 steps/s), which I nearly wrote up as "worker count does not help, the bottleneck
+must be a serialized resource". It was not a finding, it was a bug in my own smoke script:
+
+`configs/train/diffusion_base.sh` contains `--num_workers=8`, and `${SMOKE_FLAGS}` (derived
+from it) is expanded **after** my `--num_workers=${NW}` on the command line. I had stripped
+`--steps`, `--save_freq` and `--log_freq` from it precisely because I did not want to depend
+on flag precedence -- and then left `--num_workers` in. Draccus resolves duplicates
+last-wins, so every arm ran at 8 workers.
+
+Caught by checking the **resolved** config rather than the flag I passed:
+`grep "num_workers" <log>` -> `num_workers': 8` inside the arm labelled nw=16. The job was
+cancelled rather than left to finish a third identical arm.
+
+Two things now guard against a repeat, because a wrong number that looks plausible is worse
+than a crash:
+1. `--num_workers=` is stripped from `SMOKE_FLAGS` alongside the others.
+2. The smoke **asserts** the resolved `num_workers` equals the requested one and writes
+   `NWMISMATCH<n>` into the CSV instead of a timing row if it does not. A measurement that
+   cannot prove what it measured does not get to look like data.
+
+Not a total loss: the two accidental repeats of the same configuration show run-to-run
+variance is **under 1 %** (2.18 vs 2.19 steps/s), which is worth knowing before treating any
+single-arm difference as real. Also confirmed the job really did get 32 CPUs (`nproc` = 32),
+so the boring explanation was ruled out before the interesting one was believed.
+
+**Note for the frozen config:** `--num_workers=8` living inside `COG_DP_FLAGS` means it is
+part of the frozen hyperparameter set. It is *not* a scientific hyperparameter -- it changes
+throughput, not the model -- so if the dataloader work leads to a different worker count, it
+must be changed deliberately in one place and recorded, not overridden per job.
+
+### Cost context, so this optimisation does not become a rabbit hole
+
+Do-nothing baseline: 0.962 steps/s at batch 64 with 8 cores -> **~11.8 h per run** (10.2 h by
+the steady-state estimate). 24 cells x 10.2 h x 8 cores = ~1,960 core-h = **~245 GPU-h**, and
+because the cells are independent and the queue is effectively empty (4 s to start), the whole
+wave finishes in **one 10-12 h wall-clock block**. That is already inside the plan's ~200
+GPU-h / "~1 day" envelope for T1 and inside the 2,200 GPU-h ceiling even after Tasks 2-3.
+
+So the decode bottleneck is an **optimisation, not a blocker**. It is worth a bounded attempt
+because a 3x win compounds across 3 tasks (~735 -> ~250 GPU-h), but it does not gate the
+calibration run and will not be allowed to delay it.

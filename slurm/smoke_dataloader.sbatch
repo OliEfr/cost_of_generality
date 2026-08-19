@@ -62,8 +62,13 @@ done
 if [ -z "${ENTRY}" ]; then echo "NO TRAIN ENTRY POINT FOUND in ${ENV_NAME}" >&2; exit 3; fi
 echo "entry: ${ENTRY}"
 
+# num_workers MUST be stripped: it is in the frozen config, draccus takes the LAST
+# occurrence of a flag, and ${SMOKE_FLAGS} is expanded AFTER --num_workers below. Leaving it
+# in made every arm of the first run silently execute at num_workers=8 while reporting 8/16/24
+# -- three identical rows that looked like "more workers does not help". Verified by grepping
+# the resolved config in the run log (num_workers': 8 in the "nw=16" arm).
 SMOKE_FLAGS="$(printf '%s\n' ${COG_DP_FLAGS} \
-  | grep -v -E '^--steps=|^--save_freq=|^--log_freq=' | tr '\n' ' ')"
+  | grep -v -E '^--steps=|^--save_freq=|^--log_freq=|^--num_workers=' | tr '\n' ' ')"
 EPISODES="$(python - "$NEPS" <<'PY'
 import sys
 print(",".join(str(i) for i in range(int(sys.argv[1]))))
@@ -102,6 +107,16 @@ for NW in ${NW_LIST}; do
   if [ "${RC}" -ne 0 ]; then
     echo "  FAILED rc=${RC}; tail:"; tail -20 "${LOG}"
     echo "${ENV_NAME},${LR_VER},${BACKEND},${NW},${BATCH},${STEPS},FAILED,FAILED,FAILED,FAILED,FAILED,FAILED,rc${RC}" >> "${CSV}"
+    continue
+  fi
+
+  # Trust the RESOLVED config, not the flag we passed. LeRobot echoes the full config; if the
+  # requested num_workers or backend did not survive flag precedence, the timing number is
+  # meaningless and must not be written to the CSV as if it were real.
+  GOT_NW="$(grep -o "num_workers': *[0-9]*" "${LOG}" | head -1 | grep -o '[0-9]*$' || true)"
+  if [ -n "${GOT_NW}" ] && [ "${GOT_NW}" != "${NW}" ]; then
+    echo "  ABORT: requested num_workers=${NW} but the resolved config says ${GOT_NW}"
+    echo "${ENV_NAME},${LR_VER},${BACKEND},${NW},${BATCH},${STEPS},NWMISMATCH${GOT_NW},NWMISMATCH,NA,NA,NA,NA,NA" >> "${CSV}"
     continue
   fi
 
