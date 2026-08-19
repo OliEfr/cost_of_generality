@@ -25,10 +25,13 @@ case "$what" in
   code)
     # data/ and third_party/ are excluded: datasets move separately and IsaacLab is
     # installed on the remote, not copied.
+    # LEADING SLASHES ARE LOAD-BEARING: an rsync pattern with no '/' in it matches the
+    # final path component at ANY depth, so a bare 'ops/' also ate scripts/ops/ and left
+    # the cluster without launch_matrix.py (verified 2026-08-19). Anchor to the root.
     rsync -az --delete --info=stats1 \
-      --exclude 'data/' --exclude 'third_party/' --exclude '.git/' \
-      --exclude 'experiments/runs/' \
-      --exclude '__pycache__/' --exclude '*.hdf5' --exclude 'ops/' \
+      --exclude '/data/' --exclude '/third_party/' --exclude '.git/' \
+      --exclude '/experiments/runs/' \
+      --exclude '__pycache__/' --exclude '*.hdf5' --exclude '/ops/' \
       "${REPO}/" "${REMOTE}:${WORK_REMOTE}/repo/"
     ;;
   datasets)

@@ -1818,3 +1818,37 @@ costing zero GPU-h.
 12/12 datasets present: T1 L0-L3 ~75-81 MB each, T2 ~343-356 MB, T3 ~115-120 MB;
 **2.2 GB total**. `$FAST` quota is 1 T, so the read-hot staging plan has ~500x headroom
 and the "<20 GB" budget line in the plan was far too conservative.
+
+### Bug 3 (same gate, found by verifying rather than trusting): unanchored rsync excludes
+
+After the sync reported success I checked *what had actually arrived* rather than trusting
+`SYNC_UP_OK`, and found `$WORK/cog/repo/scripts/` contained only `dev/` --
+**`scripts/ops/` was missing entirely, including `launch_matrix.py`**, the script that
+submits the whole 24-run matrix.
+
+Cause: rsync filter-rule semantics. A pattern with no `/` in it is matched against the
+*final path component at any depth*; only a pattern containing a slash is matched against
+the path from the transfer root. So `--exclude 'ops/'`, written to skip the top-level
+`ops/` log directory, also matched `scripts/ops/`. Same latent trap in `data/` and
+`third_party/` (harmless today -- no nested dirs by those names -- but wrong for the same
+reason). Fixed by anchoring: `/ops/`, `/data/`, `/third_party/`, `/experiments/runs/`.
+`.git/`, `__pycache__/` and `*.hdf5` stay unanchored deliberately -- those we do want
+dropped at any depth.
+
+Re-sync now lands 13 ops scripts, `launch_matrix.py` among them; `repo` = 3.5 MB with
+top-level `ops/` and `data/` correctly absent. **Gate (a) PASSED for real.**
+
+This bug would not have surfaced until matrix-launch time, as a "command not found" after
+G0/G5a had been signed off -- the most expensive place to discover it. Three bugs in one
+25-line script on its first real use is the argument for one-small-thing-at-a-time against
+the real cluster, and for making the *artifact* the check rather than the exit code (the
+same rule CLAUDE.md rule 9 and the Kit-exits-0 gotcha already encode).
+
+### Login-node facts for the env build (P5 prerequisite)
+
+`ulimit`: max memory size 1 GB (Linux typically does not enforce `-m`), stack 100 MB,
+65536 open files; node has 128 cores / 502 GB with ~217 GB available. Compute nodes have
+no internet, so a login-node install is the only route for pip/conda; if cgroup limits
+kill a large install, the fallback is to download wheels on the login node and install
+from cache inside an `srun` step. Not yet attempted -- recorded so the attempt is planned
+rather than improvised.
