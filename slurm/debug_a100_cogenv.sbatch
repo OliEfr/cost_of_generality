@@ -111,6 +111,13 @@ echo "host ICD: $(ls ${VK_ICD_SRC} 2>&1)"
 # the loader reports ERROR_INCOMPATIBLE_DRIVER -- indistinguishable from a genuinely unsupported GPU.
 # Rewriting library_path to an ABSOLUTE path removes the search entirely.
 #
+# Three Vulkan hypotheses are now DISPROVED by measurement rather than argued away: the ICD was
+# genuinely absent (fixed; no change to the error); NVIDIA's documented 535.255+ driver-version
+# misreport workaround `--/rtx/verifyDriverVersion/enabled=false` (no change -- it gates Kit's own
+# check, not vkCreateInstance); and the ICD's bare soname vs Kit's rewritten LD_LIBRARY_PATH
+# (absolute path; no change). So stop guessing and make the loader talk: VK_LOADER_DEBUG makes the
+# Vulkan loader log every ICD it discovers and its reason for rejecting each one.
+#
 # Aside for the record: Apptainer documents `--nvccli` + NVIDIA_DRIVER_CAPABILITIES=graphics as the
 # way to get Vulkan/GL, but `nvidia-container-cli` is not installed on Leonardo, so that route is
 # closed. Leonardo's /etc/singularity/nvliblist.conf does already list the graphics libs, so plain
@@ -143,6 +150,7 @@ timeout 1500 srun singularity exec --nv \
   --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES \
   --env VK_ICD_FILENAMES="${VK_ICD_JSON}" --env VK_DRIVER_FILES="${VK_ICD_JSON}" \
   -B "${COG}/extralibs:/opt/extralibs" \
+  --env VK_LOADER_DEBUG="${COG_VK_LOADER_DEBUG:-error,warn}" \
   "${SIF}" bash -lc "export LD_LIBRARY_PATH=/opt/extralibs:\${LD_LIBRARY_PATH}; cd ${REPO_IN} && python scripts/dev/frames_qa.py --level L0 --resets 2 --headless --enable_cameras --kit_args=\"--/rtx/verifyDriverVersion/enabled=false\"" \
   < /dev/null
 RC=$?

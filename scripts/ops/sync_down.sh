@@ -33,10 +33,15 @@ case "$what" in
       # two thirds of its inputs and quietly turned best-of-3 into last-only.
       # Directory names are SIX digits (040000, not 00040000) -- verified against a real
       # checkpoint on 2026-08-19; docs/specs/06_lerobot_044.md shows 9 and is wrong.
+      # Only pretrained_model/ is pulled: that is all eval loads. training_state/ is ~2 GB per
+      # checkpoint of optimizer state used solely for RESUMING, which happens on the cluster, so
+      # pulling it would triple the transfer (9 GB -> 3 GB per cell) for nothing.
       rsync -az --info=stats1 --prune-empty-dirs \
         --include '*/' \
-        --include '040000/**' --include '060000/**' --include '080000/**' \
-        --include 'last/**' --exclude '*' \
+        --include '040000/pretrained_model/**' \
+        --include '060000/pretrained_model/**' \
+        --include '080000/pretrained_model/**' \
+        --include 'last/pretrained_model/**' --exclude '*' \
         "${REMOTE}:${WORK_REMOTE}/checkpoints/${run}/" "${dest}/"
       echo "[sync] ${run} -> ${dest}"
     done
