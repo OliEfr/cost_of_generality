@@ -2346,3 +2346,34 @@ never started".
    syncing the latter would silently upload nothing and report success. Related to the standing
    note that the local `.netrc` key may not match a run's wandb entity: confirm the account
    before trusting any sync.
+
+### 2026-08-19 19:05 — Reviewed the eval path ahead of G5b: two cluster-portability bugs
+
+Read `slurm/eval.sbatch` and `src/cog/eval/rollout_eval.py` while waiting on the calibration,
+looking for the same class of never-run-on-the-cluster bug that `train.sbatch` turned out to
+have five of. Two found, both fatal on the cluster and both invisible locally:
+
+1. **`eval.sbatch` activates a conda env that cannot exist on Leonardo.** It does
+   `conda activate "${COG_EVAL_ENV:-cog_isaac}"`. That is exactly right locally and impossible
+   on the cluster: RHEL 8.8's glibc 2.28 is below Isaac Sim 5.1's >= 2.35 requirement, which is
+   *why* we are building a Singularity image at all. Cluster eval has to run **inside the sif**:
+   `singularity exec --nv -B ... "${SIF}" python -m cog.eval.rollout_eval ...`. The script was
+   written before the glibc constraint was known, and its own header says "UNVERIFIED until G0
+   clears and G5b passes" -- which it has now earned twice over.
+2. **`rollout_eval.py --protocol` defaults to a hardcoded workstation path**
+   (`/home/admin_07/cost_of_generality/configs/eval_sets/protocol.json`). On the cluster the
+   file lives at `$WORK/cog/repo/configs/eval_sets/protocol.json`. Same failure family as the
+   `train.sbatch` line that sources `diffusion_base.sh` from an absolute local path -- there the
+   `||` fallback saved it; here there is no fallback. The default should resolve relative to the
+   package, with the absolute path as an override.
+
+Both are deferred until the G5b render gate answers, on purpose: if Isaac cannot render on an
+A100 the entire cluster-eval path is moot and the accepted fallback (eval locally on the 4090)
+uses the conda env and the local protocol path exactly as written. Fixing them first would be
+work done on the strength of an unverified assumption -- the mistake this project keeps
+catching itself in.
+
+Noted for when it is time: `--time=04:00:00` in `eval.sbatch` covers **three** checkpoints
+(40k/60k/80k) x 100 episodes x up to 600 steps of rendered rollout. That is ~180k rendered env
+steps in one job and the 4 h budget is a guess, not a measurement. Time one checkpoint before
+launching 24 cells' worth.
