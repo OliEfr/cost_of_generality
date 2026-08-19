@@ -2441,3 +2441,38 @@ before the exit-code capture, 120 GB of RAM, and node-local scratch instead of L
 login node is shared by ~100 users with capped memory, and a Lustre `SINGULARITY_TMPDIR` made
 mksquashfs emit an endless "Unrecognised xattr prefix lustre.lov" stream while unpacking ~17 GB
 of small files.
+
+### 2026-08-19 19:23 — Isaac Sim container built on Leonardo: SIF_BUILD_OK (7.1 GB)
+
+The glibc barrier is cleared. `isaac-sim-5.1.0.sif` is 7.1 GB and runs:
+
+```
+=== does it run? ===
+inside
+PRETTY_NAME="Ubuntu 24.04.2 LTS"
+SIF_BUILD_OK isaac-sim-5.1.0.sif
+```
+
+Ubuntu 24.04 inside means glibc 2.39, comfortably above Isaac Sim 5.1's >= 2.35 -- which is the
+whole reason a container was mandatory on RHEL 8.8 (glibc 2.28).
+
+Route that worked, in order, none of it optional:
+1. `docker pull nvcr.io/nvidia/isaac-sim:5.1.0` **locally** (15.1 GB) -- the workstation already
+   had nvcr.io credentials, so nothing had to be sent to a shared cluster.
+2. `docker save` -> 15,123,856,384 B tar; `rsync -z` up (7.54 GB on the wire, 2.01x compression);
+   byte-count verified **identical** on both sides.
+3. `singularity build isaac-sim-5.1.0.sif docker-archive://...` on a **compute node**. Converting a
+   docker archive needs no `%post` and therefore **no fakeroot** -- which matters because fakeroot
+   is unmapped for this account (`no valid mapping entry found for ohausdoe`), so a def-file build
+   was never an option.
+
+**Timings, for docs/timings.md:** unpack ~19.4 GB of rootfs in ~10 min, squashfs to 7.1 GB in
+~6 min, total job 13:55 at 16 cores = **0.46 GPU-h**. The same conversion on a login node had
+**failed**: shared by ~100 users, capped memory, and a Lustre `SINGULARITY_TMPDIR` that made
+mksquashfs emit an unbounded "Unrecognised xattr prefix lustre.lov" stream. The compute node's own
+`/tmp` was only 10 GB against ~35 GB needed, so the job correctly fell back to Lustre for scratch
+and still finished in 14 minutes -- the win was RAM and dedicated cores, not local disk.
+
+Next: `slurm/debug_a100_kit.sbatch` (job 52921497) runs NVIDIA's own shipped camera example
+headless for 601 steps and judges the PNGs it writes -- existence *and* pixel content, because the
+A100 failure mode on record is degraded rendering, which produces a perfectly valid blank file.
