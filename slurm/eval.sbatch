@@ -10,7 +10,9 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.out
 #
-# Evaluate the last three checkpoints of one cell on the FROZEN eval set.
+# Evaluate a cell's checkpoint(s) on the FROZEN eval set. Default = the LAST checkpoint only
+# (80k), per the 2026-08-19 user directive; pass explicit step names for the one-time
+# multi-checkpoint comparison. See D24.
 #   sbatch slurm/eval.sbatch T1 L0 100
 #
 # ONLY valid if gate G5b passed (Isaac renders on A100). If it failed, run the same loop
@@ -19,9 +21,19 @@
 # UNVERIFIED until G0 clears and G5b passes.
 set -uo pipefail
 
-TASK="${1:?usage: eval.sbatch TASK LEVEL NDEMOS}"
+TASK="${1:?usage: eval.sbatch TASK LEVEL NDEMOS [STEP...]}"
 LEVEL="${2:?}"
 NDEMOS="${3:?}"
+shift 3 || true
+# User directive 2026-08-19: full-scale cells evaluate the LAST checkpoint only; the
+# 40k/60k/80k comparison is run ONCE, on one cell, to check that 80k is not systematically
+# worse than an earlier checkpoint (D24). So the default is 080000 and the comparison is
+# requested explicitly:
+#   sbatch slurm/eval.sbatch T1 L0 100                        # full-scale: 80k only
+#   sbatch slurm/eval.sbatch T1 L0 25 040000 060000 080000    # the one-time comparison
+STEPS_TO_EVAL=("$@")
+if [ ${#STEPS_TO_EVAL[@]} -eq 0 ]; then STEPS_TO_EVAL=(080000); fi
+echo "[eval] checkpoints to evaluate: ${STEPS_TO_EVAL[*]}"
 
 WORK="${COG_WORK:-$WORK/cog}"
 RUN_ID="${TASK,,}_${LEVEL}_n${NDEMOS}_s0"
@@ -42,8 +54,7 @@ mkdir -p "${RESULTS}"
 source "${WORK}/miniforge3/etc/profile.d/conda.sh"
 conda activate "${COG_EVAL_ENV:-cog_isaac}"
 
-# Last three saved checkpoints = the frozen protocol's 40k/60k/80k.
-for step in 040000 060000 080000; do
+for step in "${STEPS_TO_EVAL[@]}"; do
   CKPT="${CKPT_DIR}/${step}/pretrained_model"
   if [ ! -d "${CKPT}" ]; then echo "[eval] missing ${CKPT}, skipping"; continue; fi
   OUT="${RESULTS}/eval_${EVAL_KEY}_n${NDEMOS}_${step}.json"

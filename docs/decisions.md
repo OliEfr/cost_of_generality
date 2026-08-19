@@ -472,3 +472,52 @@ run's saved `config.json` instead.
 **VERIFY:** (a) `data_s` with torchcodec in a real training loop -- job 52896093; (b) resume
 across requeue -- `slurm/smoke_resume.sbatch`; (c) `pretrained_backbone_weights: null` in the
 calibration run's `checkpoints/*/pretrained_model/config.json`.
+
+## D24 — 2026-08-19 (USER DIRECTIVE): full-scale cells evaluate the LAST checkpoint only; the checkpoint comparison is run once
+
+**Decision (user, 2026-08-19).** "I only want to test once how the checkpoints compare during
+eval, and for full-scale run always only eval last checkpoint."
+
+So the protocol changes from the plan's *"evaluate last 3 checkpoints (40/60/80k); primary metric
+= best-of-last-3"* to:
+- **one** cell is evaluated at 40k, 60k **and** 80k, purely to characterise how much the choice of
+  checkpoint matters;
+- **every other cell** is evaluated at **80k only**, and the headline metric is
+  **last-checkpoint SR**.
+
+**Why this is a good trade.** After the G5a decode fix, training a cell costs ~2 h while eval is
+~100 rendered rollouts per checkpoint -- so evaluation, not training, had become the binding
+wall-clock constraint of the whole study. This cuts the eval workload from **72 checkpoint-evals
+to 24** (plus 2 extra for the comparison), i.e. a 3x reduction on the critical path, for the price
+of one mitigation.
+
+**What is given up, stated plainly.** `best-of-last-3` was the plan's hedge against single-seed
+noise (one seed per cell is itself a user directive). Reporting the last checkpoint instead means
+that hedge is gone: if training is non-monotone near the end, a cell can look worse than it is,
+and with N varying across the grid that noise lands directly on the demos-vs-success curve we are
+trying to measure. `best_of_last_3` is a strictly optimistic statistic, so switching to
+last-checkpoint also removes a mild upward bias -- arguably making the numbers *more* honest, just
+noisier.
+
+**How the risk is controlled rather than ignored.** The one-time comparison is not a formality --
+it is the evidence that decides whether the simplification is safe, and it gets **reported as a
+finding**, not just used to justify the choice. Concretely: if the 80k SR sits within the Wilson
+interval of the 40k/60k SRs, last-checkpoint-only is sound and we proceed. If 80k is
+**systematically worse** than an earlier checkpoint, that is itself a result (late-training
+degradation) and it comes back to the user before the matrix is evaluated, because it would mean
+the headline metric is measuring an artifact.
+
+**Which cell hosts the comparison:** `t1_L0_n25_s0` -- the G5a calibration cell, which will have
+20k/40k/60k/80k checkpoints already on disk at no extra training cost.
+
+**Deliberately NOT changed:** `--save_freq=20000` stays. Intermediate checkpoints cost ~1 GB each
+on a 3 TB area, they are what makes requeue/resume work (G5a part 3), and they keep the option of
+revisiting any cell's trajectory later. Saving them and choosing not to *evaluate* them are
+different decisions.
+
+**Implementation:** `slurm/eval.sbatch TASK LEVEL NDEMOS [STEP...]` now defaults to `080000`;
+the comparison is requested explicitly as `... T1 L0 25 040000 060000 080000`.
+`experiments/registry.csv` keeps its `sr_40k`/`sr_60k` columns -- they will simply be empty for
+every cell except the comparison one, which is honest rather than untidy.
+
+**Budget effect:** T1 evals ~25 -> ~9 GPU-h; all three tasks ~75 -> ~27 GPU-h.
