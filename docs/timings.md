@@ -215,3 +215,26 @@ Lustre -- the win is RAM and dedicated cores, not local disk.
 **Planning rule:** a dbg-QOS smoke costs ~0.1-0.5 GPU-h. At that price, measure rather than
 reason -- every wrong assumption found today (queue depth, batch scaling, decode cost, resume,
 container permissions) was found by a job costing less than half a GPU-hour.
+
+## Per-camera RGB encoders (D26) -- measured 2026-08-19, T1 matrix in flight
+
+| architecture | steps/s | 80k projection | source |
+|---|---|---|---|
+| one shared RGB encoder | 11.2 | 2.0 h (measured exactly 02:00:04) | G5a calibration, job 52899856 |
+| **separate encoder per camera** | **9.45** | **2.35 h** | live read of job 53008600 at step 7,200 |
+
+So untying the encoders costs **~16% throughput** (11.2 -> 9.45 steps/s), i.e. +0.35 h per cell.
+Worth noting because the loop is decode-bound (GPU util ~0% at every batch size, D23), so a +4.2%
+parameter increase was NOT expected to move wall-clock much -- it does, by more than the parameter
+delta. The extra cost is the second encoder's forward/backward over the same 2-camera batch, which
+is real compute even when the step is gated on data.
+
+Matrix re-forecast: 24 cells x 2.35 h = **~56 GPU-h** (was ~48 at the old rate). The 12 h walltime
+per cell keeps ~5x margin.
+
+**Method note, reusable:** throughput of a RUNNING job is readable without waiting for a checkpoint
+and without syncing wandb. Offline mode writes no `files/config.yaml`, and `_redirect()` leaves the
+Slurm `.out` nearly empty, but the `.wandb` datastore has `history` records with `_step` and
+`_timestamp`. `scripts`-side reader: `read_wandb_run.py` (job tmp), using
+`wandb.sdk.internal.datastore` + `wandb.proto.wandb_internal_pb2`. This is the only live progress
+signal for these jobs -- do not judge liveness from log growth.
