@@ -2811,3 +2811,37 @@ enough for 97 %**. Consequences worth stating before the matrix runs:
 
 Recorded in the registry as `sr_40k=0.97`, `eval_n=100`. 60k and 80k are running -- the D24
 comparison needs all three before the last-checkpoint-only protocol can be judged sound.
+
+### 2026-08-19 22:00 — D24 CHECKPOINT COMPARISON RESOLVED: last-checkpoint-only is sound
+
+The one-time 40k/60k/80k comparison D24 requires, on `t1_L0_n25_s0`, frozen protocol, 100 episodes
+each on the local 4090:
+
+| checkpoint | successes | SR | Wilson 95 % CI |
+|---|---|---|---|
+| 040000 | 97/100 | 0.970 | [0.915, 0.990] |
+| 060000 | 95/100 | 0.950 | [0.888, 0.978] |
+| **080000** | **98/100** | **0.980** | [0.930, 0.994] |
+
+**Verdict: the last checkpoint is not systematically worse -- here it is the best of the three, and
+`best_of_last_3` (0.980) is IDENTICAL to `last_checkpoint` (0.980).** All three intervals overlap
+heavily. The spread, 3 points, is the same order as the binomial standard error at n=100 and
+p≈0.97 (~1.7 points), so checkpoint choice contributes no more noise than sampling already does.
+
+**So D24 is discharged in the affirmative and the full-scale protocol stands: evaluate 080000 only.**
+This is what I committed to reporting either way -- had 80k come in materially below 60k it would
+have gone back to the user before the matrix was evaluated, because the headline metric would then
+have been measuring late-training degradation rather than data efficiency.
+
+Two caveats kept on the record rather than buried:
+1. **One cell, one level, one seed.** This says late training is stable for L0/N=25, a saturated
+   cell where all three checkpoints are near ceiling and differences are hard to see by
+   construction. A cell in the steep part of the curve (low N, or a harder level) could behave
+   differently. If any future cell's number looks anomalous, re-running its 40k/60k is cheap
+   (~14 min each locally) and the checkpoints are already saved -- which is exactly why
+   `--save_freq=20000` was deliberately left in place under D24.
+2. Ceiling effect: at 0.95-0.98 there is very little room for a checkpoint to look better, so this
+   test had limited power to detect a *small* late-training gain. It had ample power to detect the
+   thing we actually cared about -- a large late-training loss -- and found none.
+
+Registry updated: `sr_40k=0.97 sr_60k=0.95 sr_80k=0.98 sr_best=0.98`, status `done`.
