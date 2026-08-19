@@ -12,7 +12,14 @@ Design notes:
 - Every submitted cell gets a registry row immediately, with its job id. A cell that is
   already present and not 'failed' is skipped, so re-running after a partial submission is
   safe and idempotent.
-- Runs on the LOGIN node (sbatch lives there); it does not need Isaac or the training env.
+- **Runs on the WORKSTATION, submitting over ssh** (default `--remote leonardo`). This is
+  deliberate: `REGISTRY` resolves relative to this file, so running the script on the cluster
+  would append job ids to `$WORK/cog/repo/experiments/registry.csv` -- the rsync MIRROR, which
+  the next `sync_up.sh code` erases with `--delete`. Submitting over ssh keeps the git-tracked
+  registry the one that gets written. Pass `--no-remote` to submit locally (only correct if the
+  registry you want updated is the one next to the script).
+- Slurm logs go to `$WORK/cog/logs/` via an explicit `-o`. Without it, sbatch's default
+  `--output=%x-%j.out` is relative to the submit directory, i.e. it would litter the code mirror.
 """
 
 from __future__ import annotations
@@ -46,7 +53,16 @@ def main() -> None:
     ap.add_argument("--levels", nargs="*", default=LEVELS)
     ap.add_argument("--n", nargs="*", type=int, default=NDEMOS)
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--sbatch", default=str(REPO / "slurm" / "train.sbatch"))
+    ap.add_argument("--sbatch", default="slurm/train.sbatch",
+                    help="path to the sbatch script, relative to the repo on the submit host")
+    ap.add_argument("--remote", default="leonardo",
+                    help="ssh host to submit through; see the module docstring for why")
+    ap.add_argument("--no-remote", dest="remote", action="store_const", const=None,
+                    help="submit locally with sbatch instead of over ssh")
+    ap.add_argument("--time", default="06:00:00",
+                    help="walltime per cell. A cell is ~1.6 h after the G5a decode fix (D23), "
+                         "so the default is ~3.7x margin rather than train.sbatch's 24 h; a "
+                         "walltime kill is recoverable anyway (resume verified, G5a part 3).")
     args = ap.parse_args()
 
     header, rows = read_registry()
@@ -62,16 +78,22 @@ def main() -> None:
         if prev and prev.get("status") not in ("failed", "", None):
             print(f"  skip {rid} (already {prev.get('status')})")
             continue
-        cmd = ["sbatch", args.sbatch, args.task, lvl, str(n)]
+        # $WORK is left unexpanded on purpose: it is expanded by the REMOTE shell (ssh command
+        # mode does expand it -- verified 2026-08-19). Note this is NOT true of an rsync
+        # destination path, which never reaches a shell.
+        submit = (f"cd $WORK/cog/repo && sbatch --parsable -t {args.time} "
+                  f"-o $WORK/cog/logs/%x-%j.out {args.sbatch} {args.task} {lvl} {n}")
+        cmd = ["ssh", args.remote, submit] if args.remote else [
+            "sbatch", "--parsable", "-t", args.time, args.sbatch, args.task, lvl, str(n)]
         if args.dry_run:
-            print("  DRY " + " ".join(cmd))
+            print("  DRY " + (" ".join(cmd[:2]) + f" '{submit}'" if args.remote else " ".join(cmd)))
             continue
         out = subprocess.run(cmd, capture_output=True, text=True)
         if out.returncode != 0:
             print(f"  FAILED to submit {rid}: {out.stderr.strip()}")
             continue
-        # "Submitted batch job 1234567"
-        jobid = out.stdout.strip().split()[-1]
+        # --parsable prints just the job id (or "jobid;cluster")
+        jobid = out.stdout.strip().split(";")[0].split()[-1]
         print(f"  submitted {rid} as {jobid}")
         row = {k: "" for k in header}
         row.update({
