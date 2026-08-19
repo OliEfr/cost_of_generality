@@ -28,17 +28,24 @@ and two ABI failures) -- cheap at this scale, and each one bought a finding.
 
 ## Re-forecast after G5a (supersedes the plan's estimate v1 of ~900 GPU-h)
 
-The decode fix (D23) took a cell from ~10.2 h to **~1.6 h**, so every training figure below is
-~6.4x smaller than planned:
+The decode fix (D23) took a cell from ~10.2 h to **~2.0 h**, a 5x reduction.
+
+**Per-cell cost is MEASURED, not extrapolated:** the calibration run wrote its 20k checkpoint
+1,779 s after the training loop started = **11.2 steps/s**, so 80k steps = ~1.98 h + ~2.3 min
+startup -> **~2.0 h and ~2.0 GPU-h per cell** at `--cpus-per-task=8`.
+
+Note this is 20 % worse than the 13.89 steps/s the throughput smoke reported, because that smoke
+ran in a job with `--cpus-per-task=32` while a real cell gets 8. **8 cores is still correct**:
+billing is linear in cores, so 16 cores would buy ~18 % wall-clock for ~2x the cost.
 
 | Stage | Plan v1 | Re-forecast | Basis |
 |---|---|---|---|
-| T1 training (24 cells) | ~200 | **~38** | 1.6 h/cell x 8 billing / 8; 23 cells remain (L0/N=25 is the calibration) |
+| T1 training (23 cells remaining) | ~200 | **~46** | 2.0 GPU-h/cell measured; L0/N=25 already done as the calibration |
 | T1 evals (72 checkpoint-evals, if on cluster) | ~25 | ~25 | unchanged; G5b undecided |
 | Bring-up / gates / smokes | ~45 | **~3** | measured above |
-| Tasks 2-3 training (48 cells) | ~450 | **~77** | same per-cell cost |
-| Margin ~25% + contingency | ~180 | ~36 | |
-| **Total** | **~900** | **~180** | ceiling 2,200 |
+| Tasks 2-3 training (48 cells) | ~450 | **~96** | same measured per-cell cost |
+| Margin ~25% + contingency | ~180 | ~43 | |
+| **Total** | **~900** | **~215** | ceiling 2,200 |
 
 Wall-clock matters more than cost now: with a ~4 s queue latency and independent cells, the
 23-cell T1 wave is a **~2 h block**, not a day. The binding constraint on the study has shifted
