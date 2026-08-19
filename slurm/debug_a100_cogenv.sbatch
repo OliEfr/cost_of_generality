@@ -122,19 +122,32 @@ echo "host ICD: $(ls ${VK_ICD_SRC} 2>&1)"
 # way to get Vulkan/GL, but `nvidia-container-cli` is not installed on Leonardo, so that route is
 # closed. Leonardo's /etc/singularity/nvliblist.conf does already list the graphics libs, so plain
 # `--nv` injects them -- the libraries were never the problem, only their resolution.
-VK_ICD_JSON="${COG}/nvidia_icd_abs.json"
-python3 - "${VK_ICD_SRC}" "${VK_ICD_JSON}" <<'PYICD'
+# CRUCIAL: Kit uses its OWN BUNDLED Vulkan loader
+# (isaacsim/extscache/omni.gpu_foundation-*/bin/deps/libvulkan.so.1), and that loader appears to
+# ignore the loader environment variables entirely -- VK_LOADER_DEBUG=all produced **zero** LOADER
+# lines even though the container demonstrably receives our --env values. If it ignores
+# VK_LOADER_DEBUG it almost certainly ignores VK_ICD_FILENAMES / VK_DRIVER_FILES too, which would
+# explain why every earlier ICD fix changed nothing: the rewritten json sat on $WORK and was only
+# ever *pointed at* by an env var the loader never read.
+# So put the ICD where the loader actually looks: build a directory containing ONLY our
+# absolute-path nvidia ICD and bind it OVER /usr/share/vulkan/icd.d, replacing the host's set
+# (which also removes the intel/lvp/radeon/nouveau ICDs the loader would otherwise try first).
+VK_ICD_DIR="${COG}/vulkan_icd"
+mkdir -p "${VK_ICD_DIR}"
+VK_ICD_JSON="/usr/share/vulkan/icd.d/nvidia_icd.json"
+python3 - "${VK_ICD_SRC}" "${VK_ICD_DIR}/nvidia_icd.json" <<'PYICD'
 import json, sys
 src, dst = sys.argv[1], sys.argv[2]
 d = json.load(open(src))
 d["ICD"]["library_path"] = "/.singularity.d/libs/libGLX_nvidia.so.0"
 json.dump(d, open(dst, "w"), indent=4)
-print("rewrote ICD ->", dst, d["ICD"])
+print("wrote ICD ->", dst, d["ICD"])
 PYICD
+ls -l "${VK_ICD_DIR}"
 
 echo "=== container GPU/Vulkan visibility with the ICD bound ==="
 singularity exec --nv \
-  -B "${COG}:${COG}" -B "${VK_ICD_HOST}:${VK_ICD_HOST}" \
+  -B "${COG}:${COG}" -B "${VK_ICD_DIR}:${VK_ICD_HOST}" \
   --env VK_ICD_FILENAMES="${VK_ICD_JSON}" --env VK_DRIVER_FILES="${VK_ICD_JSON}" \
   "${SIF}" bash -lc 'echo " singularity libs: $(ls /.singularity.d/libs 2>/dev/null | wc -l) entries";
     echo " LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-unset}";
@@ -145,7 +158,7 @@ singularity exec --nv \
 timeout 1500 srun singularity exec --nv \
   -B "${COG}:${COG}" -B /leonardo_work:/leonardo_work \
   -B "${QA_OUT}:${REPO_IN}/ops" \
-  -B "${VK_ICD_HOST}:${VK_ICD_HOST}" \
+  -B "${VK_ICD_DIR}:${VK_ICD_HOST}" \
   "${KIT_BINDS[@]}" \
   --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES \
   --env VK_ICD_FILENAMES="${VK_ICD_JSON}" --env VK_DRIVER_FILES="${VK_ICD_JSON}" \
