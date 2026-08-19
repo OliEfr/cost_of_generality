@@ -12,6 +12,12 @@
 FROM nvcr.io/nvidia/isaac-sim:5.1.0
 
 SHELL ["/bin/bash", "-c"]
+# The isaac-sim image's default USER is `isaac-sim`, not root, so every RUN below would run
+# unprivileged -- apt-get fails with "List directory /var/lib/apt/lists/partial is missing -
+# Permission denied" (exit 100). Docker's usual root default does not apply to this base image.
+# Switching to root is safe for our purposes: Singularity ignores the image USER entirely and runs
+# as the invoking user, so this affects only what the BUILD can write, not what the container runs as.
+USER root
 ENV OMNI_KIT_ACCEPT_EULA=YES
 ENV ISAACLAB_PATH=/workspace/isaaclab
 ENV COG_PATH=/workspace/cog
@@ -67,5 +73,14 @@ import lerobot, numpy; \
 print('lerobot', lerobot.__version__, '| numpy', numpy.__version__); \
 import isaaclab; print('isaaclab ok'); \
 import cog; print('cog ok')"
+
+# Final permission sweep. The build above runs as root with umask 022, so new files are already
+# world-readable, but pip/setuptools occasionally writes 600 files and Singularity would hit
+# exactly the mode-750 class of failure again -- silently, at eval time. Cheap insurance, and it
+# ASSERTS afterwards so the image cannot ship broken.
+RUN find /isaac-sim /workspace ! -perm -o+r -print0 2>/dev/null | xargs -0 -r chmod a+rX; \
+    n=$(find /isaac-sim /workspace ! -perm -o+r 2>/dev/null | wc -l); \
+    echo "non-world-readable entries remaining: ${n}"; \
+    test "${n}" -eq 0
 
 WORKDIR ${COG_PATH}
