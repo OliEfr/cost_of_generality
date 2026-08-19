@@ -82,18 +82,32 @@ RUN ln -sf /isaac-sim ${ISAACLAB_PATH}/_isaac_sim \
 # So: exact pins (which also make resolution fast, since pip cannot wander), and `packaging` held
 # at the image's own 23.0 so pip never uninstalls it. Versions are lifted verbatim from the
 # working local env, except packaging.
+# packaging needs care of its own. lerobot 0.4.4 requires packaging>=24, so it cannot be held at
+# the image's 23.0 (pip: "Cannot install lerobot==0.4.4 and packaging==23.0"). But letting pip
+# UPGRADE it uninstalls the copy inside /isaac-sim/exts/omni.isaac.ml_archive/pip_prebundle, which
+# is where Isaac's vendored torch keeps `torch/_vendor/packaging` -- verified: the pristine image
+# imports torch 2.7.0+cu128 fine with packaging 23.0, and after the upgrade `import torch` dies with
+# "No module named 'torch._vendor.packaging._structures'".
+# So install the newer packaging with --ignore-installed: it lands in site-packages and satisfies
+# lerobot's metadata, while the prebundle's copy is left untouched and still wins on sys.path for
+# torch. Nothing is uninstalled, so nothing breaks.
+RUN /isaac-sim/python.sh -m pip install --no-cache-dir --ignore-installed "packaging==25.0" \
+ && /isaac-sim/python.sh -c "import packaging, torch; \
+        print('packaging', packaging.__version__, '| torch', torch.__version__)"
+
 RUN /isaac-sim/python.sh -m pip install --no-cache-dir \
         "lerobot==0.4.4" \
-        "numpy==1.26.4" "packaging==23.0" "imageio[ffmpeg]==2.37.0" \
+        "numpy==1.26.4" "imageio[ffmpeg]==2.37.0" \
         "datasets==4.8.5" "accelerate==1.14.0" "pandas==3.0.5" "pyarrow==25.0.1" \
         "dill==0.4.1" "multiprocess==0.70.19" "diffusers==0.35.2" \
         "huggingface-hub==0.35.3" "safetensors==0.8.0" "transformers==4.57.6" \
         "torchcodec==0.10.0" "av==15.1.0" "wandb==0.24.2" "rerun-sdk==0.26.2" \
         "einops==0.8.2" "draccus==0.10.0" "gymnasium==1.2.0" "protobuf==6.33.6" \
- && /isaac-sim/python.sh -c "import numpy, torch, packaging; \
+ && /isaac-sim/python.sh -c "import numpy, torch, packaging, lerobot; \
         assert numpy.__version__ == '1.26.4', numpy.__version__; \
+        assert torch.__version__.startswith('2.7.0'), torch.__version__; \
         print('numpy', numpy.__version__, '| torch', torch.__version__, \
-              '| packaging', packaging.__version__)"
+              '| packaging', packaging.__version__, '| lerobot', lerobot.__version__)"
 
 # Copy only what eval needs. NOT the whole repo: third_party/IsaacLab is already installed above
 # and would otherwise be duplicated, and data/ is 121 GB (see .dockerignore).
