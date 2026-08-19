@@ -51,8 +51,11 @@ FLAGS="$(printf '%s\n' ${COG_DP_FLAGS} \
 EPISODES="$(python -c 'print(",".join(str(i) for i in range(25)))')"
 
 echo "=== phase 1: train to 400, killed at ~250 (simulated walltime kill) ==="
+# No `timeout` wrapper: SIGKILL delivered to timeout does NOT propagate to its python child,
+# so the "killed" run would have kept training in the background while phase 2 started on
+# the same output dir. python is launched directly so $! is the process we must kill.
 set +e
-timeout -s KILL 420 python -m lerobot.scripts.lerobot_train \
+python -m lerobot.scripts.lerobot_train \
   --dataset.repo_id="local/${DS_NAME}" \
   --dataset.root="${DS}" \
   --dataset.episodes="[${EPISODES}]" \
@@ -65,15 +68,20 @@ timeout -s KILL 420 python -m lerobot.scripts.lerobot_train \
   --wandb.enable=false \
   ${FLAGS} > "${LOG1}" 2>&1 &
 TRAIN_PID=$!
-# Kill once a checkpoint at step 200 exists -- deterministic, unlike sleeping a fixed time.
-for _ in $(seq 1 120); do
-  if [ -d "${OUT}/checkpoints/000000200" ]; then
-    echo "[resume] checkpoint 000000200 present -> killing phase 1 (pid ${TRAIN_PID})"
+# Kill as soon as the recorded step reaches 200 -- deterministic, unlike sleeping a fixed time.
+# Read the STEP from training_step.json rather than matching a directory name: LeRobot writes
+# checkpoints/000200 (6 digits), NOT the 9-digit 000020000 the spec doc showed, and the first
+# version of this test silently never triggered because of exactly that assumption.
+for _ in $(seq 1 200); do
+  STEP_NOW="$(cat "${OUT}/checkpoints/last/training_state/training_step.json" 2>/dev/null \
+              | tr -dc '0-9' || true)"
+  if [ -n "${STEP_NOW}" ] && [ "${STEP_NOW}" -ge 200 ] 2>/dev/null; then
+    echo "[resume] checkpoint at step ${STEP_NOW} -> SIGKILLing phase 1 (pid ${TRAIN_PID})"
     kill -9 "${TRAIN_PID}" 2>/dev/null
     break
   fi
   kill -0 "${TRAIN_PID}" 2>/dev/null || { echo "[resume] phase 1 exited on its own"; break; }
-  sleep 5
+  sleep 3
 done
 wait "${TRAIN_PID}" 2>/dev/null
 set -e
@@ -88,6 +96,11 @@ PY
 echo "[resume] step recorded in checkpoints/last = ${LAST_STEP1}"
 if [ "${LAST_STEP1}" -lt 100 ]; then
   echo "G5A_RESUME_FAILED: phase 1 never produced a usable checkpoint"; exit 1
+fi
+if [ "${LAST_STEP1}" -ge 400 ]; then
+  echo "G5A_RESUME_INCONCLUSIVE: phase 1 hit the 400-step target before it could be killed, so"
+  echo "  a resume would have nothing to do. Raise --steps and re-run."
+  exit 1
 fi
 
 echo "=== phase 2: resume via config_path (the path train.sbatch now takes) ==="
