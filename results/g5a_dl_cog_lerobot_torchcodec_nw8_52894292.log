@@ -1,0 +1,269 @@
+WARNING:accelerate.utils.other:[RANK 0] Detected kernel version 4.18.0, which is below the recommended minimum of 5.5.0; this can cause the process to hang. It is recommended to upgrade the kernel to the minimum version or higher.
+INFO 2026-08-19 18:24:02 ot_train.py:197 {'batch_size': 64,
+ 'checkpoint_path': None,
+ 'dataset': {'episodes': [0,
+                          1,
+                          2,
+                          3,
+                          4,
+                          5,
+                          6,
+                          7,
+                          8,
+                          9,
+                          10,
+                          11,
+                          12,
+                          13,
+                          14,
+                          15,
+                          16,
+                          17,
+                          18,
+                          19,
+                          20,
+                          21,
+                          22,
+                          23,
+                          24],
+             'image_transforms': {'enable': False,
+                                  'max_num_transforms': 3,
+                                  'random_order': False,
+                                  'tfs': {'affine': {'kwargs': {'degrees': [-5.0,
+                                                                            5.0],
+                                                                'translate': [0.05,
+                                                                              0.05]},
+                                                     'type': 'RandomAffine',
+                                                     'weight': 1.0},
+                                          'brightness': {'kwargs': {'brightness': [0.8,
+                                                                                   1.2]},
+                                                         'type': 'ColorJitter',
+                                                         'weight': 1.0},
+                                          'contrast': {'kwargs': {'contrast': [0.8,
+                                                                               1.2]},
+                                                       'type': 'ColorJitter',
+                                                       'weight': 1.0},
+                                          'hue': {'kwargs': {'hue': [-0.05,
+                                                                     0.05]},
+                                                  'type': 'ColorJitter',
+                                                  'weight': 1.0},
+                                          'saturation': {'kwargs': {'saturation': [0.5,
+                                                                                   1.5]},
+                                                         'type': 'ColorJitter',
+                                                         'weight': 1.0},
+                                          'sharpness': {'kwargs': {'sharpness': [0.5,
+                                                                                 1.5]},
+                                                        'type': 'SharpnessJitter',
+                                                        'weight': 1.0}}},
+             'repo_id': 'local/L0',
+             'revision': None,
+             'root': '/leonardo_scratch/fast/EUHPC_B38_106/cog/datasets/L0',
+             'streaming': False,
+             'use_imagenet_stats': True,
+             'video_backend': 'torchcodec'},
+ 'env': None,
+ 'eval': {'batch_size': 50, 'n_episodes': 50, 'use_async_envs': False},
+ 'eval_freq': 0,
+ 'job_name': 'smoke_dl_nw8',
+ 'log_freq': 25,
+ 'num_workers': 8,
+ 'optimizer': {'betas': [0.95, 0.999],
+               'eps': 1e-08,
+               'grad_clip_norm': 10.0,
+               'lr': 0.0001,
+               'type': 'adam',
+               'weight_decay': 1e-06},
+ 'output_dir': '/leonardo_work/EUHPC_B38_106/cog/checkpoints/_smoke_dl_cog_lerobot_torchcodec_nw8_52894292',
+ 'peft': None,
+ 'policy': {'beta_end': 0.02,
+            'beta_schedule': 'squaredcos_cap_v2',
+            'beta_start': 0.0001,
+            'clip_sample': True,
+            'clip_sample_range': 1.0,
+            'compile_mode': 'reduce-overhead',
+            'compile_model': False,
+            'crop_is_random': True,
+            'crop_ratio': 1.0,
+            'crop_shape': [112, 112],
+            'device': 'cuda',
+            'diffusion_step_embed_dim': 128,
+            'do_mask_loss_for_padding': False,
+            'down_dims': [512, 1024, 2048],
+            'drop_n_last_frames': 7,
+            'horizon': 16,
+            'input_features': {},
+            'kernel_size': 5,
+            'license': None,
+            'n_action_steps': 8,
+            'n_groups': 8,
+            'n_obs_steps': 2,
+            'noise_scheduler_type': 'DDPM',
+            'normalization_mapping': {'ACTION': <NormalizationMode.MIN_MAX: 'MIN_MAX'>,
+                                      'STATE': <NormalizationMode.MIN_MAX: 'MIN_MAX'>,
+                                      'VISUAL': <NormalizationMode.MEAN_STD: 'MEAN_STD'>},
+            'num_inference_steps': None,
+            'num_train_timesteps': 100,
+            'optimizer_betas': [0.95, 0.999],
+            'optimizer_eps': 1e-08,
+            'optimizer_lr': 0.0001,
+            'optimizer_weight_decay': 1e-06,
+            'output_features': {},
+            'prediction_type': 'epsilon',
+            'pretrained_backbone_weights': None,
+            'pretrained_path': None,
+            'private': None,
+            'push_to_hub': False,
+            'repo_id': None,
+            'resize_shape': None,
+            'scheduler_name': 'cosine',
+            'scheduler_warmup_steps': 500,
+            'spatial_softmax_num_keypoints': 32,
+            'tags': None,
+            'type': 'diffusion',
+            'use_amp': False,
+            'use_film_scale_modulation': True,
+            'use_group_norm': True,
+            'use_peft': False,
+            'use_separate_rgb_encoder_per_camera': False,
+            'vision_backbone': 'resnet18'},
+ 'rabc_epsilon': 1e-06,
+ 'rabc_head_mode': 'sparse',
+ 'rabc_kappa': 0.01,
+ 'rabc_progress_path': None,
+ 'rename_map': {},
+ 'resume': False,
+ 'save_checkpoint': False,
+ 'save_freq': 20000,
+ 'scheduler': {'name': 'cosine', 'num_warmup_steps': 500, 'type': 'diffuser'},
+ 'seed': 0,
+ 'steps': 150,
+ 'tolerance_s': 0.0001,
+ 'use_policy_training_preset': True,
+ 'use_rabc': False,
+ 'wandb': {'disable_artifact': False,
+           'enable': False,
+           'entity': None,
+           'mode': None,
+           'notes': None,
+           'project': 'lerobot',
+           'run_id': None}}
+INFO 2026-08-19 18:24:02 ot_train.py:205 Logs will be saved locally.
+INFO 2026-08-19 18:24:02 ot_train.py:217 Creating dataset
+INFO 2026-08-19 18:24:04 eo_utils.py:106 Using video codec: libsvtav1
+INFO 2026-08-19 18:24:05 ot_train.py:235 Creating policy
+INFO 2026-08-19 18:24:14 ot_train.py:290 Creating optimizer and scheduler
+INFO 2026-08-19 18:24:14 ot_train.py:325 Output dir: /leonardo_work/EUHPC_B38_106/cog/checkpoints/_smoke_dl_cog_lerobot_torchcodec_nw8_52894292
+INFO 2026-08-19 18:24:14 ot_train.py:332 cfg.steps=150 (150)
+INFO 2026-08-19 18:24:14 ot_train.py:333 dataset.num_frames=5178 (5K)
+INFO 2026-08-19 18:24:14 ot_train.py:334 dataset.num_episodes=25
+INFO 2026-08-19 18:24:14 ot_train.py:337 Effective batch size: 64 x 1 = 64
+INFO 2026-08-19 18:24:14 ot_train.py:338 num_learnable_params=266798375 (267M)
+INFO 2026-08-19 18:24:14 ot_train.py:339 num_total_params=266798375 (267M)
+INFO 2026-08-19 18:24:14 ot_train.py:403 Start offline training on a fixed dataset, with effective batch size: 64
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/scripts/lerobot_train.py", line 551, in <module>
+    main()
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/scripts/lerobot_train.py", line 547, in main
+    train()
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/configs/parser.py", line 233, in wrapper_inner
+    response = fn(cfg, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/scripts/lerobot_train.py", line 409, in train
+    batch = next(dl_iter)
+            ^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/datasets/utils.py", line 911, in cycle
+    yield next(iterator)
+          ^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/accelerate/data_loader.py", line 585, in __iter__
+    current_batch = next(dataloader_iter)
+                    ^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torch/utils/data/dataloader.py", line 733, in __next__
+    data = self._next_data()
+           ^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torch/utils/data/dataloader.py", line 1515, in _next_data
+    return self._process_data(data, worker_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torch/utils/data/dataloader.py", line 1550, in _process_data
+    data.reraise()
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torch/_utils.py", line 750, in reraise
+    raise exception
+NotImplementedError: Caught NotImplementedError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torch/utils/data/_utils/worker.py", line 349, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torch/utils/data/_utils/fetch.py", line 52, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+            ~~~~~~~~~~~~^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/datasets/lerobot_dataset.py", line 1101, in __getitem__
+    video_frames = self._query_videos(query_timestamps, ep_idx)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/datasets/lerobot_dataset.py", line 1064, in _query_videos
+    frames = decode_video_frames(video_path, shifted_query_ts, self.tolerance_s, self.video_backend)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/datasets/video_utils.py", line 150, in decode_video_frames
+    return decode_video_frames_torchcodec(video_path, timestamps, tolerance_s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/datasets/video_utils.py", line 334, in decode_video_frames_torchcodec
+    decoder = decoder_cache.get_decoder(str(video_path))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/lerobot/datasets/video_utils.py", line 279, in get_decoder
+    decoder = VideoDecoder(file_handle, seek_mode="approximate")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torchcodec/decoders/_video_decoder.py", line 108, in __init__
+    self._decoder = create_decoder(source=source, seek_mode=seek_mode)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torchcodec/decoders/_decoder_utils.py", line 45, in create_decoder
+    return core.create_from_file_like(source, seek_mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torchcodec/_core/ops.py", line 151, in create_from_file_like
+    return _convert_to_tensor(_pybind_ops.create_from_file_like(file_like, seek_mode))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo_work/EUHPC_B38_106/cog/miniforge3/envs/cog_lerobot/lib/python3.11/site-packages/torch/_ops.py", line 756, in __call__
+    return self._op(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+NotImplementedError: There were no tensor arguments to this function (e.g., you passed an empty list of Tensors), but no fallback function is registered for schema torchcodec_ns::_convert_to_tensor.  This usually means that this function requires a non-empty list of Tensors, or that you (the operator writer) forgot to register a fallback function.  Available functions are [Meta, BackendSelect, Python, FuncTorchDynamicLayerBackMode, Functionalize, Named, Conjugate, Negative, ZeroTensor, ADInplaceOrView, AutogradOther, AutogradCPU, AutogradCUDA, AutogradXLA, AutogradMPS, AutogradXPU, AutogradHPU, AutogradLazy, AutogradMTIA, AutogradMeta, Tracer, AutocastCPU, AutocastMTIA, AutocastXPU, AutocastMPS, AutocastCUDA, FuncTorchBatched, BatchedNestedTensor, FuncTorchVmapMode, Batched, VmapMode, FuncTorchGradWrapper, PythonTLSSnapshot, FuncTorchDynamicLayerFrontMode, PreDispatch, PythonDispatcher].
+
+Meta: registered at /dev/null:214 [kernel]
+BackendSelect: fallthrough registered at /pytorch/aten/src/ATen/core/BackendSelectFallbackKernel.cpp:3 [backend fallback]
+Python: registered at /pytorch/aten/src/ATen/core/PythonFallbackKernel.cpp:194 [backend fallback]
+FuncTorchDynamicLayerBackMode: registered at /pytorch/aten/src/ATen/functorch/DynamicLayer.cpp:479 [backend fallback]
+Functionalize: registered at /pytorch/aten/src/ATen/FunctionalizeFallbackKernel.cpp:349 [backend fallback]
+Named: registered at /pytorch/aten/src/ATen/core/NamedRegistrations.cpp:7 [backend fallback]
+Conjugate: registered at /pytorch/aten/src/ATen/ConjugateFallback.cpp:17 [backend fallback]
+Negative: registered at /pytorch/aten/src/ATen/native/NegateFallback.cpp:18 [backend fallback]
+ZeroTensor: registered at /pytorch/aten/src/ATen/ZeroTensorFallback.cpp:86 [backend fallback]
+ADInplaceOrView: fallthrough registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:100 [backend fallback]
+AutogradOther: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:63 [backend fallback]
+AutogradCPU: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:67 [backend fallback]
+AutogradCUDA: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:75 [backend fallback]
+AutogradXLA: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:83 [backend fallback]
+AutogradMPS: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:91 [backend fallback]
+AutogradXPU: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:71 [backend fallback]
+AutogradHPU: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:104 [backend fallback]
+AutogradLazy: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:87 [backend fallback]
+AutogradMTIA: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:79 [backend fallback]
+AutogradMeta: registered at /pytorch/aten/src/ATen/core/VariableFallbackKernel.cpp:95 [backend fallback]
+Tracer: registered at /pytorch/torch/csrc/autograd/TraceTypeManual.cpp:294 [backend fallback]
+AutocastCPU: fallthrough registered at /pytorch/aten/src/ATen/autocast_mode.cpp:322 [backend fallback]
+AutocastMTIA: fallthrough registered at /pytorch/aten/src/ATen/autocast_mode.cpp:466 [backend fallback]
+AutocastXPU: fallthrough registered at /pytorch/aten/src/ATen/autocast_mode.cpp:504 [backend fallback]
+AutocastMPS: fallthrough registered at /pytorch/aten/src/ATen/autocast_mode.cpp:209 [backend fallback]
+AutocastCUDA: fallthrough registered at /pytorch/aten/src/ATen/autocast_mode.cpp:165 [backend fallback]
+FuncTorchBatched: registered at /pytorch/aten/src/ATen/functorch/LegacyBatchingRegistrations.cpp:731 [backend fallback]
+BatchedNestedTensor: registered at /pytorch/aten/src/ATen/functorch/LegacyBatchingRegistrations.cpp:758 [backend fallback]
+FuncTorchVmapMode: fallthrough registered at /pytorch/aten/src/ATen/functorch/VmapModeRegistrations.cpp:27 [backend fallback]
+Batched: registered at /pytorch/aten/src/ATen/LegacyBatchingRegistrations.cpp:1075 [backend fallback]
+VmapMode: fallthrough registered at /pytorch/aten/src/ATen/VmapModeRegistrations.cpp:33 [backend fallback]
+FuncTorchGradWrapper: registered at /pytorch/aten/src/ATen/functorch/TensorWrapper.cpp:208 [backend fallback]
+PythonTLSSnapshot: registered at /pytorch/aten/src/ATen/core/PythonFallbackKernel.cpp:202 [backend fallback]
+FuncTorchDynamicLayerFrontMode: registered at /pytorch/aten/src/ATen/functorch/DynamicLayer.cpp:475 [backend fallback]
+PreDispatch: registered at /pytorch/aten/src/ATen/core/PythonFallbackKernel.cpp:206 [backend fallback]
+PythonDispatcher: registered at /pytorch/aten/src/ATen/core/PythonFallbackKernel.cpp:198 [backend fallback]
+
+
