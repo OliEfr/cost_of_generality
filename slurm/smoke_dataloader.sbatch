@@ -46,6 +46,8 @@ export TOKENIZERS_PARALLELISM=false
 
 source "${COG}/miniforge3/etc/profile.d/conda.sh"
 conda activate "${ENV_NAME}"
+# see train.sbatch: torchcodec cannot find conda's ffmpeg without this
+export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
 source "${COG}/repo/configs/train/diffusion_base.sh"
 
 LR_VER="$(python -c 'import lerobot; print(lerobot.__version__)')"

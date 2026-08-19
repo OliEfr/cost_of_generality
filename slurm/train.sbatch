@@ -44,6 +44,10 @@ export TOKENIZERS_PARALLELISM=false
 
 source "${WORK}/miniforge3/etc/profile.d/conda.sh"
 conda activate "${COG_TRAIN_ENV:-cog_lerobot}"
+# conda does not add $CONDA_PREFIX/lib to the linker path, and torchcodec dlopen()s ffmpeg by
+# soname -- without this it reports "FFmpeg is not properly installed" with ffmpeg sitting in
+# the env (verified 2026-08-19). Harmless for the pyav backend, so it is set unconditionally.
+export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
 source /home/admin_07/cost_of_generality/configs/train/diffusion_base.sh 2>/dev/null \
   || source "${WORK}/repo/configs/train/diffusion_base.sh"
 

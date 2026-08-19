@@ -1,2 +1,4 @@
 run_id,task,level,variant,n_demos,dataset_id,slurm_jobid,status,sr_40k,sr_60k,sr_80k,sr_best,eval_set,eval_n,gpu_h,notes
 g4_smoke_L0_n25,cup_place,L0,-,25,cog/L0,local,done,,,0.80(5k-step smoke; 20 eps reduced protocol),smoke,20,0.5,G4 pipeline validation only — not a study cell
+g5a_batch_lr_sweep,cup_place,L0,-,25,cog/L0,52878355,done,,,,,-,-,0.29,"G5a batch/LR sweep 64/128/256 x 200 steps; decided batch=64 lr=1e-4; GPU util 0% (decode-bound); 2.34 core-h @ billing=8, 17m34s"
+g5a_dataloader_nw,cup_place,L0,-,25,cog/L0,52885440,cancelled,,,,,-,-,0.42,"INVALID: --num_workers overridden by COG_DP_FLAGS (draccus last-flag-wins) so all arms ran at 8; cancelled. 3.4 core-h @ billing=32. Confirms run-to-run variance <1%"
