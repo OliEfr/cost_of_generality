@@ -2271,3 +2271,41 @@ Two process notes worth keeping:
 - The frame-equality check was written *before* switching and immediately caught the broken
   0.7.0. Had I trusted the timing numbers alone, a subtly wrong backend could have reached the
   matrix.
+
+### 2026-08-19 18:38 — G5a resume-across-requeue PASSED
+
+Job 52899246, `boost_qos_dbg`, ~4 min:
+
+```
+[resume] checkpoint at step 200 -> SIGKILLing phase 1 (pid 2175431)
+[resume] step recorded in checkpoints/last = 200
+=== phase 2: resume via config_path (the path train.sbatch now takes) ===
+G5A_RESUME_PASSED  (killed at 200, resumed at 225, finished at 400)
+```
+
+The assertion that matters is `resumed at 225`, not `finished at 400`: a resume that silently
+restarted from step 0 would also have finished at 400 and exited 0, quietly discarding the
+first 200 steps. The test requires the resumed run's **first logged step** to be beyond the
+checkpoint step, so "it ran to completion" cannot be mistaken for "it resumed".
+
+This validates the bug-3 fix from earlier today. Before it, `train.sbatch` passed a bare
+`--resume=true`, which `configs/train.py:89-95` rejects with "A config_path is expected when
+resuming a run" -- so a node failure or walltime kill at hour 11 of an 80k run would have
+produced a job that could never be restarted, and we would have found out only then.
+
+**Two bugs in my own test, both worth recording because both were silent:**
+1. I checked for `checkpoints/000000200`, following the 9-digit `000020000` shown in
+   `docs/specs/06_lerobot_044.md`. LeRobot actually writes **6 digits** (`000200`). The trigger
+   therefore never fired, phase 1 ran to its 400-step target unkilled, and the test would have
+   reported a resume failure caused entirely by the test. Now it reads the step out of
+   `training_state/training_step.json`, which is format-independent, and it distinguishes
+   `G5A_RESUME_INCONCLUSIVE` (never got killed) from a real failure.
+2. `timeout -s KILL 420 python ...` put `timeout` in `$!`, and SIGKILL to `timeout` does not
+   propagate to its child, so phase 1's python would have kept training in the background while
+   phase 2 started on the same output directory -- two writers, one checkpoint dir. `timeout`
+   was dropped; python is launched directly.
+
+**G5a status: three of four parts done.** batch/LR frozen (batch 64, lr 1e-4); decode fixed
+(torchcodec, 13.89 steps/s); resume verified. The 80k calibration run (`t1_L0_n25_s0`, job
+52899856) is in flight -- and it is not a throwaway: L0/N=25 is a real cell of the 24-cell
+matrix, so the calibration produces a study result rather than only a timing number.
