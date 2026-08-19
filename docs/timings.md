@@ -151,3 +151,67 @@ length (311-319 steps vs 677-705) and ~2.8x from generation SR (95 % vs 31-55 %)
 for T2 and ~25 min for T1. A camera-enabled Kit boot is ~3-4 min and is paid once per
 `generate_dataset.py` invocation, so the ten L3 variants spend ~35 min of their ~70 min in
 startup.
+
+---
+
+## Cluster (Leonardo, A100-SXM-64GB, driver 535.274.02) — measured 2026-08-19
+
+### Queue latency
+
+| Measurement | Value |
+|---|---|
+| `boost_qos_dbg` submit -> start | **4 s** (submitted 17:30:12, started 17:30:16) |
+| Queue depth at the time | 1,575 pending / 2,050 running |
+| `sbatch --test-only` prediction | 6 days out -- **wrong by five orders of magnitude** |
+
+**Planning rule: treat the queue as empty.** `--test-only` answers "when could this start if
+nothing ahead finished early and no backfill happened", which on a machine full of short jobs
+bears no relation to reality. Never plan from it; submit a 2-second probe instead.
+
+### Training (diffusion policy, batch 64, 2x128x128 cams, L0/N=25)
+
+| Configuration | data_s | updt_s | steps/s | 80k steps |
+|---|---|---|---|---|
+| pyav backend, 8 workers | 0.388 | 0.071 | 2.18 | ~10.2 h |
+| **torchcodec backend, 8 workers, 32 cores allocated** | **0.003** | 0.069 | **13.89** | ~1.6 h |
+| **torchcodec, 8 workers, 8 cores allocated (a REAL cell)** | -- | -- | **11.2** | **~2.0 h** |
+
+**Planning rule: budget ~2.0 h and ~2.0 GPU-h per cell** at `--cpus-per-task=8`. The 13.89
+figure came from a smoke job that happened to request 32 cores; a real cell gets 8 and runs
+~20 % slower. Measured end-to-end from checkpoint timestamps, and stable: 20k steps in 1,779 s
+then the next 20k in 1,774 s. Do not use the 1.6 h number.
+
+First interval is NOT representative: step 25 reports `updt_s 1.152, data_s 0.480` while the
+decoder cache is cold and CUDA autotunes; by step 50 it is at the steady 0.069/0.003. Any
+throughput measurement must discard the first logging interval.
+
+Startup overhead per job: ~2.3 min (torch import from Lustre + dataset creation + wandb init).
+
+### Container operations
+
+| Operation | Time | Notes |
+|---|---|---|
+| `docker pull` isaac-sim:5.1.0 (local) | ~10 min | 15.1 GB |
+| `docker save` -> tar | ~4 min | 15,123,856,384 B |
+| `rsync -z` tar to `$WORK` | ~7 min | 7.54 GB on the wire, 2.01x compression |
+| `singularity build` from docker-archive, **compute node** | **13 min 55 s** | ~19.4 GB rootfs unpack (~10 min) + squashfs to 7.1 GB (~6 min), 16 cores, 0.46 GPU-h |
+| same conversion on a **login node** | **FAILED** | shared by ~100 users, capped memory; also floods with Lustre xattr warnings |
+
+**Planning rule: convert images in a compute job, never on a login node.** A compute node's own
+`/tmp` is only ~10 GB (against ~35 GB needed for a 15 GB archive), so scratch still falls back to
+Lustre -- the win is RAM and dedicated cores, not local disk.
+
+### Gate / smoke costs (all `boost_qos_dbg`, billing = allocated cores)
+
+| Job | Elapsed | GPU-h |
+|---|---|---|
+| node/queue probe | 0:02 | 0.001 |
+| batch/LR sweep (3 arms x 200 steps) | 17:34 | 0.29 |
+| dataloader A/B arm | 3:40 | 0.24 (32 cores) |
+| frame-equality check (pyav vs torchcodec) | 0:10 | 0.003 |
+| resume-across-requeue test | 4:07 | 0.07 |
+| sif conversion | 13:55 | 0.46 |
+
+**Planning rule:** a dbg-QOS smoke costs ~0.1-0.5 GPU-h. At that price, measure rather than
+reason -- every wrong assumption found today (queue depth, batch scaling, decode cost, resume,
+container permissions) was found by a job costing less than half a GPU-hour.
