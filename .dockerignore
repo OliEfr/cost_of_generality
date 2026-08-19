@@ -1,0 +1,15 @@
+# Docker sends the ENTIRE build context to the daemon before running any instruction, and this
+# repo's context is ~127 GB: data/ alone is 121 GB of HDF5 + LeRobot datasets, experiments/runs/
+# is 3 GB of checkpoints and .git is 2.8 GB. Without these exclusions a `docker build` would
+# spend many minutes and tens of GB transferring files the image never uses.
+data/
+experiments/runs/
+results/
+.git/
+ops/
+paper/
+notebooks/
+**/__pycache__/
+*.hdf5
+*.tar
+# third_party/IsaacLab (87 MB, tag v2.3.0) is deliberately NOT excluded: the image needs it.
