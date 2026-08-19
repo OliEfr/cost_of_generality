@@ -2522,3 +2522,56 @@ costs the same and the full image is what eval actually needs.
 pointed at. `libavutil.so.56` was really a torch ABI mismatch; `BUILD_RC=0` was really `tail`'s
 exit code; "the renderer produced no image" was really a directory mode. In each case the honest
 next step was to look one level down rather than act on the surface message.
+
+### 2026-08-19 19:50 — Cluster-eval container: STOPPED at a deliberate bound, and D24 removed most of the reason to continue
+
+**What works.** `isaac-sim-5.1.0.sif` (7.1 GB) builds and runs on Leonardo, and the mode-750
+problem is fixed in `docker/Dockerfile.cog`. The `apt`, IsaacLab-install and permission-sweep
+layers all build. So Isaac Sim *can* be containerised here.
+
+**What blocks it.** Installing LeRobot 0.4.4 into Kit's python cannot be resolved, and after six
+build attempts the cause is clear and is not a pinning mistake. NVIDIA ships several packages
+inside `/isaac-sim/exts/omni.isaac.ml_archive/pip_prebundle/` rather than site-packages, and pip
+can neither *reuse* those to satisfy a requirement nor *replace* them safely:
+
+- `packaging` 23.0 -- upgrading it (lerobot needs >=24) deletes prebundle files and **breaks
+  Isaac's own vendored torch** (`No module named 'torch._vendor.packaging._structures'`; the
+  pristine image imports torch 2.7.0+cu128 fine). `--ignore-installed` works around this: verified
+  `packaging 25.0 | torch 2.7.0+cu128` in the same interpreter.
+- `imageio` 2.37.0 -- the same trick installs a site-packages copy successfully, and the resolver
+  **still** refuses: `Cannot install imageio[ffmpeg]==2.37.0 and lerobot==0.4.4`, with the real
+  reason on a line below the one everybody reads: *"some packages in these conflicts have no
+  matching distributions available for your environment: imageio"*. Not a version conflict -- pip
+  has no imageio it is willing to use for the extras variant. Unchanged under pip 24.3.1 and 26.2.1.
+- `numpy` -- unconstrained, pip upgrades 1.26.0 -> 2.4.6 (breaking isaaclab-rl, isaaclab-tasks,
+  nvidia-srl-usd, numba: the D3 hazard); pinned to 1.26.4, it collides with `rerun-sdk 0.26.2`,
+  which requires numpy>=2. The local env carries that same inconsistency and survives only because
+  nothing ever forced a joint solve; `--no-deps` for rerun-sdk reproduces that deliberately.
+
+Each of the six failures was a *different* real problem, which is why I kept going; but they are
+all instances of one thing -- **a vendor image whose python environment is not pip-manageable** --
+and that is not going to be fixed by a seventh pin.
+
+**Why stopping is now the better call, not just the bounded one.** D24 landed mid-investigation:
+full-scale cells evaluate only the last checkpoint, so the eval workload fell from **72
+checkpoint-evals to 24+2**. Cluster eval was worth a 20 GB container when it was saving ~2-3 days
+of 4090 wall-clock; against 24 evals the local fallback -- already the plan's accepted default if
+G5b fails -- costs order hours. **The container's payoff shrank by 3x while its cost stayed the
+same.** Continuing would be optimising the branch that stopped mattering.
+
+**Two options remain on the record, neither urgent:**
+1. **ZMQ policy-server split** -- the plan's documented G1b fallback (~150 lines). It fits this
+   constraint unusually well: the cluster *already* has a working LeRobot env (`cog_lerobot`,
+   py3.11, torch cu128, lerobot 0.4.4), so the container would need Isaac Sim + IsaacLab + `cog`
+   and **no lerobot at all**, which deletes the entire conflict above. Cost: refactoring
+   `rollout_eval.py` into client/server halves.
+2. **Eval locally on the 4090** -- zero new code, accepted in the plan, and now ~3x cheaper than
+   when it was chosen as the fallback.
+
+**Recommendation: option 2 for T1, and revisit only if Tasks 2-3 make eval throughput binding
+again.** The A100 rendering question (issues #3421/#1519) therefore stays formally **unanswered** --
+worth stating plainly, because the gate never rendered a frame, and I am not going to record a
+guess as a result.
+
+Kept for reuse either way: the sif on `$WORK/cog/containers/`, `slurm/build_sif.sbatch`,
+`slurm/debug_a100_kit.sbatch`, and `docker/Dockerfile.cog` with all six fixes and their reasons.
