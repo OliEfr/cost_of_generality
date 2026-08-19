@@ -390,3 +390,85 @@ safetensors directory plus JSON, so a cu126-trained checkpoint loads unchanged i
 cu128 eval env. Only the wheel's bundled CUDA differs, not the math, the seed, or the data.
 
 **VERIFY:** cu128-on-535 GPU matmul (G5a smoke). If it fails, switch to cu126 and note it here.
+
+## D23 — 2026-08-19: batch 64 / lr 1e-4 frozen by measurement, and the decode bottleneck is fixed by a torchcodec pin, not a LeRobot upgrade
+
+**Context.** P5 assumed training would be GPU-bound and instructed us to "scale batch up as far
+as A100-64GB VRAM/throughput allow (e.g. 64->128->256)", scaling LR by sqrt(batch ratio). The
+G5a smoke on one A100 (job 52878355) refuted the premise outright.
+
+**Decision 1 — batch 64, lr 1e-4, frozen for every cell.**
+
+| batch | steps/s | samples/s | peak VRAM | median GPU util |
+|---|---|---|---|---|
+| 64 | **0.962** | 61.5 | 13.5 / 64 GiB | 0 % |
+| 128 | 0.862 | 110.3 | 14.5 GiB | 0 % |
+| 256 | 0.385 | 98.7 | 17.1 GiB | 0 % |
+
+VRAM never exceeds 27 % of the card, so the question the plan asked ("how large a batch
+fits?") has no bearing on anything. Median GPU utilization is 0 % at every batch size and
+samples/s is flat, i.e. the dataloader sets throughput. Because the protocol fixes 80k
+**steps**, the smallest sensible batch minimises wall-clock; larger batches are strictly worse
+(22 h at 128, 58 h at 256, the latter not even fitting the 24 h walltime). lr stays at 1e-4,
+which is also `DiffusionConfig.optimizer_lr`'s default, so no sqrt scaling is applied.
+
+Batch is *not* re-tuned per cell: at fixed steps a different batch means a different sample
+budget, so comparing cells would confound data-cost with batch size. One value for all 24.
+
+**Decision 2 — fix the decode path via `torchcodec==0.5`, do NOT upgrade LeRobot.**
+
+Root cause, from the 0.4.4 source rather than guesswork: `decode_video_frames_torchvision`
+constructs a `torchvision.io.VideoReader` **per call** on a single 82,916-frame / 43 MB mp4 and
+closes it again -- ~128 container opens per step at batch 64. Only the torchcodec path has a
+decoder cache (`_default_decoder_cache`). Measured cost of that difference: **25.5 ms vs
+0.57 ms per frame fetch on a compute node (45x)**; 31.9 ms vs 0.29 ms locally (108x).
+
+Two ideas were killed by measurement before being implemented:
+- *Re-encode all-intra so seeks are cheap*: `ffprobe` shows the videos are **already GOP 2**
+  (41,058 keyframes in 82,916 frames), so there is nearly nothing to win. The cost is opening
+  the container, not seeking within it.
+- *Throw CPUs at it*: billing scales linearly with allocated cores (`billing=32` for 32 cores
+  vs `billing=8` for 8, confirmed in AllocTRES), so more workers costs proportionally more and
+  cannot beat removing the work.
+
+**Why not LeRobot 0.5/0.6** (the user asked, and asked for it to be measured first):
+0.5.0's `datasets/video_utils.py` is byte-identical to 0.4.4's -- **zero** gain, since the v0.5
+speedups are all record/encode-side. 0.6.x does rewrite the pyav path (PR #3588) and measures
+**3.7x** on our own L0 data, but it requires py>=3.12, which breaks the single-env property
+Isaac Sim 5.1 imposes (G1b); it silently flips five diffusion defaults (PR #3202); and its
+checkpoints need two config keys stripped before 0.4.4 can load them. Fixing one pin is a
+larger win (45x) at a fraction of the risk.
+
+**The pin itself is the subtle part.** lerobot 0.4.4 requires `torchcodec>=0.2.1,<0.11.0`,
+which resolves to 0.10.0 -- built against torch 2.10 while we pin torch 2.7.0. That fails as
+`libtorchcodec_core6.so: undefined symbol: _ZN3c1013MessageLogger6stream...`, a **libtorch ABI**
+symbol, not an ffmpeg problem; the `libavutil.so.56` line everyone latches onto is merely the
+last of five descending ffmpeg probes. Worse, **0.7.0 imports cleanly and still does not work**
+-- it fails on first decode with `no fallback function is registered for schema
+torchcodec_ns::_convert_to_tensor`. So "the import succeeded" is not evidence that a native
+extension matches your torch; only a decode is.
+
+**Verified, not assumed:** torchcodec 0.5 + conda-forge ffmpeg 6 + `LD_LIBRARY_PATH=$CONDA_PREFIX/lib`
+decodes our data and returns frames **bit-identical to pyav** (40 random fetches, max abs pixel
+difference 0.0, `BACKENDS_IDENTICAL`). This check was mandatory, not optional: the torchcodec
+path selects frames by `round(ts * average_fps)` with `seek_mode="approximate"` while the pyav
+path matches by timestamp, so a silent off-by-one would have corrupted every training batch
+with nothing in the pipeline complaining. `scripts/dev/decode_bench.py --compare-backends`
+keeps the check reproducible.
+
+**Scope guard.** The do-nothing baseline was already acceptable -- 10-12 h per run, ~245 GPU-h
+for the 24-cell matrix, inside the plan's envelope -- so this was pursued as a bounded
+optimisation, not a blocker, and would have been abandoned in favour of pyav had the frame
+check failed. Expected after the fix: `data_s` collapses toward `updt_s` (0.071 s), i.e.
+~1.5-2 h per run and roughly 40-60 GPU-h for the matrix.
+
+**Also pinned as a side effect:** `--policy.use_separate_rgb_encoder_per_camera=false` and
+`--policy.do_mask_loss_for_padding=false` in `configs/train/diffusion_base.sh`, at 0.4.4's own
+defaults. They are inert today; they exist so that the two architecture defaults 0.6 flips can
+never change this study's model silently. `pretrained_backbone_weights` is deliberately NOT
+passed (risk of draccus decoding the string "null") and is asserted against the calibration
+run's saved `config.json` instead.
+
+**VERIFY:** (a) `data_s` with torchcodec in a real training loop -- job 52896093; (b) resume
+across requeue -- `slurm/smoke_resume.sbatch`; (c) `pretrained_backbone_weights: null` in the
+calibration run's `checkpoints/*/pretrained_model/config.json`.
