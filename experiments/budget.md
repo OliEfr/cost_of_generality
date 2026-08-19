@@ -41,11 +41,16 @@ billing is linear in cores, so 16 cores would buy ~18 % wall-clock for ~2x the c
 | Stage | Plan v1 | Re-forecast | Basis |
 |---|---|---|---|
 | T1 training (23 cells remaining) | ~200 | **~46** | 2.0 GPU-h/cell measured; L0/N=25 already done as the calibration |
-| T1 evals (72 checkpoint-evals, if on cluster) | ~25 | ~25 | unchanged; G5b undecided |
+| T1 evals (24 last-checkpoint evals + 2 for the comparison, if on cluster) | ~25 | **~9** | D24: last checkpoint only, 3x fewer evals |
 | Bring-up / gates / smokes | ~45 | **~3** | measured above |
 | Tasks 2-3 training (48 cells) | ~450 | **~96** | same measured per-cell cost |
+| Tasks 2-3 evals | (in the 75 above) | **~18** | D24, same basis |
 | Margin ~25% + contingency | ~180 | ~43 | |
 | **Total** | **~900** | **~215** | ceiling 2,200 |
+
+D24 (evaluate only the last checkpoint at full scale) cuts evaluation from 72 checkpoint-evals to
+24+2. That matters less for GPU-hours than for **wall-clock**: after the decode fix, eval had
+become the binding constraint on the study's critical path, and this removes two thirds of it.
 
 Wall-clock matters more than cost now: with a ~4 s queue latency and independent cells, the
 23-cell T1 wave is a **~2 h block**, not a day. The binding constraint on the study has shifted
