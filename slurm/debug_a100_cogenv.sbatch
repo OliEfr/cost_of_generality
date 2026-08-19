@@ -43,10 +43,33 @@ ls -lh "${SIF}"
 # HOME is redirected because Kit writes GB of shader cache and $HOME has a 50 GB quota.
 echo
 echo "=== frames_qa inside the container ==="
+# VULKAN: measured on a compute node (job 52958496) -- the host has
+# /usr/share/vulkan/icd.d/nvidia_icd.x86_64.json, but INSIDE the container with --nv that directory
+# does not exist and VK_ICD_FILENAMES is unset. libvulkan.so.1 loads, so the loader is there with no
+# ICD and no driver behind it => zero Vulkan devices => Kit's RTX renderer cannot initialise and Kit
+# tears itself down (`Recursive unloadAllPlugins()`) and exits **0**, before frames_qa.py's
+# module-level os.makedirs ever runs. That looks identical to "the A100 cannot render" and is not.
+# Fix needs no image rebuild: bind the host ICD directory and point the loader at the NVIDIA ICD.
+VK_ICD_HOST=/usr/share/vulkan/icd.d
+VK_ICD_JSON="${VK_ICD_HOST}/nvidia_icd.x86_64.json"
+echo "host ICD: $(ls ${VK_ICD_JSON} 2>&1)"
+
+echo "=== container GPU/Vulkan visibility with the ICD bound ==="
+singularity exec --nv \
+  -B "${COG}:${COG}" -B "${VK_ICD_HOST}:${VK_ICD_HOST}" \
+  --env VK_ICD_FILENAMES="${VK_ICD_JSON}" \
+  "${SIF}" bash -lc 'echo " singularity libs: $(ls /.singularity.d/libs 2>/dev/null | wc -l) entries";
+    echo " LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-unset}";
+    echo " GLX_nvidia present: $(ls /.singularity.d/libs/libGLX_nvidia* 2>/dev/null | wc -l)";
+    echo " glvkspirv present: $(ls /.singularity.d/libs/libnvidia-glvkspirv* 2>/dev/null | wc -l)";
+    echo " ICD visible: $(ls ${VK_ICD_FILENAMES} 2>&1)"' < /dev/null
+
 timeout 1500 srun singularity exec --nv \
   -B "${COG}:${COG}" -B /leonardo_work:/leonardo_work \
   -B "${QA_OUT}:${REPO_IN}/ops" \
+  -B "${VK_ICD_HOST}:${VK_ICD_HOST}" \
   --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES \
+  --env VK_ICD_FILENAMES="${VK_ICD_JSON}" \
   "${SIF}" bash -lc "cd ${REPO_IN} && python scripts/dev/frames_qa.py --level L0 --resets 2 --headless --enable_cameras" \
   < /dev/null
 RC=$?
