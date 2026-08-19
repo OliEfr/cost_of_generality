@@ -27,9 +27,16 @@ case "$what" in
     for run in "$@"; do
       dest="${REPO}/experiments/runs/${run}"
       mkdir -p "${dest}"
-      # only the two checkpoints the protocol needs; --prune-empty-dirs keeps it tidy
+      # The protocol evaluates the LAST THREE checkpoints (40k/60k/80k) and reports
+      # best-of-three, so all three must come down -- not just 080000. This previously listed
+      # only 080000 and last, which would have silently starved the local-4090 eval fallback of
+      # two thirds of its inputs and quietly turned best-of-3 into last-only.
+      # Directory names are SIX digits (040000, not 00040000) -- verified against a real
+      # checkpoint on 2026-08-19; docs/specs/06_lerobot_044.md shows 9 and is wrong.
       rsync -az --info=stats1 --prune-empty-dirs \
-        --include '*/' --include '080000/**' --include 'last/**' --exclude '*' \
+        --include '*/' \
+        --include '040000/**' --include '060000/**' --include '080000/**' \
+        --include 'last/**' --exclude '*' \
         "${REMOTE}:${WORK_REMOTE}/checkpoints/${run}/" "${dest}/"
       echo "[sync] ${run} -> ${dest}"
     done
