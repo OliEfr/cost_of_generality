@@ -98,13 +98,37 @@ KIT_BINDS=(-B "${KIT_RW}/logs:${ENV_IN}/kit/logs"
 #    show the space-separated form; it does not work.
 #
 VK_ICD_HOST=/usr/share/vulkan/icd.d
-VK_ICD_JSON="${VK_ICD_HOST}/nvidia_icd.x86_64.json"
-echo "host ICD: $(ls ${VK_ICD_JSON} 2>&1)"
+VK_ICD_SRC="${VK_ICD_HOST}/nvidia_icd.x86_64.json"
+echo "host ICD: $(ls ${VK_ICD_SRC} 2>&1)"
+
+# The stock ICD names its driver by BARE SONAME:
+#     {"ICD": {"library_path": "libGLX_nvidia.so.0", "api_version": "1.3.242"}}
+# which the Vulkan loader resolves through LD_LIBRARY_PATH. `--nv` puts the driver in
+# /.singularity.d/libs and adds that to LD_LIBRARY_PATH, and a bare `dlopen("libGLX_nvidia.so.0")`
+# from a plain shell inside the container does succeed (probe 52969503). But **Kit rewrites
+# LD_LIBRARY_PATH for its own process**, so by the time its bundled loader
+# (omni.gpu_foundation/bin/deps/libvulkan.so.1) resolves the ICD, the soname no longer resolves and
+# the loader reports ERROR_INCOMPATIBLE_DRIVER -- indistinguishable from a genuinely unsupported GPU.
+# Rewriting library_path to an ABSOLUTE path removes the search entirely.
+#
+# Aside for the record: Apptainer documents `--nvccli` + NVIDIA_DRIVER_CAPABILITIES=graphics as the
+# way to get Vulkan/GL, but `nvidia-container-cli` is not installed on Leonardo, so that route is
+# closed. Leonardo's /etc/singularity/nvliblist.conf does already list the graphics libs, so plain
+# `--nv` injects them -- the libraries were never the problem, only their resolution.
+VK_ICD_JSON="${COG}/nvidia_icd_abs.json"
+python3 - "${VK_ICD_SRC}" "${VK_ICD_JSON}" <<'PYICD'
+import json, sys
+src, dst = sys.argv[1], sys.argv[2]
+d = json.load(open(src))
+d["ICD"]["library_path"] = "/.singularity.d/libs/libGLX_nvidia.so.0"
+json.dump(d, open(dst, "w"), indent=4)
+print("rewrote ICD ->", dst, d["ICD"])
+PYICD
 
 echo "=== container GPU/Vulkan visibility with the ICD bound ==="
 singularity exec --nv \
   -B "${COG}:${COG}" -B "${VK_ICD_HOST}:${VK_ICD_HOST}" \
-  --env VK_ICD_FILENAMES="${VK_ICD_JSON}" \
+  --env VK_ICD_FILENAMES="${VK_ICD_JSON}" --env VK_DRIVER_FILES="${VK_ICD_JSON}" \
   "${SIF}" bash -lc 'echo " singularity libs: $(ls /.singularity.d/libs 2>/dev/null | wc -l) entries";
     echo " LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-unset}";
     echo " GLX_nvidia present: $(ls /.singularity.d/libs/libGLX_nvidia* 2>/dev/null | wc -l)";
@@ -117,7 +141,7 @@ timeout 1500 srun singularity exec --nv \
   -B "${VK_ICD_HOST}:${VK_ICD_HOST}" \
   "${KIT_BINDS[@]}" \
   --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES \
-  --env VK_ICD_FILENAMES="${VK_ICD_JSON}" \
+  --env VK_ICD_FILENAMES="${VK_ICD_JSON}" --env VK_DRIVER_FILES="${VK_ICD_JSON}" \
   -B "${COG}/extralibs:/opt/extralibs" \
   "${SIF}" bash -lc "export LD_LIBRARY_PATH=/opt/extralibs:\${LD_LIBRARY_PATH}; cd ${REPO_IN} && python scripts/dev/frames_qa.py --level L0 --resets 2 --headless --enable_cameras --kit_args=\"--/rtx/verifyDriverVersion/enabled=false\"" \
   < /dev/null
