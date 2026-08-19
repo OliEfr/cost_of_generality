@@ -11,3 +11,4 @@
 - 2026-08-18 07:07  Leonardo cert <1h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-18 08:07  Leonardo cert <0h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-18 08:35  Leonardo cert EXPIRED - cluster monitoring unavailable until renewed from laptop
+- 2026-08-19 15:07  G0 PASSED: Slurm association with euhpc_b38_106 is LIVE - cluster phases unblocked!

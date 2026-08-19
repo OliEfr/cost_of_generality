@@ -1693,3 +1693,54 @@ Everything on our side is ready and waiting: all three tasks' data phases closed
 39 frozen eval sub-levels), and the cluster scripts authored but unverified. First action the
 moment G0 passes is still `sync_up.sh code` + the ~30 min A100 render gate on `boost_qos_dbg`,
 then STOP for user approval before the 8 GPU-h calibration run.
+
+## 2026-08-19 15:30 — G0 PASSED: Slurm association is live; cluster phases unblocked
+
+The `EUHPC_B38_106` Slurm association was created some time before 15:07 today. The
+hourly watchdog detected it first (wrote `ops/G0_PASSED` + an `ops/ALERTS.md` line at
+15:07); the three-hourly compute-access check confirmed it independently at 15:26.
+Elapsed block: ~3.5 days from first detection (2026-08-16) to resolution.
+
+**G0 evidence — both halves of the criterion, not merely an absence of errors:**
+
+```
+sacctmgr -n -P show assoc user=ohausdoe format=Account,Partition,QOS
+  euhpc_b34_046||boost_qos_bprod,boost_qos_dbg,boost_qos_lprod,normal
+  euhpc_b38_106||boost_qos_bprod,boost_qos_dbg,boost_qos_lprod,normal   <-- NEW
+sbatch --test-only -A euhpc_b38_106 -p boost_usr_prod --gres=gpu:1 --cpus-per-task=8 --mem=64G
+  sbatch: Job 52803454 to start at 2026-08-26T05:17:15 using 8 processors on nodes lrdn2541
+  RC=0
+```
+
+`saldo -b`: EUHPC_B38_106, 112,000 local h, 0 consumed, valid 20260729-20261029.
+All four QOS we need (`boost_qos_dbg` for gates, `boost_qos_bprod` for the matrix,
+`boost_qos_lprod` for any 4-day run) are attached to the new association.
+
+**FINDING — the queue is deep, and this changes wall-clock planning, not cost.**
+`boost_usr_prod` shows 1,575 pending / 2,050 running jobs. `--test-only` estimates our
+start at 2026-08-26 (~6 days out) for `normal` QOS and 2026-08-25 even under
+`boost_qos_dbg`. Two caveats before anyone plans around those dates: (a) `--test-only`
+start estimates are pessimistic by construction -- they assume every job ahead consumes
+its full walltime and give no credit for backfill, which a 30-min 1-GPU job is an ideal
+candidate for; (b) the estimate is a snapshot of a queue that just reopened after the
+Slurm upgrade, so it is inflated by the backlog that accumulated while submissions were
+refused. Real queue latency has to be *measured*, not predicted -- the A100 render gate
+is now doing double duty as that measurement. Plan implication: the 24-run matrix's
+"~1 day at reasonable queue depth" assumption (P6) is the number most at risk, and it is
+a wall-clock risk only -- GPU-h cost is unchanged.
+
+**Cluster tree created** (did not exist; `rsync --delete` creates only the final path
+component, so this had to precede any sync):
+`$WORK/cog/{repo,miniforge3,envs,checkpoints,wandb_offline,results,containers,hf_cache,datasets_backup}`
+plus `$FAST/cog/datasets`. Both areas verified writable by touch+rm.
+Quota: `$WORK` = /leonardo_work/EUHPC_B38_106, 3 T (4 K used); `$FAST` = 1 T. Ample.
+
+**Verified gotcha that did NOT bite:** `$WORK`/`$FAST`/`$SCRATCH` *do* expand under a
+non-interactive `ssh leonardo '...'` (they resolve via profile scripts that run even for
+command-mode ssh). `sync_up.sh` relies on this -- it single-quotes `$WORK/cog` and lets
+the remote shell expand it. Had they been login-shell-only, the rsync would have written
+to a relative directory named by an empty string instead of failing loudly. Checked
+before first use rather than after.
+
+Note `$WORK` now points at EUHPC_B38_106; before the association it did not resolve to
+this project's area. Anything cached from an earlier probe of `$WORK` is stale.
