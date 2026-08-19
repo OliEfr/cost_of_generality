@@ -3022,3 +3022,68 @@ exist in 0.4.4 and is behaviour-neutral where it does. The calibration run's sav
 was already verified against these pins at G5a. What changed is the confidence level: the flip
 list is now source-verified rather than release-note-derived, and one wrong adjacent claim is
 retracted.
+
+## 2026-08-19 (evening) -- Architecture switched to per-camera RGB encoders; full T1 matrix LAUNCHED
+
+User directive: use a separate RGB encoder per camera for the study, re-run the already-trained
+cell, extend train walltime because the model has more parameters, and check health hourly.
+Decision recorded as D26. Sequence, in the order it had to happen:
+
+**1. Verified 0.4.4 actually supports the path** before changing anything.
+`modeling_diffusion.py:176-182` builds `nn.ModuleList([DiffusionRgbEncoder(cfg) for _ in cams])`
+and `:252-265` runs each encoder on its own camera stream (`zip(..., strict=True)`), concatenating
+the per-camera features. Notable: `global_cond_dim` is `feature_dim * num_images` in **both**
+branches, so untying the encoders does NOT widen the U-Net conditioning input.
+
+**2. Measured the cost** by building `DiffusionPolicy` both ways with our real feature spec
+(2 cams @128x128 from `data/lerobot/L0/meta/info.json`, crop 112, state 9, action 7):
+
+| | shared | separate | delta |
+|---|---|---|---|
+| encoder params | 11,197,088 | 22,394,176 | **x2.00** |
+| U-Net params | 255,601,287 | 255,601,287 | **identical** |
+| total params | 266,798,375 | 277,995,463 | +11.2M (+4.2%) |
+
+fwd/bwd at batch 64 succeeded, peak 3.44 GiB allocated -- VRAM is a non-issue on a 64 GiB A100
+(and the earlier 13.5 GiB figure was reserved-including-dataloader, not model activations).
+
+**3. Caught a silent-wrong-result hazard before it fired.** `train.sbatch:79-84` resumes with
+`--config_path=<ckpt> --resume=true` -- mandatory at 0.4.4, but on that path the config is taken
+ENTIRELY from the checkpoint and all other CLI flags are ignored. `t1_L0_n25_s0` already had
+80k-step shared-encoder checkpoints on `$WORK`. Submitting the matrix would therefore have found
+that cell "already complete" under the OLD architecture, with the registry, the log line and the
+frozen config all claiming the new one. Confirmed by reading the saved configs: all three pulled
+checkpoints report `sep_enc=False, group_norm=True, horizon=16, batch=64`.
+Two fixes: (a) renamed `$WORK/cog/checkpoints/t1_L0_n25_s0` ->
+`t1_L0_n25_s0_sharedenc` (renamed, never deleted -- it is the evidence behind D24 and the L0
+saturation finding), and registry row likewise renamed with `status=superseded`; (b) wrote
+`scripts/ops/assert_resume_config.py`, called from `train.sbatch` before any resume, which diffs
+every `--policy.*` value and `batch_size` in the checkpoint against `COG_DP_FLAGS` and aborts with
+exit 2 on mismatch. Tested against the real stale checkpoint both ways: with the new flag it
+reports exactly one mismatch (`use_separate_rgb_encoder_per_camera: checkpoint=False frozen=true`)
+and nothing else; with the old flag restored, `16 frozen values match`. The single-mismatch result
+is itself the evidence that the value normalisation handles bools, `[112,112]`, ints and strings
+without false positives. This guard is generic: it catches ANY later edit to the frozen config.
+
+**4. Caught a second silent hazard: `sync_up.sh` hardcoded `REPO=/home/admin_07/cost_of_generality`**
+-- the MAIN checkout. This session works in a git worktree (background-job isolation), so syncing
+would have shipped the OLD `sep_enc=false` config to the cluster while the local branch showed
+`true`, and 24 jobs would have trained the wrong architecture. Now `REPO="${COG_REPO:-...}"`, and
+the script echoes which repo it is syncing from. Verified after syncing that
+`$WORK/cog/repo/configs/train/diffusion_base.sh:24` really reads `=true` and that the guard script
+arrived.
+
+**5. Walltime 06:00:00 -> 12:00:00** per user request. Free insurance: Leonardo bills
+cores x ELAPSED, not the reservation, so a bigger limit costs nothing and only a walltime kill
+costs a requeue.
+
+**6. Launched the full T1 matrix: 24 cells** (L0-L3 x N=10/25/50/100/200/400, seed 0), job ids
+53008600-53008873, all **RUNNING within ~20 s** of submission -- consistent with the 4 s queue
+latency probe and again showing `sbatch --test-only`'s "start 2026-08-26" prediction is worthless.
+Datasets verified present on `$FAST` first: L0-L3, 400 episodes each. 24 registry rows written.
+Expected ~2 h/cell if throughput holds (~48 GPU-h); that estimate is provisional because it was
+measured on the shared-encoder architecture.
+
+Note for the next reader: the Slurm logs stay nearly empty because wandb's `_redirect()` swallows
+the console stream (recorded earlier today), so liveness must be judged from checkpoint mtimes and
+`squeue`, not from log growth.

@@ -21,7 +21,7 @@ export COG_DP_FLAGS="
   --policy.crop_is_random=true
   --policy.use_group_norm=true
   --policy.spatial_softmax_num_keypoints=32
-  --policy.use_separate_rgb_encoder_per_camera=false
+  --policy.use_separate_rgb_encoder_per_camera=true
   --policy.do_mask_loss_for_padding=false
   --policy.noise_scheduler_type=DDPM
   --policy.num_train_timesteps=100
@@ -34,15 +34,18 @@ export COG_DP_FLAGS="
   --num_workers=8
   --seed=0
 "
-# The last two policy flags above are pinned at lerobot 0.4.4's OWN defaults
-# (use_separate_rgb_encoder_per_camera=False, do_mask_loss_for_padding=False), so they change
-# nothing today. They are written out because lerobot 0.6.0 silently flipped five diffusion
-# defaults -- horizon 16->64, n_action_steps 8->32, use_group_norm True->False,
-# pretrained_backbone_weights None->ImageNet, use_separate_rgb_encoder_per_camera False->True.
-# The first three were already pinned here; use_separate_rgb_encoder_per_camera was not.
-# (do_mask_loss_for_padding is NOT one of the five -- it is False in every release from 0.4.4
-# to 0.6.1; it is pinned here purely defensively.) Any future version bump would otherwise have
-# changed the ARCHITECTURE mid-study with no error and no log line.
+# use_separate_rgb_encoder_per_camera=TRUE is a deliberate STUDY CHOICE (user directive
+# 2026-08-19, D26) -- it is NOT 0.4.4's default (False) and NOT a defensive pin. Each camera
+# gets its own ResNet18 instead of one encoder shared across both: encoder params 11.20M ->
+# 22.39M (exactly 2.00x), total 266.8M -> 278.0M (+4.2%), U-Net BYTE-IDENTICAL because
+# global_cond_dim is feature_dim*num_images in both branches (modeling_diffusion.py:176-182).
+# Verified to build and fwd/bwd at batch 64 before the matrix was launched.
+# do_mask_loss_for_padding=False IS a defensive pin at 0.4.4's own default (it is False in every
+# release 0.4.4-0.6.1, so it counters no upstream flip).
+# Both are written out because lerobot 0.6.0 silently flipped five diffusion defaults --
+# horizon 16->64, n_action_steps 8->32, use_group_norm True->False, pretrained_backbone_weights
+# None->ImageNet, use_separate_rgb_encoder_per_camera False->True. A version bump would
+# otherwise have changed the ARCHITECTURE mid-study with no error and no log line.
 # Still unpinned deliberately: `pretrained_backbone_weights` (None at 0.4.4). Passing None
 # through the CLI risks draccus decoding the string "null", which would be worse than relying
 # on the default -- so it is instead ASSERTED against the calibration run's saved config.json.

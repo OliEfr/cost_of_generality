@@ -4,5 +4,29 @@ g5a_batch_lr_sweep,cup_place,L0,-,25,cog/L0,52878355,done,,,,,-,-,0.29,"G5a batc
 g5a_dataloader_nw,cup_place,L0,-,25,cog/L0,52885440,cancelled,,,,,-,-,0.42,"INVALID: --num_workers overridden by COG_DP_FLAGS (draccus last-flag-wins) so all arms ran at 8; cancelled. 3.4 core-h @ billing=32. Confirms run-to-run variance <1%"
 g5a_dataloader_ab,cup_place,L0,-,25,cog/L0,52885440+52894292+52896093,done,,,,,-,-,0.9,"G5a decode A/B: pyav data_s 0.388 vs torchcodec 0.003 (129x); 13.89 steps/s -> 1.6 h per 80k run; loss identical (0.266) across backends"
 g5a_framecheck,cup_place,L0,-,25,cog/L0,52894432+52896091,done,,,,,-,-,0.1,"pyav vs torchcodec frame equality: 40 fetches, 0 mismatched, max abs pixel diff 0.0 (BACKENDS_IDENTICAL); torchcodec 0.7.0 rejected (broken custom ops), 0.5 accepted"
-t1_L0_n25_s0,cup_place,L0,-,25,cog/L0,52899856,done,0.97,0.95,0.98,0.98,L0,100,2.0,"G5a calibration AND real study cell (L0/N=25). batch=64 lr=1e-4 torchcodec 80k steps. MEASURED 11.2 steps/s at 8 cores (20k ckpt in 1779s) -> ~2.0 h / ~2.0 GPU-h per cell. Config verified from ckpt: steps=80000 batch=64 seed=0 adam lr=1e-4 pretrained_backbone_weights=None. COMPLETED 02:00:04 = 2.0 GPU-h exactly; loss 0.579->0.004 monotone; ckpts 20/40/60/80k present"
+t1_L0_n25_s0_sharedenc,cup_place,L0,shared_rgb_encoder,25,cog/L0,52899856,superseded,0.97,0.95,0.98,0.98,L0,100,2.0,"SUPERSEDED 2026-08-19 by the switch to use_separate_rgb_encoder_per_camera=true (D26): this run used ONE encoder shared across both cameras, so it is off-architecture for the study and its SRs are NOT comparable to the matrix. Kept as evidence (checkpoints renamed to t1_L0_n25_s0_sharedenc on $WORK, not deleted) because it is what discharged D24 and showed L0 saturating at N=25. G5a calibration AND (then) real study cell (L0/N=25). batch=64 lr=1e-4 torchcodec 80k steps. MEASURED 11.2 steps/s at 8 cores (20k ckpt in 1779s) -> ~2.0 h / ~2.0 GPU-h per cell. Config verified from ckpt: steps=80000 batch=64 seed=0 adam lr=1e-4 pretrained_backbone_weights=None. COMPLETED 02:00:04 = 2.0 GPU-h exactly; loss 0.579->0.004 monotone; ckpts 20/40/60/80k present"
 g5a_resume,cup_place,L0,-,25,cog/L0,52899246,done,,,,,-,-,0.1,"G5A_RESUME_PASSED: SIGKILLed at step 200, resumed at 225 (not 0), finished at 400; validates the config_path resume fix"
+t1_L0_n10_s0,cup_place,L0,-,10,local/L0,53008600,submitted,,,,,L0,,,launched by launch_matrix.py
+t1_L0_n25_s0,cup_place,L0,-,25,local/L0,53008611,submitted,,,,,L0,,,launched by launch_matrix.py
+t1_L0_n50_s0,cup_place,L0,-,50,local/L0,53008618,submitted,,,,,L0,,,launched by launch_matrix.py
+t1_L0_n100_s0,cup_place,L0,-,100,local/L0,53008625,submitted,,,,,L0,,,launched by launch_matrix.py
+t1_L0_n200_s0,cup_place,L0,-,200,local/L0,53008638,submitted,,,,,L0,,,launched by launch_matrix.py
+t1_L0_n400_s0,cup_place,L0,-,400,local/L0,53008644,submitted,,,,,L0,,,launched by launch_matrix.py
+t1_L1_n10_s0,cup_place,L1,-,10,local/L1,53008651,submitted,,,,,L1,,,launched by launch_matrix.py
+t1_L1_n25_s0,cup_place,L1,-,25,local/L1,53008655,submitted,,,,,L1,,,launched by launch_matrix.py
+t1_L1_n50_s0,cup_place,L1,-,50,local/L1,53008663,submitted,,,,,L1,,,launched by launch_matrix.py
+t1_L1_n100_s0,cup_place,L1,-,100,local/L1,53008669,submitted,,,,,L1,,,launched by launch_matrix.py
+t1_L1_n200_s0,cup_place,L1,-,200,local/L1,53008677,submitted,,,,,L1,,,launched by launch_matrix.py
+t1_L1_n400_s0,cup_place,L1,-,400,local/L1,53008685,submitted,,,,,L1,,,launched by launch_matrix.py
+t1_L2_n10_s0,cup_place,L2,-,10,local/L2,53008693,submitted,,,,,L2,,,launched by launch_matrix.py
+t1_L2_n25_s0,cup_place,L2,-,25,local/L2,53008698,submitted,,,,,L2,,,launched by launch_matrix.py
+t1_L2_n50_s0,cup_place,L2,-,50,local/L2,53008705,submitted,,,,,L2,,,launched by launch_matrix.py
+t1_L2_n100_s0,cup_place,L2,-,100,local/L2,53008717,submitted,,,,,L2,,,launched by launch_matrix.py
+t1_L2_n200_s0,cup_place,L2,-,200,local/L2,53008721,submitted,,,,,L2,,,launched by launch_matrix.py
+t1_L2_n400_s0,cup_place,L2,-,400,local/L2,53008749,submitted,,,,,L2,,,launched by launch_matrix.py
+t1_L3_n10_s0,cup_place,L3,-,10,local/L3,53008754,submitted,,,,,L3,,,launched by launch_matrix.py
+t1_L3_n25_s0,cup_place,L3,-,25,local/L3,53008787,submitted,,,,,L3,,,launched by launch_matrix.py
+t1_L3_n50_s0,cup_place,L3,-,50,local/L3,53008793,submitted,,,,,L3,,,launched by launch_matrix.py
+t1_L3_n100_s0,cup_place,L3,-,100,local/L3,53008835,submitted,,,,,L3,,,launched by launch_matrix.py
+t1_L3_n200_s0,cup_place,L3,-,200,local/L3,53008870,submitted,,,,,L3,,,launched by launch_matrix.py
+t1_L3_n400_s0,cup_place,L3,-,400,local/L3,53008873,submitted,,,,,L3,,,launched by launch_matrix.py

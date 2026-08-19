@@ -59,10 +59,14 @@ def main() -> None:
                     help="ssh host to submit through; see the module docstring for why")
     ap.add_argument("--no-remote", dest="remote", action="store_const", const=None,
                     help="submit locally with sbatch instead of over ssh")
-    ap.add_argument("--time", default="06:00:00",
-                    help="walltime per cell. A cell is ~1.6 h after the G5a decode fix (D23), "
-                         "so the default is ~3.7x margin rather than train.sbatch's 24 h; a "
-                         "walltime kill is recoverable anyway (resume verified, G5a part 3).")
+    ap.add_argument("--time", default="12:00:00",
+                    help="walltime per cell. A cell measured 2.0 h with ONE shared RGB encoder; "
+                         "D26 switched to a separate encoder per camera (2x encoder params, "
+                         "+4.2%% total), so the per-step cost may rise -- raised 06:00:00 -> "
+                         "12:00:00 (~6x margin on the old measurement) on 2026-08-19. Walltime is "
+                         "free insurance: Leonardo bills cores x ELAPSED, not the reservation, so "
+                         "a longer limit costs nothing and only a walltime KILL costs a requeue "
+                         "(resume verified, G5a part 3).")
     args = ap.parse_args()
 
     header, rows = read_registry()

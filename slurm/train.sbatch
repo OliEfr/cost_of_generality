@@ -79,6 +79,15 @@ PY
 CKPT_CFG="${OUT}/checkpoints/last/pretrained_model/train_config.json"
 if [ -f "${CKPT_CFG}" ]; then
   echo "[train] existing checkpoint found -> resuming ${RUN_ID} from ${CKPT_CFG}"
+  # A config_path-only resume takes the ENTIRE config from the checkpoint, so an edit to
+  # configs/train/diffusion_base.sh made after this cell first ran would be silently ignored
+  # here. Assert the checkpoint still matches the frozen config before spending GPU-h on it.
+  ASSERT_PY="/home/admin_07/cost_of_generality/scripts/ops/assert_resume_config.py"
+  [ -f "${ASSERT_PY}" ] || ASSERT_PY="${WORK}/repo/scripts/ops/assert_resume_config.py"
+  if ! python "${ASSERT_PY}" "${CKPT_CFG}"; then
+    echo "[train] ABORT ${RUN_ID}: checkpoint config != frozen config (see above)" >&2
+    exit 2
+  fi
   srun python -m lerobot.scripts.lerobot_train \
     --config_path="${CKPT_CFG}" \
     --resume=true

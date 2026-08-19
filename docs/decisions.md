@@ -553,3 +553,61 @@ not from another round of container guesses.
 
 **VERIFY:** none outstanding. The local path is proven end-to-end -- three checkpoints evaluated,
 SR 0.97/0.95/0.98, D24 discharged.
+
+---
+
+## D26 -- Separate RGB encoder per camera (2026-08-19)
+
+**Decision.** `use_separate_rgb_encoder_per_camera=true` for the whole study. Each camera
+(`table_cam`, `wrist_cam`) gets its own ResNet18 + spatial-softmax encoder instead of one encoder
+applied to both. Frozen in `configs/train/diffusion_base.sh`; the T1 matrix was launched under it.
+
+**Why.** User directive. It is also the defensible default for this study: the two views are not
+samples from one visual distribution -- a fixed table camera and a wrist camera mounted on the
+moving end-effector have systematically different statistics, scale and motion. Sharing one encoder
+forces a single feature extractor to serve both, which is a stronger inductive-bias assumption than
+this study needs to make. It is additionally what lerobot itself now defaults to from 0.6.0 onward.
+
+**Cost, measured before launch** (`DiffusionPolicy` built both ways, 2 cams @128x128, crop 112,
+state 9, action 7): encoder params **11,197,088 -> 22,394,176 (exactly 2.00x)**, total
+**266,798,375 -> 277,995,463 (+11.2M, +4.2%)**. The **U-Net is byte-identical** (255,601,287 params
+both ways) because `global_cond_dim` adds `feature_dim * num_images` in *both* branches
+(`modeling_diffusion.py:176-182`) -- untying the encoders does not widen the conditioning vector.
+fwd/bwd verified at batch 64 (peak 3.44 GiB allocated), so VRAM was never a question.
+
+**Consequences accepted.**
+1. **The G5a calibration run is off-architecture.** `t1_L0_n25_s0` (job 52899856, SR
+   0.97/0.95/0.98) was trained with the shared encoder. It is renamed to
+   `t1_L0_n25_s0_sharedenc` in the registry (status `superseded`) and its cluster checkpoints are
+   renamed, not deleted -- it remains the evidence that discharged D24 and showed L0 saturating at
+   N=25. Those two findings now rest on shared-encoder evidence until re-checked on the new
+   architecture, which is free: the matrix saves checkpoints at 20/40/60/80k anyway, so D24 can be
+   re-verified with local eval time only, no GPU-h.
+2. **The 2.0 GPU-h/cell timing basis is provisional.** It was measured at 11.2 steps/s with one
+   encoder. The loop was decode-bound (GPU util ~0% at every batch size, D23), so a 4.2% parameter
+   increase is not expected to move wall-clock much -- but that is a prediction, not a measurement.
+   Walltime per cell was raised 06:00:00 -> 12:00:00 as insurance; on Leonardo this is free,
+   because billing is cores x ELAPSED, not the reservation.
+3. **N=25 at L0 is re-run** rather than reused, so all 24 cells share one architecture (rule 7).
+
+**The dangerous part, and the guard added for it.** `train.sbatch` resumes with
+`--config_path=<ckpt> --resume=true`, which is mandatory at 0.4.4 (`configs/train.py:89-95`). On
+that path the config comes ENTIRELY from the checkpoint and every other CLI flag is ignored. So
+flipping this flag while `t1_L0_n25_s0` still had 80k-step shared-encoder checkpoints on `$WORK`
+would have made that cell silently keep training the OLD architecture while the registry, the log
+line and the frozen config all said otherwise -- a wrong result with no error anywhere. Two things
+now prevent it: the stale checkpoints were renamed aside, and
+`scripts/ops/assert_resume_config.py` re-checks every `--policy.*` value plus `batch_size` in the
+checkpoint against `COG_DP_FLAGS` before any resume, aborting the job (exit 2) on mismatch. Tested
+both ways against the real stale checkpoint: 1 mismatch caught with the new flag, 16 values clean
+with the old one. This generalises -- it now catches *any* post-hoc edit to the frozen config, not
+just this one.
+
+**Also fixed while here:** `sync_up.sh` hardcoded the main checkout as its source, so a sync run
+from a git worktree pushed the WRONG (old) config to the cluster while the local branch showed the
+new one. It now honours `COG_REPO`, and prints the source repo it is using.
+
+**VERIFY:** (a) first checkpoint's `train_config.json` shows
+`use_separate_rgb_encoder_per_camera: true` -- pending, ~20k steps in; (b) re-measure steps/s and
+GPU-h per cell on the new architecture and update `docs/timings.md` + `experiments/budget.md`;
+(c) re-check D24 (last-vs-best checkpoint) and L0 saturation on one new-architecture cell.

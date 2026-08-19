@@ -6,7 +6,12 @@
 # Requires a live certificate (48 h; renew from the laptop with ~/cineca_login.sh).
 set -euo pipefail
 REMOTE=leonardo
-REPO=/home/admin_07/cost_of_generality
+# Overridable so a git-worktree checkout can be the source of truth for a sync. Hardcoding the
+# main checkout meant a worktree's edits were silently NOT what reached the cluster -- the job
+# would then run the OLD frozen config while the local branch showed the new one (caught
+# 2026-08-19 while flipping use_separate_rgb_encoder_per_camera).
+REPO="${COG_REPO:-/home/admin_07/cost_of_generality}"
+echo "[sync_up] source repo: ${REPO}"
 # rsync hands the destination path to the remote rsync as a plain argument; it is NEVER
 # shell-expanded there, so a literal '$WORK' gets resolved against $HOME and the transfer
 # dies with mkdir "...userexternal/ohausdoe/$WORK/cog/repo" failed (verified 2026-08-19).
