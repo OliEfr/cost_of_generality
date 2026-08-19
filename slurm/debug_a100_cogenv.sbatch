@@ -76,6 +76,23 @@ KIT_BINDS=(-B "${KIT_RW}/logs:${ENV_IN}/kit/logs"
            -B "${KIT_RW}/data:${ENV_IN}/kit/data"
            -B "${KIT_RW}/cache:${ENV_IN}/kit/cache")
 
+# Two fixes found by reading Kit's OWN log (only readable once the writable binds above existed)
+# plus the upstream issue tracker -- neither needs an image rebuild:
+#
+# 1. `libgomp.so.1: cannot open shared object file`, 18 times, which then cascaded into 81 further
+#    failures of Isaac's own libs (libomni.usd.so x73, libusd_hd.so x6, librtx.hydra.so, libosdCPU).
+#    ONE missing system package, `libgomp1`, explained 99 of 101 errors. Rather than rebuild 24 GB
+#    to add it, the library is staged on $WORK and prepended to LD_LIBRARY_PATH: it is copied from
+#    the workstation's Ubuntu 24.04, the same distro the image is built from, so it is ABI-exact.
+#    (It should still go into the Dockerfile for the final image -- a bind is a test, not a design.)
+#
+# 2. `vkCreateInstance failed / ERROR_INCOMPATIBLE_DRIVER / Vulkan 1.1 is not supported`.
+#    NOT a plumbing fault: the probe (job 52969503) showed the ICD is valid
+#    (api_version 1.3.242) and `libGLX_nvidia.so.0` is injected by --nv and dlopens fine inside the
+#    container. It is the documented misreport for **driver 535.255 and newer** -- Leonardo runs
+#    535.274.02 -- for which NVIDIA's workaround is `--/rtx/verifyDriverVersion/enabled=false`.
+#    Passed via IsaacLab's `--kit_args`, so frames_qa.py needs no change.
+#
 VK_ICD_HOST=/usr/share/vulkan/icd.d
 VK_ICD_JSON="${VK_ICD_HOST}/nvidia_icd.x86_64.json"
 echo "host ICD: $(ls ${VK_ICD_JSON} 2>&1)"
@@ -97,7 +114,8 @@ timeout 1500 srun singularity exec --nv \
   "${KIT_BINDS[@]}" \
   --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES \
   --env VK_ICD_FILENAMES="${VK_ICD_JSON}" \
-  "${SIF}" bash -lc "cd ${REPO_IN} && python scripts/dev/frames_qa.py --level L0 --resets 2 --headless --enable_cameras" \
+  -B "${COG}/extralibs:/opt/extralibs" \
+  "${SIF}" bash -lc "export LD_LIBRARY_PATH=/opt/extralibs:\${LD_LIBRARY_PATH}; cd ${REPO_IN} && python scripts/dev/frames_qa.py --level L0 --resets 2 --headless --enable_cameras --kit_args \"--/rtx/verifyDriverVersion/enabled=false\"" \
   < /dev/null
 RC=$?
 echo "frames_qa rc=${RC} (124 = timed out)"
