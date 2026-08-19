@@ -238,3 +238,24 @@ Slurm `.out` nearly empty, but the `.wandb` datastore has `history` records with
 `_timestamp`. `scripts`-side reader: `read_wandb_run.py` (job tmp), using
 `wandb.sdk.internal.datastore` + `wandb.proto.wandb_internal_pb2`. This is the only live progress
 signal for these jobs -- do not judge liveness from log growth.
+
+### Correction (2026-08-20): the -16% throughput penalty was a warm-up artefact
+
+The 9.45 steps/s figure above was read at **step 7,200**, i.e. during warm-up. Settled per-cell
+wall-clock tells a different story:
+
+| | elapsed | gpu_h |
+|---|---|---|
+| shared encoder (calibration, job 52899856) | 02:00:04 | 2.0 |
+| separate encoders (`t1_L0_n25_s0`, job 53008611) | ~02:06 | 2.1 |
+| all 24 matrix cells | 01:50:24 - 02:05:43 | 1.84 - 2.1 |
+
+So the real cost of per-camera encoders is **~5%, not 16%** -- the shared-encoder run at 2:00:04 sits
+*inside* the matrix's own spread. The early reading was measured before the page cache warmed and
+overstated the penalty by 3x. Recorded because the 16% number was already written down here, and
+because it is a reminder that a rate sampled in the first few minutes of a decode-bound job is not
+that job's rate.
+
+Matrix total to date: **~50 GPU-h** across 31 registry rows (includes partial elapsed for the 5
+cells still running, so expect it to settle near 52). Still under the original 48-GPU-h estimate's
+order of magnitude and far under the 2,200 ceiling.
