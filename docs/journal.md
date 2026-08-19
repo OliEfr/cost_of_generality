@@ -2575,3 +2575,55 @@ guess as a result.
 
 Kept for reuse either way: the sif on `$WORK/cog/containers/`, `slurm/build_sif.sbatch`,
 `slurm/debug_a100_kit.sbatch`, and `docker/Dockerfile.cog` with all six fixes and their reasons.
+
+### 2026-08-19 19:55 — Cluster-eval UNBLOCKED: ship the working local env instead of rebuilding it (user's suggestion)
+
+The user asked "can you not build the working image/env locally and then transfer it to the
+cluster?" -- and that reframing is what broke the deadlock. My six failed attempts all built
+**FROM `nvcr.io/nvidia/isaac-sim:5.1.0`**, i.e. they tried to *reconstruct* the stack inside a
+vendor image whose python environment is not pip-manageable. The workstation already **has** the
+stack working, in conda env `cog_isaac`. So move it rather than rebuild it.
+
+`docker/Dockerfile.cog_env`: `FROM ubuntu:24.04`, plus Kit's X/GL/Vulkan runtime libs, plus the
+env copied to its **identical absolute path**. Built first time, every assertion passing:
+
+```
+python 3.11.15
+lerobot 0.4.4 | numpy 1.26.4 | torch 2.7.0+cu128
+isaaclab importable
+cog importable
+non-world-readable entries before fix: 4 -> after fix: 0
+```
+
+23.8 GB image. **Whole stack importable in one interpreter**, which is precisely what the
+NVIDIA-image route could not deliver.
+
+**Why it works, and why the alternatives were unnecessary:**
+- **glibc is the only reason a container is needed at all.** RHEL 8.8 has 2.28; Isaac Sim 5.1 needs
+  >= 2.35. This workstation is Ubuntu 24.04.2 / **glibc 2.39** -- the same toolchain the binaries
+  were compiled against -- and `ubuntu:24.04` supplies 2.39 in the container. Nothing is being asked
+  to run on a platform it was not built for.
+- **Identical absolute paths remove all relocation.** A conda env bakes its prefix into every
+  console-script shebang (`#!/home/admin_07/miniconda3/envs/cog_isaac/bin/python3.11`), and
+  `isaaclab`, `isaaclab_tasks`, `isaaclab_mimic`, `isaaclab_assets`, `isaaclab_rl` and `cog` are all
+  **editable** installs whose `.pth` files point into `/home/admin_07/cost_of_generality/...`.
+  Copying to the same paths means nothing needs rewriting.
+- **conda-pack is unnecessary here** (the user raised it): it solves *prefix relocation*, and there
+  is no prefix to relocate. More importantly it would not have helped with the actual blocker --
+  no amount of path rewriting changes which glibc a `.so` requires. It is still the right tool if
+  the env ever has to live at a different path.
+- **The USD assets travel with the env.** `isaacsim-asset`, `isaacsim-extscache-kit`,
+  `isaacsim-extscache-physics` etc. are pip packages *inside* `cog_isaac`, so nothing has to be
+  pre-staged separately -- which matters because compute nodes have no internet.
+
+**CINECA's own documentation endorses this route** (checked after the user suggested reading it):
+*"In order to move locally built SIF images on CINECA's clusters, consult the 'Data Transfer'
+page."* Build locally, transfer. Fakeroot is not mentioned as a user-available option anywhere,
+consistent with our measurement that it is unmapped. The docs also specify **CUDA 12.2 for
+Leonardo** and `singularity exec --nv`, both already satisfied (D22 verified cu128 on that driver).
+
+**One refinement left on the table:** CINECA assume you transfer a finished `.sif`. We transfer a
+`docker save` tar and convert on a compute node, because this box has no apptainer. A sif is about
+half the size (the base image was 15 GB as a tar vs **7.1 GB as a sif**), so building locally would
+halve the upload and delete the cluster-side conversion job. It needs `apt install apptainer`, a
+system change outside the repo, so it is offered to the user rather than done.
