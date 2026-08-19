@@ -7,8 +7,17 @@
 set -euo pipefail
 REMOTE=leonardo
 REPO=/home/admin_07/cost_of_generality
-WORK_REMOTE='$WORK/cog'
-FAST_REMOTE='$FAST/cog/datasets'
+# rsync hands the destination path to the remote rsync as a plain argument; it is NEVER
+# shell-expanded there, so a literal '$WORK' gets resolved against $HOME and the transfer
+# dies with mkdir "...userexternal/ohausdoe/$WORK/cog/repo" failed (verified 2026-08-19).
+# Resolve the bases locally in one ssh round-trip instead.
+read -r _work_base _fast_base < <(ssh "${REMOTE}" 'echo "$WORK" "$FAST"')
+if [ -z "${_work_base:-}" ] || [ -z "${_fast_base:-}" ]; then
+  echo "could not resolve \$WORK/\$FAST on ${REMOTE} (no certificate, or no project association?)" >&2
+  exit 3
+fi
+WORK_REMOTE="${_work_base}/cog"
+FAST_REMOTE="${_fast_base}/cog/datasets"
 
 what="${1:?usage: sync_up.sh code|datasets [TASK...]}"; shift || true
 
@@ -18,6 +27,7 @@ case "$what" in
     # installed on the remote, not copied.
     rsync -az --delete --info=stats1 \
       --exclude 'data/' --exclude 'third_party/' --exclude '.git/' \
+      --exclude 'experiments/runs/' \
       --exclude '__pycache__/' --exclude '*.hdf5' --exclude 'ops/' \
       "${REPO}/" "${REMOTE}:${WORK_REMOTE}/repo/"
     ;;

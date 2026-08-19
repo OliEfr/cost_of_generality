@@ -1744,3 +1744,72 @@ before first use rather than after.
 
 Note `$WORK` now points at EUHPC_B38_106; before the association it did not resolve to
 this project's area. Anything cached from an earlier probe of `$WORK` is stale.
+
+## 2026-08-19 15:45 — Gate (a) code sync PASSED after two real bugs; G5b BLOCKED on a missing container
+
+### Bug 1: rsync does not shell-expand the remote path (both sync scripts were broken)
+
+First real invocation of `sync_up.sh code` died with:
+
+```
+rsync: mkdir "/leonardo/home/userexternal/ohausdoe/$WORK/cog/repo" failed: No such file or directory (2)
+rsync error: error in file IO (code 11)
+```
+
+The literal string `$WORK` was resolved against `$HOME`. My earlier entry today reasoned
+that single-quoting `'$WORK/cog'` was fine "because the remote shell expands it" -- half
+right, and the wrong half is the one that mattered. `ssh leonardo 'echo $WORK'` *does*
+expand (verified). But rsync hands the destination to the remote `rsync --server` as a
+protected argument; no shell ever sees it. Verifying the ssh behaviour told me nothing
+about the rsync behaviour, and I treated the one as evidence for the other.
+
+Fix in `sync_up.sh` and `sync_down.sh` (both carried it): resolve the bases locally in one
+ssh round-trip and fail loudly if they come back empty --
+
+```bash
+read -r _work_base _fast_base < <(ssh "${REMOTE}" 'echo "$WORK" "$FAST"')
+[ -z "${_work_base:-}" ] && { echo "could not resolve \$WORK ..." >&2; exit 3; }
+WORK_REMOTE="${_work_base}/cog"
+```
+
+The empty-check matters: a cert expiry or a lost association would otherwise silently
+produce `/cog/repo` and write somewhere unintended.
+
+### Bug 2: rsync does not read .gitignore -- 3 GB of local smoke checkpoint went up
+
+The fixed sync then succeeded but moved **2.9 GB**. Cause: `experiments/runs/g4_smoke_L0_n25/`
+(a 2.0 GB optimizer state + 1.0 GB model from the G4 local smoke) is gitignored, so it never
+showed in `git status` and I had been treating "clean tree" as "small tree". rsync has no
+notion of gitignore. Added `--exclude 'experiments/runs/'` and removed the remote copy
+(inside `$WORK/cog`, our own mirror per CLAUDE.md rule 1; the local original is untouched
+and it is a regenerable smoke artifact either way). Re-sync now sends 5 KB against a
+3.3 MB tree -- idempotent. **Gate (a) PASSED.**
+
+Lesson worth generalising: for rsync, `.gitignore` and `git status` are not inventories.
+Size the payload with `du` before the first push of any tree, not after.
+
+### G5b (A100 render gate): BLOCKED, not failed
+
+`$WORK/cog/containers/isaaclab.sif` does not exist, and nothing else usable is on the
+system -- the only `.sif` files reachable are `jim/TRELLIS/trellis.sif` and
+`jim/ubuntu24.sif` in the **expired B34** area: another user's directory, unrelated
+content, not ours to touch. `singularity` itself is fine (SingularityPRO 4.3.1-1.el8).
+`$WORK/cog/miniforge3/` is also empty, so there is no cluster training env yet either.
+Per instruction I am reporting the gap rather than improvising a ~20 GB Isaac image build.
+
+**Recommendation: deprioritise G5b, do the training env first.** The reasoning changed
+now that all datagen is finished. G5b originally gated *demo generation* on the cluster,
+which was the expensive rendering workload -- but every dataset for all three tasks is
+already generated locally (12/12 present, 2.2 GB total in LeRobot form). The only
+remaining cluster-side use for Isaac would be the 72 checkpoint evals, and those have an
+accepted local fallback (~2-3 d serialised on the 4090). So G5b now buys at most ~2 days
+of eval wall-clock, in exchange for building a large container for a GPU on which Isaac
+Sim is officially unsupported and may fail anyway. Training is the long pole and does not
+need Isaac at all -- it needs miniforge + LeRobot + torch, which is a login-node install
+costing zero GPU-h.
+
+### Dataset inventory (relevant to the next sync)
+
+12/12 datasets present: T1 L0-L3 ~75-81 MB each, T2 ~343-356 MB, T3 ~115-120 MB;
+**2.2 GB total**. `$FAST` quota is 1 T, so the read-hot staging plan has ~500x headroom
+and the "<20 GB" budget line in the plan was far too conservative.

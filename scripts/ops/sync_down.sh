@@ -7,7 +7,13 @@
 set -euo pipefail
 REMOTE=leonardo
 REPO=/home/admin_07/cost_of_generality
-WORK_REMOTE='$WORK/cog'
+# See sync_up.sh: rsync never shell-expands the REMOTE path, so resolve $WORK here.
+read -r _work_base < <(ssh "${REMOTE}" 'echo "$WORK"')
+if [ -z "${_work_base:-}" ]; then
+  echo "could not resolve \$WORK on ${REMOTE} (no certificate, or no project association?)" >&2
+  exit 3
+fi
+WORK_REMOTE="${_work_base}/cog"
 
 what="${1:?usage: sync_down.sh results|checkpoints [RUN_ID...]}"; shift || true
 
