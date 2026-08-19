@@ -105,9 +105,17 @@ RUN /isaac-sim/python.sh -m pip install --no-cache-dir --ignore-installed "packa
 # deliberately instead of by accident.
 RUN /isaac-sim/python.sh -m pip install --no-cache-dir --no-deps "rerun-sdk==0.26.2"
 
+# Kit ships pip 24.3.1, which cannot resolve an already-installed EXTRAS variant against a plain
+# requirement for the SAME version: it refuses "imageio==2.37.0, imageio[ffmpeg]==2.37.0 and
+# lerobot==0.4.4" although imageio 2.37.0 satisfies lerobot's >=2.34,<3 perfectly. Restating the
+# extra, omitting it, and pinning it all hit variations of this. Upgrading pip is the actual fix;
+# the imageio requirement is then left out entirely and the image's installed copy is used.
+RUN /isaac-sim/python.sh -m pip install --no-cache-dir --upgrade "pip>=25.2" \
+ && /isaac-sim/python.sh -m pip --version
+
 RUN /isaac-sim/python.sh -m pip install --no-cache-dir \
         "lerobot==0.4.4" \
-        "numpy==1.26.4" "imageio[ffmpeg]==2.37.0" \
+        "numpy==1.26.4" \
         "datasets==4.8.5" "accelerate==1.14.0" "pandas==3.0.5" "pyarrow==25.0.1" \
         "dill==0.4.1" "multiprocess==0.70.19" "diffusers==0.35.2" \
         "huggingface-hub==0.35.3" "safetensors==0.8.0" "transformers==4.57.6" \
