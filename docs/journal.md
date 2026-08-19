@@ -2653,3 +2653,65 @@ This is the third time today that buffering hid a fact I needed (`tail` swallowi
 error, `tail` hiding `singularity`'s exit code, and now a watcher's submission). Worth stating as a
 habit: **when a background command's output is piped, treat its log as unavailable until it exits,
 and verify from the system instead.**
+
+### 2026-08-19 20:36 — G5a CALIBRATION COMPLETE: 2:00:04, exactly 2.0 GPU-h, loss 0.579 -> 0.004
+
+`t1_L0_n25_s0` (job 52899856) finished: **`COMPLETED 02:00:04`**, `billing=8` -> **2.0 GPU-h
+exactly**, all four checkpoints present (`020000 040000 060000 080000 last`) and
+`training_step.json` = `{"step": 80000}`. The estimate derived from the 20k checkpoint two hours
+earlier was "~1.98 h + ~2.3 min startup"; the outturn was 2:00:04. **The per-cell cost is now a
+measurement, not a projection.**
+
+### Loss curve (recovered from wandb's binary log -- see the trick below)
+
+| step | loss | grad_norm | lr | updt_s | data_s |
+|---|---|---|---|---|---|
+| 200 | 0.579 | 3.088 | 2.0e-05 | 0.210 | 0.077 |
+| 7K | 0.096 | 0.264 | 9.8e-05 | 0.069 | 0.014 |
+| 15K | 0.075 | 0.253 | 9.3e-05 | 0.069 | 0.014 |
+| 22K | 0.059 | 0.270 | 8.3e-05 | 0.069 | 0.015 |
+| 36K | 0.034 | 0.272 | 5.8e-05 | 0.069 | 0.020 |
+| 51K | 0.015 | 0.282 | 3.0e-05 | 0.069 | 0.019 |
+| 65K | 0.006 | 0.270 | 8.6e-06 | 0.069 | 0.014 |
+| 80K | **0.004** | 0.212 | 5.2e-10 | 0.069 | 0.014 |
+
+Three conclusions:
+1. **It is training properly.** Monotone decrease over 400 logged intervals, grad-norm flat around
+   0.22-0.28 after warmup, no divergence or spikes.
+2. **The LR schedule is the one we specified.** Warms to ~1e-4 by 7K (cosine, 500-step warmup) and
+   decays to 5.2e-10 by 80K, which independently confirms `--policy.optimizer_lr=1e-4` set the
+   *peak* -- the third confirmation that bug 4 is dead.
+3. **The 20 % throughput gap is now explained exactly, not hand-waved.** `data_s` here is
+   **0.014-0.021**, versus 0.003 in the throughput smoke that had 32 cores allocated. Step time
+   0.069 + ~0.015 = ~0.085 s -> ~11.8 steps/s, and the measured 11.2-11.4 is that minus checkpoint
+   saves. Eight cores genuinely does leave the loader slightly short of the GPU. It is still the
+   right allocation (billing is linear in cores), but the *reason* is now on record.
+
+The first interval is again visibly unrepresentative (`updt_s 0.210, data_s 0.077` at step 200) --
+the warm-up artifact that any future measurement must discard.
+
+**Worth flagging scientifically:** a final loss of 0.004 on 25 demonstrations is very low, which is
+what memorisation looks like. That is expected at small N and is precisely the effect this study
+exists to quantify -- it is a reason to watch the N=10/25 cells' *eval* numbers closely, not a
+defect.
+
+### How to read wandb's offline logs when there is no output.log
+
+wandb offline writes **no `files/output.log`** while or after a run -- the offline run directory
+holds only `logs/debug*.log`, `files/requirements.txt` and the binary `run-<id>.wandb`. Since
+wandb's console redirect also silences the Slurm `.out` (see the 18:40 entry), the training log
+looks lost. It is not:
+
+```python
+from wandb.sdk.internal import datastore
+from wandb.proto import wandb_internal_pb2 as pb
+ds = datastore.DataStore(); ds.open_for_scan(path_to_run_wandb)
+# rec.WhichOneof("record_type") in {"history","output_raw","stats","summary",...}
+```
+
+The file here held 2,567 records: **400 `history`** (= 80,000 / log_freq 200, exactly right) and
+**419 `output_raw`** -- the captured console stream. The `history` items came back with **empty
+`key` fields** (this wandb version stores them under a nested key path), so the practical route is
+`output_raw`: concatenate `rec.output_raw.line` and re-parse LeRobot's own log format. That
+recovered all 400 rows. Recorded because "wandb ate the log" will happen again on every cluster
+run, and syncing to the cloud is not an option from a compute node.
