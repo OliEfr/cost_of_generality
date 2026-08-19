@@ -3087,3 +3087,52 @@ measured on the shared-encoder architecture.
 Note for the next reader: the Slurm logs stay nearly empty because wandb's `_redirect()` swallows
 the console stream (recorded earlier today), so liveness must be judged from checkpoint mtimes and
 `squeue`, not from log growth.
+
+## 2026-08-19 (late) -- CUDA works inside the .sif; the Vulkan failure is isolated, not GPU access
+
+While assembling a CINECA support ticket I re-read Kit's own log properly and found it reports CUDA
+failures alongside the Vulkan one -- "no CUDA-capable device is detected" (`omni.physx.tensors`,
+`omni.gpucompute-cuda`), plus "CUDA libs are present, but no suitable CUDA GPU was found!". Taken at
+face value that would mean `--nv` GPU access is broken in the container, which is a completely
+different ticket from a Vulkan/graphics one. So I tested it instead of assuming (job 53013894,
+boost_qos_dbg, 14 s):
+
+Inside `cog-env-5.1.0.sif` with `singularity exec --nv` on lrdn2482:
+`nvidia-smi` -> 535.274.02 / A100-SXM-64GB; `/dev/nvidia0..3`, `nvidiactl`, `nvidia-uvm`,
+`nvidia-uvm-tools`, `nvidia-modeset`, `nvidia-caps` all present; `libcuda.so.1` injected at
+`/.singularity.d/libs/`; **torch 2.7.0+cu128 `is_available=True`, `device_count=1`,
+`get_device_name(0)='NVIDIA A100-SXM-64GB'`, and a 1024x1024 matmul succeeded.**
+
+So GPU access via `--nv` is fine and the CUDA errors in Kit's log are DOWNSTREAM FALLOUT of the
+Vulkan failure, not an independent cause. The evidence for that ordering is in the log itself:
+the CUDA errors all appear AFTER `[omni.gpu_foundation_factory.plugin] Failed to create any GPU
+devices`, one of them reports a garbage device ordinal (`device 1294759088`), and
+`omni.graph.core` says "unable to get a valid CUDA device id **from the renderer**". Omniverse
+enumerates devices through its own Vulkan-based GPU foundation, so when that yields no devices its
+CUDA interop has no ordinal to map. This confirms the diagnosis is Vulkan-only -- previously an
+assumption, now measured.
+
+Exact failure, verbatim from `kit_rw/logs/Kit/Isaac-Sim/5.1/kit_20260819_214819.log:1680-1720`:
+```
+[Error] [carb.graphics-vulkan.plugin] VkResult: ERROR_INCOMPATIBLE_DRIVER
+[Error] [carb.graphics-vulkan.plugin] vkCreateInstance failed. Vulkan 1.1 is not supported, or your driver requires an update.
+[Error] [gpu.foundation.plugin] carb::graphics::createInstance failed.
+[Error] [omni.gpu_foundation_factory.plugin] Failed to create any GPU devices, including an attempt with compatibility mode.
+```
+(twice -- the second is the compatibility-mode retry.)
+
+Two further details found in the same log, both useful for the ticket:
+1. **Kit blanks the Vulkan environment variables itself** (`:1604-1608`): `VK_SDK_PATH`,
+   `VULKAN_SDK`, `VK_LAYER_PATH`, `VK_INSTANCE_LAYERS`, `VULKAN_HEADERS_INSTALL_DIR` are all logged
+   as "Environment variable overridden: <name> = " (empty). This is the mechanism behind the
+   earlier finding that Kit ignores loader env vars -- it is not that they are unread, it is that
+   Kit actively clears them, so no client-side loader override can work.
+2. **All NVIDIA Vulkan support libraries ARE injected** and version-matched to the host driver:
+   `libnvidia-glvkspirv.so.535.274.02`, `libnvidia-rtcore`, `libnvidia-glcore`, `libnvidia-glsi`,
+   `libnvoptix.so.1`, `libGLX_nvidia.so.{0,535.274.02}`; `nvliblist.conf` lists glvkspirv. So the
+   common "missing glvkspirv" explanation for ERROR_INCOMPATIBLE_DRIVER does not apply here.
+
+Net: valid ICD (api_version 1.3.242), all support libs present and version-matched, driver 535.274.02
+(Vulkan 1.3-capable), device nodes present, CUDA fully working -- and `vkCreateInstance` still
+returns ERROR_INCOMPATIBLE_DRIVER. Every ordinary cause is eliminated, which is what makes this
+worth a CINECA ticket rather than more local guessing. Cost of the check: 14 s on one A100.
