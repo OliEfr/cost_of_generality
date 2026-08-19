@@ -114,9 +114,20 @@ def main() -> int:
             continue
 
         jid = (row.get("slurm_jobid") or "").strip()
-        if args.gpu_h and jid in gpu_h and not (row.get("gpu_h") or "").strip():
-            row["gpu_h"] = f"{gpu_h[jid]}"
-            changed += 1
+        if args.gpu_h and jid in gpu_h:
+            # sacct is authoritative, and Elapsed only ever GROWS -- a row written while the job was
+            # still RUNNING holds a partial value that must be refreshed once it completes. So take
+            # the sacct number whenever it is larger than what is recorded (never smaller, which
+            # would mean we are reading a different job).
+            new_h = gpu_h[jid]
+            cur = (row.get("gpu_h") or "").strip()
+            try:
+                cur_h = float(cur) if cur else -1.0
+            except ValueError:
+                cur_h = -1.0
+            if new_h > cur_h:
+                row["gpu_h"] = f"{new_h}"
+                changed += 1
 
         d = results.get(rid)
         if not d:

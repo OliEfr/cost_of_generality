@@ -3187,3 +3187,51 @@ tripled 1.1 GB x 24 cells for nothing. Verified on one cell: 1.03 GB pulled in ~
 Eval is now running under tmux (`cog_eval`) on `t1_L0_n25_s0`, gated on >=14 GB free VRAM so the
 foreign eval job is untouched (rule 2). All 44+ cluster checkpoints checked: **44/44 report
 `sep_enc=True`**, no invalid cell anywhere.
+
+## 2026-08-20 (01:30) -- T1 training wave COMPLETE: 24/24, 51.3 GPU-h, zero failures
+
+`MATRIX_QUEUE_EMPTY` after 34 polls. **All 24 cells COMPLETED**, all 24 wrote `080000`, and no cell
+failed, timed out, or was requeued -- so the resume path was never exercised in anger.
+
+| | value |
+|---|---|
+| cells | 24 / 24 COMPLETED |
+| elapsed per cell | min 1.84 h, median 2.03 h, max 2.83 h |
+| **total** | **51.3 GPU-h** (billing=8 on every cell -> elapsed hours == A100-h) |
+| forecast it replaces | 48 (original), 56 (warm-up-based re-forecast) |
+
+So the original estimate was the better one, and the 12 h walltime was never close to binding (worst
+cell used 24% of it).
+
+**The small-N slowdown is real and large.** The five slowest cells are 2.50-2.83 h and are the four
+`n10` cells plus `L1_n400`; the fastest are 1.84-1.92 h. That is up to **+52%** wall-clock for the
+cells with the LEAST data, at identical step count. With 80k steps fixed, demo count cannot change
+per-step compute, so this is dataloader behaviour: a 10-episode dataset offers very few distinct
+sampleable windows, so the workers cycle a tiny file set and get almost no benefit from readahead,
+while a 400-episode dataset streams through many files. Practical consequence for Tasks 2-3: do not
+schedule assuming the small-N cells are cheap -- they are the expensive ones.
+
+**Emerging science (L0 complete except N=10).** SR at 080000, 100 episodes, frozen protocol:
+`N25=0.97  N50=1.00  N100=1.00  N200=1.00  N400=0.99`. L0 is **saturated from N=25 upward** -- the
+0.97 and 0.99 are within Wilson noise of 1.00 (97/100 -> [0.915,0.990]). This reproduces the
+shared-encoder finding on the new architecture, and it means **all of L0's discriminating
+information sits at N=10**, which is still syncing. A ceiling this hard at the easiest level is
+itself a result: it says the L0 task is essentially solved by 25 demos, so the interesting
+comparisons are between levels, not within L0.
+
+**Registry defect found and fixed (pre-existing).** Aggregating `gpu_h` threw
+`could not convert string to float: 'G4 pipeline validation only ...'`. The `g4_smoke_L0_n25` row had
+been written with `sr_best` OMITTED rather than empty, so every field from there on sat one column
+left: `gpu_h` held a sentence, `eval_n` held `0.5`, `eval_set` held `20`, and `sr_80k` held the
+non-numeric string `0.80(5k-step smoke; 20 eps reduced protocol)`. Realigned, with the parenthetical
+moved into `notes`. The row is a smoke test and never enters a curve, but the registry is the
+traceability source for every number in the report, so an unparseable row is a defect regardless.
+Registry now validates clean: 31 rows, **0 non-numeric values in any numeric field**.
+
+**Also fixed:** `update_registry_from_evals.py` only wrote `gpu_h` when the field was empty, so the
+five cells whose rows were created while they were still RUNNING kept their *partial* elapsed. Since
+sacct is authoritative and Elapsed only grows, it now takes the sacct value whenever it exceeds the
+recorded one.
+
+Spend to date: **55.6 GPU-h** across all 31 rows (51.3 matrix + 4.3 bring-up, calibration and the
+superseded shared-encoder run) against the 2,200 ceiling -- 2.5%.
