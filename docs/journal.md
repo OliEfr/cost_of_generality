@@ -2779,3 +2779,35 @@ another round of guessing at apt packages.
 (7.1 GB) on `$WORK/cog/containers/`; `slurm/build_sif.sbatch`, `slurm/probe_vulkan.sbatch`,
 `slurm/debug_a100_cogenv.sbatch`, `docker/Dockerfile.cog_env` and `docker/Dockerfile.cog`, each
 carrying its findings in comments.
+
+### 2026-08-19 21:50 — FIRST STUDY RESULT: L0/N=25 @40k = SR 0.97, and L0 looks saturated
+
+Local eval on the 4090 (the accepted fallback), frozen protocol, 100 episodes:
+
+| cell | checkpoint | successes | SR | Wilson 95% CI |
+|---|---|---|---|---|
+| t1_L0_n25_s0 | 040000 | 97/100 | **0.970** | [0.915, 0.990] |
+
+`Cog-CupPlace-L0-IK-Rel-Visuomotor-v0`, `num_inference_steps=10`, protocol `num_envs=20 x 5
+batches, base_seed=5000`. ~14 min per checkpoint on the 4090 alongside the foreign job.
+
+**This is the first real data point of the study, and it already says something about the design.**
+L0 is the easiest level -- fixed mug pose, fixed goal, one mug -- and **25 demonstrations are already
+enough for 97 %**. Consequences worth stating before the matrix runs:
+
+- **N\*(s) for L0 is <= 25 for every threshold we planned to report** (50/80/90 %). The L0 row of the
+  demos-vs-success surface will be flat across N in {25..400}: saturated.
+- Therefore **all of L0's discriminating information sits at N=10**, the one grid point below this.
+  That retrospectively justifies including N=10 in the grid, and it means the L0 curve is
+  essentially a two-point curve (10 and "saturated").
+- The interesting variation must come from **L1-L3**, where randomisation is added. If those also
+  saturate early the study has a ceiling problem; if they do not, the cost-of-generality ratios
+  N\*(L_k)/N\*(L0) become large precisely because the L0 denominator is small. Either way this is
+  the number to watch when the matrix lands.
+- It also explains the training loss of 0.004: at N=25 on a fixed-pose task the policy can very
+  nearly memorise, and memorisation is sufficient here **because the eval distribution is the
+  training distribution** at L0. That is not a defect; it is the baseline the higher levels are
+  measured against.
+
+Recorded in the registry as `sr_40k=0.97`, `eval_n=100`. 60k and 80k are running -- the D24
+comparison needs all three before the last-checkpoint-only protocol can be judged sound.
