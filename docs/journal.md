@@ -2309,3 +2309,40 @@ produced a job that could never be restarted, and we would have found out only t
 (torchcodec, 13.89 steps/s); resume verified. The 80k calibration run (`t1_L0_n25_s0`, job
 52899856) is in flight -- and it is not a throwaway: L0/N=25 is a real cell of the 24-cell
 matrix, so the calibration produces a study result rather than only a timing number.
+
+### 2026-08-19 18:40 — wandb swallows the Slurm log; monitor 80k runs by checkpoint, not by stdout
+
+The calibration run's `.out` file stopped growing at 118 bytes while the job kept running, which
+looked exactly like a hang. It is not. `wandb.init()` installs a console redirect --
+`wandb_run.py:_redirect():2446 Wrapping output streams` / `2469 Redirects installed` -- so every
+subsequent LeRobot log line goes into wandb's own buffers instead of the job's stdout, and in
+**offline** mode nothing flushes them to a readable file until the run ends (the offline run dir
+contains only `logs/debug*.log`, `run-<id>.wandb` and `files/requirements.txt` while running).
+
+Liveness had to be established another way, and the right tool was `sstat`:
+
+```
+52899856.0   AveCPU 00:12:52   MaxRSS 3030448K      <- the srun step is very much alive
+```
+
+Note the `.0` step only appears if you do not truncate `sstat` output -- my first look used
+`head -4` and showed just `.extern` and `.batch`, which momentarily looked like "the srun step
+never started".
+
+**Two consequences, both recorded so no one re-derives them:**
+
+1. **Progress monitoring for the real runs must be artifact-based** -- watch for
+   `checkpoints/{020000,040000,060000,080000}` appearing (six-digit names, per the resume-test
+   finding). This is the same "assert on the artifact, not the exit code" rule as CLAUDE.md 10,
+   arriving from a new direction: here you cannot even *see* the log. The end-of-job
+   `[train] DONE <run_id>` line does still reach the `.out`, because the sbatch script echoes it
+   after `srun` returns and wandb's redirect has been torn down.
+2. **`WANDB_DIR` is ineffective in LeRobot.** `train.sbatch` exports
+   `WANDB_DIR=$WORK/cog/wandb_offline`, but LeRobot passes `dir=cfg.output_dir` to `wandb.init`,
+   so the offline run actually lands in
+   `$WORK/cog/checkpoints/<run_id>/wandb/offline-run-<ts>-<id>/`. That directory stayed empty
+   while `$WORK/cog/checkpoints/t1_L0_n25_s0/wandb/` filled up. **The later `wandb sync` must
+   therefore point at the per-run checkpoint directories, not at `$WORK/cog/wandb_offline`** --
+   syncing the latter would silently upload nothing and report success. Related to the standing
+   note that the local `.netrc` key may not match a run's wandb entity: confirm the account
+   before trusting any sync.
