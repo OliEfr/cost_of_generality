@@ -2217,3 +2217,57 @@ Also recorded for later: 0.6.x keeps pyav fully supported and, from 0.6.1 (PR #4
 torchcodec and falls back to pyav with a warning instead of crashing in the workers -- exactly
 our failure mode. And `pip install lerobot==0.6.1` alone is not trainable: no video backend,
 `diffusers` is no longer core, so it needs `lerobot[training,dataset]`.
+
+### 2026-08-19 18:30 — G5a decode fix lands: data_s 0.388 -> 0.003 s (129x), runs go 10.2 h -> 1.6 h
+
+`torchcodec==0.5` + conda-forge ffmpeg 6 + `LD_LIBRARY_PATH=$CONDA_PREFIX/lib`, measured in a
+real training loop (job 52896093, L0/N=25, batch 64, num_workers 8, 150 steps):
+
+| backend | updt_s | data_s | steady steps/s | est. 80k | peak VRAM |
+|---|---|---|---|---|---|
+| pyav | 0.071 | 0.388 | 2.18 | 10.2 h | 13.5 GiB |
+| pyav (nw=16*) | 0.070 | 0.386 | 2.19 | 10.1 h | 13.7 GiB |
+| **torchcodec** | 0.069 | **0.003** | **13.89** | **1.6 h** | 13.5 GiB |
+
+\* that arm actually ran at 8 workers -- see the 18:25 entry.
+
+**`data_s` fell 129x and the GPU is now the bottleneck**, which is what the user's "GPU
+utilization should be high" directive was asking for. `updt_s` is unchanged at 0.069 s, so the
+step time is now essentially pure compute: 0.072 s/step -> 13.9 steps/s.
+
+Warm-up is visible and worth knowing: step 25 still reports `updt_s 1.152, data_s 0.480` while
+the decoder cache is cold and CUDA kernels autotune; by step 50 it is at 0.069/0.003 and stays
+there. Any future throughput measurement must discard the first interval or it will understate
+the fix by an order of magnitude -- which is exactly why the smoke parses the LAST logged
+interval rather than averaging the run.
+
+**Independent corroboration of frame-identity:** `final_loss` at step 150 is **0.266 in all
+three arms** -- pyav, "pyav nw16", and torchcodec. Same seed, same sampler, same loss to three
+decimals means the two backends fed the model the same pixels. That is a second, orthogonal
+check on top of the direct comparison (40 fetches, max abs pixel diff 0.0, `BACKENDS_IDENTICAL`).
+
+`median_util_pct` still reads 0 in the CSV for the torchcodec arm, and that is a measurement
+artifact rather than a result: 150 steps now take ~11 s inside a ~50 s job, so the 2-second
+nvidia-smi samples are dominated by dataset creation. The metric was informative while runs
+were slow and is useless now that they are fast; `data_s` is the reliable signal.
+
+**Cost and schedule impact** (billing = allocated cores, verified: `billing=8` for 8 cores):
+
+| | per run | 24-cell matrix | 3 tasks (72 cells) |
+|---|---|---|---|
+| pyav | ~10.2 h, ~10.2 GPU-h | ~245 GPU-h | ~735 GPU-h |
+| torchcodec | **~1.6 h, ~1.6 GPU-h** | **~38 GPU-h** | **~115 GPU-h** |
+
+Against the plan's ~200 GPU-h estimate for T1 training and the 2,200 GPU-h approved ceiling,
+this turns the budget from "comfortable" into "irrelevant", and the whole T1 wave becomes a
+**~2 h wall-clock block** rather than a day. The 80k calibration run now costs ~1.6 GPU-h
+instead of the ~8 quoted to the user.
+
+Two process notes worth keeping:
+- **"It imports" is not evidence that a native extension matches your torch.** torchcodec 0.7.0
+  imported fine and then failed on first decode with `no fallback function is registered for
+  schema torchcodec_ns::_convert_to_tensor`. I had already reported 0.7.0 as working on the
+  strength of a successful import. Only a decode proves a decoder.
+- The frame-equality check was written *before* switching and immediately caught the broken
+  0.7.0. Had I trusted the timing numbers alone, a subtly wrong backend could have reached the
+  matrix.
