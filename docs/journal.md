@@ -2627,3 +2627,29 @@ Leonardo** and `singularity exec --nv`, both already satisfied (D22 verified cu1
 half the size (the base image was 15 GB as a tar vs **7.1 GB as a sif**), so building locally would
 halve the upload and delete the cluster-side conversion job. It needs `apt install apptainer`, a
 system change outside the repo, so it is offered to the user rather than done.
+
+### 2026-08-19 20:12 — Duplicate Slurm job from my own automation; TaskStop does not undo what already happened
+
+The hourly watchdog caught **two `cog_build_sif` jobs running on the same node** (52941771 and
+52941866), both converting the same 24 GB archive to the same output path. Cause: I had armed a
+background watcher to verify the upload byte count and then auto-submit the conversion. When the
+upload finished I verified the byte count myself, decided to submit manually, and called TaskStop
+on the watcher first -- but the watcher had **already submitted** a fraction of a second earlier,
+and its output was buffered so nothing in its log showed that yet. Stopping a task does not retract
+its side effects.
+
+Consequence was waste rather than damage -- each build gets its own `build-temp-<random>` under
+`SINGULARITY_TMPDIR`, so they were not corrupting each other's scratch, but both would have written
+`cog-env-5.1.0.sif` with `--force` and they were occupying 32 cores of one node between them.
+Cancelled the later one (52941866); 52941771 continues.
+
+**Two rules to carry forward:**
+1. **Automation that submits jobs must be idempotent.** A watcher that fires `sbatch` should first
+   check `squeue` for a job of the same name, or write a claim file. Mine did neither.
+2. **Never assume a stopped task did nothing.** After TaskStop, check the world (here: `squeue`),
+   not the task's log -- especially when its output is buffered behind a pipe.
+
+This is the third time today that buffering hid a fact I needed (`tail` swallowing a build's real
+error, `tail` hiding `singularity`'s exit code, and now a watcher's submission). Worth stating as a
+habit: **when a background command's output is piped, treat its log as unavailable until it exits,
+and verify from the system instead.**
