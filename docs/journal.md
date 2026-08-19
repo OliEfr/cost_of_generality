@@ -2135,3 +2135,85 @@ GPU-h / "~1 day" envelope for T1 and inside the 2,200 GPU-h ceiling even after T
 So the decode bottleneck is an **optimisation, not a blocker**. It is worth a bounded attempt
 because a 3x win compounds across 3 tasks (~735 -> ~250 GPU-h), but it does not gate the
 calibration run and will not be allowed to delay it.
+
+### 2026-08-19 18:45 — LeRobot version question answered by measurement; the real bug is one pin
+
+The user asked why we are on 0.4.4 and suggested 0.5 improved the dataloader, then (correctly)
+said to smoke-test before committing. Investigated properly, on our own dataset. Findings:
+
+**0.5.0 would have changed nothing.** `lerobot/datasets/video_utils.py` is **byte-identical**
+between 0.4.4 and 0.5.0, the `datasets/` file list is unchanged, and there is no
+`persistent_workers`/`prefetch_factor` in `configs/train.py`. The v0.5 blog's "10x faster
+image training / 3x faster encoding" is entirely **write/record-side** (streaming encode,
+hardware encoders), not the training read path. Upgrading to 0.5 would have cost the py3.11
+single-env property (G1b) and bought exactly zero.
+
+**0.6.0 does help, and less than the blog implies.** Two independent changes:
+- PR **#3588** rewrote the pyav path to use `av.open`/`seek`/`decode` natively instead of
+  wrapping `torchvision.io.VideoReader` (motivated by `VideoReader` being removed in
+  torchvision 0.26 -- our own run already warns about this). Frame selection (`torch.cdist`
+  + `tolerance_s`) is unchanged, so no new misalignment risk.
+- PR **#3406** ("2x faster dataloader") adds a `ThreadPoolExecutor` over camera keys,
+  `return_uint8`, `persistent_workers=True`, `prefetch_factor=4`, spawn context.
+
+Measured on `data/lerobot/L0` (2 cams, 128x128, batch 64, num_workers 8, `data_s` averaged
+over 100 steps after 10 warmup), **pyav on both sides**:
+
+| lerobot | settings | data_s |
+|---|---|---|
+| 0.4.4 | as we run it | **0.3485 s** |
+| 0.6.1 | 0.4.4-like (prefetch 2, no persistent) | 0.0967 s |
+| 0.6.1 | full 0.6 defaults | **0.0947 s** |
+| 0.6.1 | full 0.6 defaults, parallel decode off | 0.1052 s |
+
+**~3.7x, and essentially all of it is #3588, not the headline #3406.** uint8/persistent/
+prefetch contribute ~2 % at 128x128; parallel decode ~13 %. Per-call decode: 0.4.4 = 33.9 ms,
+0.6.1 = 12.1 ms.
+
+**But the actual bug is in a version pin, and it is one line.** lerobot 0.4.4 requires
+`torchcodec>=0.2.1,<0.11.0`, which resolves to **torchcodec 0.10.0 -- built against torch
+2.10**, while we pin torch 2.7.0. Hence the load failure, which is *not* an ffmpeg problem:
+
+```
+libtorchcodec_core6.so: undefined symbol: _ZN3c1013MessageLogger6streamB5cxx11Ev
+```
+
+`_ZN3c10...` is a **libtorch C++ ABI symbol**. torchcodec dlopens its variants in DESCENDING
+ffmpeg order (8,7,6,5,4), so the `libavutil.so.56` line everyone sees is merely the LAST
+attempt (ffmpeg 4, which nobody has) -- I had been reading the tail of the traceback and
+chasing the wrong layer. Also useful: `libavutil major = ffmpeg major + 52`, so .56=FF4,
+.58=FF6, .61=FF9 -- which is why a bare `conda install ffmpeg` (now FF 9.0.1) would be
+*useless* and the `=6.*` pin mattered.
+
+**torchcodec 0.7.0 loads against torch 2.7.0+cu128 on Leonardo** (verified directly:
+`WORKS 0.7.0`) once conda-forge ffmpeg 6.1.2 is present AND
+`LD_LIBRARY_PATH=$CONDA_PREFIX/lib` is exported -- `libtorchcodec_core*.so` carries no
+RPATH/RUNPATH, so conda's libs are invisible without it. Per-call decode with a working
+torchcodec is **~1.1 ms vs pyav's 33.9 ms (~31x)**, because it keeps a module-level
+`_default_decoder_cache` (`video_utils.py:330`: `if decoder_cache is None: decoder_cache =
+_default_decoder_cache`) instead of re-opening the container.
+
+**Decision: stay on 0.4.4 and fix the torchcodec pin.** It is the larger win (~31x vs 3.7x),
+on the version we already have, with no py3.12 migration, no loss of the single-env property,
+and no checkpoint surgery. Recorded as D23.
+
+**Two findings that make me glad we measured instead of upgrading:**
+
+1. **lerobot 0.6.0 silently flipped five diffusion defaults** (PR #3202): `horizon` 16->64,
+   `n_action_steps` 8->32, `use_group_norm` True->False, `pretrained_backbone_weights`
+   None->`ResNet18_Weights.IMAGENET1K_V1`, `use_separate_rgb_encoder_per_camera` False->True.
+   Our frozen config pinned the first three and **not** the last two. A "just bump the
+   version for a faster dataloader" change would have silently altered the model architecture
+   in the middle of the study. Both missing flags are now pinned at 0.4.4's own values in
+   `configs/train/diffusion_base.sh`, so they are inert today and load-bearing later.
+2. **A 0.6.1 checkpoint does not load in 0.4.4** without deleting two added config keys
+   (`pretrained_revision`, `gradient_checkpointing`); with them removed it loads with an
+   identical parameter checksum. The reverse direction (0.4.4 ckpt -> 0.6.1) works untouched.
+   Since eval must stay on py3.11 for Isaac, a train-on-0.6 plan would have needed a
+   config.json scrub step in the eval path. Good to know, not needed now.
+
+Also recorded for later: 0.6.x keeps pyav fully supported and, from 0.6.1 (PR #4307), replaces
+`get_safe_default_codec()` with `get_safe_default_video_backend()`, which *try-imports*
+torchcodec and falls back to pyav with a warning instead of crashing in the workers -- exactly
+our failure mode. And `pip install lerobot==0.6.1` alone is not trainable: no video backend,
+`diffusers` is no longer core, so it needs `lerobot[training,dataset]`.
