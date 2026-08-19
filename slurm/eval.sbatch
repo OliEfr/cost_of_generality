@@ -51,8 +51,34 @@ export HF_HUB_OFFLINE=1
 export HF_HOME="${WORK}/hf_cache"
 mkdir -p "${RESULTS}"
 
-source "${WORK}/miniforge3/etc/profile.d/conda.sh"
-conda activate "${COG_EVAL_ENV:-cog_isaac}"
+# Two execution modes, one script.
+#
+# CLUSTER: run inside the Singularity image (COG_SIF). A conda env cannot work here -- RHEL 8.8 has
+# glibc 2.28 and Isaac Sim 5.1 needs >= 2.35, which is the entire reason the image exists. The image
+# carries the `cog_isaac` env at its ORIGINAL absolute path, so `python` on its PATH is already the
+# right interpreter and the editable isaaclab/cog installs resolve unchanged.
+# LOCAL (4090): activate the conda env directly, exactly as before.
+#
+#   COG_SIF=$WORK/cog/containers/cog-env-5.1.0.sif sbatch slurm/eval.sbatch T1 L0 100
+#
+# HOME is redirected because Kit writes several GB of shader/compute cache into it and $HOME on
+# Leonardo has a 50 GB quota -- filling it breaks login, not just this job.
+SIF="${COG_SIF:-}"
+if [ -n "${SIF}" ]; then
+  if [ ! -f "${SIF}" ]; then echo "[eval] COG_SIF set but missing: ${SIF}" >&2; exit 3; fi
+  ISAAC_HOME="${WORK}/isaac_home"; mkdir -p "${ISAAC_HOME}"
+  RUNNER=(singularity exec --nv
+          -B "${WORK}:${WORK}" -B /leonardo_work:/leonardo_work
+          -B "${FAST}:${FAST}"
+          --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES
+          "${SIF}" python)
+  echo "[eval] mode=container sif=${SIF}"
+else
+  source "${WORK}/miniforge3/etc/profile.d/conda.sh"
+  conda activate "${COG_EVAL_ENV:-cog_isaac}"
+  RUNNER=(python)
+  echo "[eval] mode=conda env=${COG_EVAL_ENV:-cog_isaac}"
+fi
 
 for step in "${STEPS_TO_EVAL[@]}"; do
   CKPT="${CKPT_DIR}/${step}/pretrained_model"
@@ -60,7 +86,7 @@ for step in "${STEPS_TO_EVAL[@]}"; do
   OUT="${RESULTS}/eval_${EVAL_KEY}_n${NDEMOS}_${step}.json"
   if [ -s "${OUT}" ]; then echo "[eval] ${OUT} exists, skipping"; continue; fi
   echo "[eval] ${RUN_ID} step ${step}"
-  srun python -m cog.eval.rollout_eval \
+  srun "${RUNNER[@]}" -m cog.eval.rollout_eval \
     --task "${ENV_FAMILY}-${LEVEL}-IK-Rel-Visuomotor-v0" \
     --checkpoint "${CKPT}" \
     --num_inference_steps 10 \
