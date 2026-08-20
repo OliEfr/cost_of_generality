@@ -3875,3 +3875,28 @@ extrapolated. Still not to be launched without the user's say-so.
 
 Also regenerated `paper/figures/gen_bias_*.png` and `experiments/gen_bias.csv` (14 level rows) with
 the T1/T3 L3b arms included; T2_L3b was correctly skipped as its last variant is still generating.
+
+### 2026-08-20 -- all three L3b datasets regenerated; D27 VERIFY (a) passes everywhere
+
+T2's L3b wave finished: **400 retained demos over 400 unique initial poses** (the old T2_L3 had 45),
+947 rejected, pooled generation SR **29.7 %**. So the seed fix is confirmed on every task:
+
+| task | old L3 unique poses | L3b unique poses | old gen SR | L3b gen SR |
+|---|---|---|---|---|
+| T1 cup_place | 43 | 401 | 87.9 % | ~86.9 % |
+| T2 drawer_stow | 45 | 400 | 32.7 % | **29.7 %** |
+| T3 push_target | 48 | 400 | 88.5 % | ~91.5 % |
+
+T2's honest L3 generation SR is 29.7 %, not 32.7 %, which tightens the demonstrator curve to
+**54.9 / 44.2 / 30.6 / 29.7 %** across L0-L3 -- now monotone, where the artifactual figure had L3
+appearing *easier* to generate than L2. That non-monotonicity should have been a clue; it was sitting
+in `gen_stats.csv` unexamined.
+
+`gen_stats.csv` and the four `paper/figures/gen_bias_*.png` regenerated (15 level rows), now with all
+three corrected arms included. T2_L3b conversion is running (~2 h at ~680 frames/episode), after
+which its 6 cells launch.
+
+T3's corrected L3 arm so far: N=10 -> 0.305, N=25 -> 0.510. For comparison the *old* T3 L3 arm was
+never evaluated (its cells were cancelled), so T3 has no redundant-pose baseline -- the T1 comparison
+is the only within-study evidence for the artifact, which is worth stating plainly in the write-up
+rather than implying all three tasks demonstrated it.

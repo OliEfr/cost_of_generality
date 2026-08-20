@@ -1,0 +1,1079 @@
+{
+ "task": "Cog-PushTarget-L3-IK-Rel-Visuomotor-v0 (pooled over 10 variants)",
+ "checkpoint": "/home/admin_07/cost_of_generality/.claude/worktrees/docs-dp-default-diff/experiments/runs/t3_L3b_n10_s0/checkpoints/080000/pretrained_model",
+ "num_inference_steps": 10,
+ "success_rate": 0.305,
+ "successes": 61,
+ "episodes": 200,
+ "outcomes": [
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false
+  }
+ ],
+ "protocol": {
+  "num_envs": 20,
+  "variants": 10,
+  "base_seed": 5000,
+  "scheme": "diagonal: variant v evaluated on batch v",
+  "comment": "FROZEN L3 protocol (D18): 10 variants x 20 envs = 200 episodes with 200 DISTINCT poses. Batch 0 on every variant would also total 200 episodes but only 20 distinct poses, since variants share the pose RNG stream. L0-L2 use 100 episodes (5 batches x 20); L3's 200 is the frozen design, so L3 carries a tighter CI than L0-L2 by construction."
+ },
+ "per_variant": {
+  "L3v00": {
+   "successes": 7,
+   "episodes": 20,
+   "success_rate": 0.35,
+   "seed": 5000
+  },
+  "L3v01": {
+   "successes": 8,
+   "episodes": 20,
+   "success_rate": 0.4,
+   "seed": 5001
+  },
+  "L3v02": {
+   "successes": 4,
+   "episodes": 20,
+   "success_rate": 0.2,
+   "seed": 5002
+  },
+  "L3v03": {
+   "successes": 5,
+   "episodes": 20,
+   "success_rate": 0.25,
+   "seed": 5003
+  },
+  "L3v04": {
+   "successes": 5,
+   "episodes": 20,
+   "success_rate": 0.25,
+   "seed": 5004
+  },
+  "L3v05": {
+   "successes": 1,
+   "episodes": 20,
+   "success_rate": 0.05,
+   "seed": 5005
+  },
+  "L3v06": {
+   "successes": 3,
+   "episodes": 20,
+   "success_rate": 0.15,
+   "seed": 5006
+  },
+  "L3v07": {
+   "successes": 10,
+   "episodes": 20,
+   "success_rate": 0.5,
+   "seed": 5007
+  },
+  "L3v08": {
+   "successes": 11,
+   "episodes": 20,
+   "success_rate": 0.55,
+   "seed": 5008
+  },
+  "L3v09": {
+   "successes": 7,
+   "episodes": 20,
+   "success_rate": 0.35,
+   "seed": 5009
+  }
+ }
+}
