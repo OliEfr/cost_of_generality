@@ -3715,3 +3715,25 @@ timings table's ~40-50 % mutual slowdown under GPU sharing holds. Disk went 297 
 ~2.5 h, mostly T2's `_failed.hdf5` files (4.9 GB for three variants, ~16 GB projected for ten,
 because a rejected T2 attempt still stores ~680 frames of video). Projected floor ~200 GB free --
 comfortable, but this is the first leg where the failed-attempt archive is a material disk cost.
+
+### 2026-08-20 -- local eval is a single-slot resource; L3b given priority
+
+All cluster training is now complete: 72 COMPLETED, 12 CANCELLED (the superseded T2/T3 L3 cells).
+That is 24 T1 + 36 T2/T3 L0-L2 + 12 T1/T3 L3b; only T2's 6 L3b cells remain, waiting on datagen.
+
+A scheduling fact worth recording, because it was not obvious: **the local 4090 supports exactly one
+eval at a time** while L3b datagen holds ~6 GB. An eval needs ~7 GB and the headroom gate wants
+14 GB free, so two eval drivers do not double throughput -- they race for one slot. Having started a
+second driver for the L3b diagonals, I found it starved for 30 min behind `evalt23`, which begins its
+next cell immediately on finishing the last.
+
+Resolved by explicit priority rather than by lowering the gate (that 14 GB margin is what protects
+the foreign eval job, rule 2) and without discarding work: a handoff script waits for the in-flight
+cell's artifact, stops `evalt23` between cells, lets the 12 L3b diagonals run, then restarts it --
+`evalt23` is idempotent and skips cells whose results already exist. Priority goes to L3b because it
+is the arm that tests D27/D28 and the study's headline prediction; it should not sit behind ~12 h of
+L0-L2 queue.
+
+Remaining local eval, at the measured rates: ~34 T2/T3 L0-L2 cells and 12 L3b diagonals, on the
+order of **20-25 h serial**. Unchanged conclusion: eval wall-clock, not GPU-hours, is what this study
+is short of.
