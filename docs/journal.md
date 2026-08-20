@@ -3826,3 +3826,52 @@ which came from the L2-policy cross-eval (green 0.10/0.10, yellow 0.15 for a pol
 seen them): the aliasing mainly damaged *generalization to unseen* greenish objects, not the
 in-distribution case. The recolouring remains justified -- it removes a perceptual confound from the
 level's design -- but it should be reported as a design correction, not as the cause of the plateau.
+
+## 2026-08-20 -- T1's L3 arm is complete on corrected data, and L3 HAS a data cost: 11.56x L0
+
+The corrected T1 L3 arm finished. It does not plateau -- it saturates like every other level, just
+later:
+
+| N | L3b (400 unique poses) | L3 (43 unique poses, ablation) |
+|---|---|---|
+| 10 | 0.090 | 0.030 |
+| 25 | 0.235 | 0.150 |
+| 50 | 0.465 | 0.480 |
+| 100 | 0.700 | 0.470 |
+| 200 | 0.935 | 0.530 |
+| **400** | **0.945** [0.904,0.969] | **0.445** [0.378,0.514] |
+
+**The headline table for Task 1, now that every level has a measurable data cost:**
+
+| level | N*(50%) | N*(80%) | N*(90%) | cost vs L0 @90% | logistic slope b |
+|---|---|---|---|---|---|
+| L0 | <=10 | <=10 | 16 | 1.00x | +2.31 |
+| L1 | 15 | 45 | 133 | 8.31x | +3.11 |
+| L2 | 20 | 86 | 150 | 9.38x | +4.44 |
+| **L3b** | **57** | **143** | **185** | **11.56x** | **+3.47** |
+| L3 (ablation) | 150 | >400 | >400 | not reached | +2.03 |
+
+So the study's central quantity for T1 is: **reaching 90 % success costs 8.3x more demonstrations
+under pose randomization (L1), 9.4x under pose + goal randomization (L2), and 11.6x once the object
+itself varies (L3)** -- against a fixed-scene baseline that needs 16.
+
+Two things this changes.
+
+1. **L3's cost was previously "not reached" and is now the most interesting number in the table.**
+   The old arm's `>400` was an artifact of 43 unique poses; with 400 it lands at 185. The old arm's
+   logistic slope (+2.03) was also artifactually shallow -- the corrected slope (+3.47) sits between
+   L1 and L2, i.e. **L3 behaves like the other levels, it is simply shifted right.** That is a much
+   stronger and cleaner result than "L3 has a ceiling", and it is the opposite conclusion.
+2. **The levels are not additive, and the increments are small.** 8.31 -> 9.38 -> 11.56 means adding
+   goal randomization to pose randomization costs ~13 % more data, and adding ten-way object
+   variation on top costs a further ~23 %. Object identity -- the axis one might expect to be most
+   expensive -- is the cheapest increment per unit of apparent scene diversity. Worth stating
+   carefully in the paper: it is measured at 90 %, one seed, and on a cylinder whose two sizes differ
+   by 4 mm of radius, so "object variation" here is mostly appearance, not geometry.
+
+The N=800 extension question is now genuinely live and genuinely unnecessary for T1: L3b reaches
+0.945 at N=400 and is saturating (0.935 -> 0.945 from N=200), so the 90 % crossing is measured, not
+extrapolated. Still not to be launched without the user's say-so.
+
+Also regenerated `paper/figures/gen_bias_*.png` and `experiments/gen_bias.csv` (14 level rows) with
+the T1/T3 L3b arms included; T2_L3b was correctly skipped as its last variant is still generating.
