@@ -3737,3 +3737,24 @@ L0-L2 queue.
 Remaining local eval, at the measured rates: ~34 T2/T3 L0-L2 cells and 12 L3b diagonals, on the
 order of **20-25 h serial**. Unchanged conclusion: eval wall-clock, not GPU-hours, is what this study
 is short of.
+
+### 2026-08-20 -- a watcher that gives up must exit non-zero (rule 10 refinement)
+
+A background watcher reported **"completed (exit code 0)"** for a chain that had been superseded
+hours earlier and whose marker it therefore never saw. Cause is a shape I used repeatedly today:
+
+    for i in $(seq 1 N); do <check> && exit 0; sleep 60; done
+    echo "WATCHER_TIMEOUT"          # <-- sets the exit code to 0
+
+The trailing `echo` succeeds, so giving up looks identical to succeeding. That is worse than having
+no watcher, because it actively asserts a job is fine. Rule 10 exists because each monitoring layer
+has failed alone; this is a new way for the event layer to fail -- not by staying silent, but by
+lying. Correct shape ends `echo "WATCHER_TIMEOUT" >&2; exit 1`.
+
+Second half of the lesson: **kill watchers whose target is replaced.** Restructuring the L3b
+pipeline mid-flight left two watchers polling for markers that would never appear; both eventually
+fired spurious completions competing for attention with real ones. The obsolete one still running
+has been stopped.
+
+Neither watcher's failure cost anything here -- the hourly cron and the tmux sessions are what
+actually caught every real event today, which is precisely the argument for keeping all three layers.
