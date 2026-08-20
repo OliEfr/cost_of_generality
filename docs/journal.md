@@ -3758,3 +3758,35 @@ has been stopped.
 
 Neither watcher's failure cost anything here -- the hourly cron and the tmux sessions are what
 actually caught every real event today, which is precisely the argument for keeping all three layers.
+
+### 2026-08-20 -- first three corrected-L3 points: ahead at small N, level at N=50, verdict pending
+
+| N | L3b (400 unique poses) | L3 (43 unique poses) |
+|---|---|---|
+| 10 | 0.090 [0.058,0.138] | 0.030 [0.014,0.064] |
+| 25 | 0.235 [0.182,0.298] | 0.150 [0.107,0.206] |
+| 50 | **0.465** [0.397,0.534] | **0.480** [0.412,0.549] |
+| 100 | pending | 0.470 |
+| 200 | pending | 0.530 |
+| 400 | pending | 0.445 |
+
+The corrected arm is clearly ahead at N=10 and N=25 -- which is where the old arm was most starved of
+distinct poses (1 and 2-3 unique poses in total, against 10 and 25). **At N=50 the two arms are
+identical within noise**, 0.465 vs 0.480, even though L3b has ten times the pose diversity there
+(50 unique poses vs 5).
+
+That is worth stating plainly because it puts my own stated mechanism at risk. I claimed the L3
+plateau at ~0.47 was a pose-coverage ceiling created by D27. If N=100/200/400 also come in at ~0.47
+on the corrected arm, that claim is wrong: the plateau would be a real property of L3 as posed, and
+D27 -- while still a genuine data bug that inflated the demo axis ~9x and invalidated the L3
+generation-SR figures -- would not be its cause. The three remaining diagonals decide it, and I will
+report the outcome either way rather than waiting to be contradicted.
+
+The alternative reading, if the plateau survives: at N=50 the binding constraint is per-object data
+(5 demos per object) rather than pose diversity, and something else caps L3 above that. The L2-policy
+cross-eval already hints the ceiling is not purely about data -- a policy trained on ONE object
+scored 0.54 on the ten-object diagonal, above the ten-object policy's 0.45.
+
+D28 sanity check at N=10 (not a verification -- 20 episodes per variant): orange 0.15/0.25 and
+magenta 0.15/0.10 sit at or above red 0.00/0.00, blue 0.05/0.05, purple 0.15/0.00. No sign of the
+green/yellow cliff they replaced, but the N>=100 diagonals are what will settle it.
