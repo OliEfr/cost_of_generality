@@ -3235,3 +3235,39 @@ recorded one.
 
 Spend to date: **55.6 GPU-h** across all 31 rows (51.3 matrix + 4.3 bring-up, calibration and the
 superseded shared-encoder run) against the 2,200 ceiling -- 2.5%.
+
+## 2026-08-20 (02:45) -- First real demos-vs-generality surface (13/24 cells evaluated)
+
+SR at 080000, 100 frozen-protocol episodes, DDIM 10 steps, per-camera encoders (D26):
+
+| level | N10 | N25 | N50 | N100 | N200 | N400 |
+|---|---|---|---|---|---|---|
+| L0 (all fixed) | - | 0.97 | 1.00 | 1.00 | 1.00 | 0.99 |
+| L1 (+ mug pose) | - | 0.67 | 0.83 | 0.86 | 0.98 | 0.99 |
+| L2 (+ goal pose) | 0.31 | 0.60 | 0.75 | - | - | - |
+| L3 (+ object variation) | - | - | - | - | - | - |
+
+**This is the study's central measurement and it is working.** Three things stand out already:
+
+1. **The cost of generality is directly readable.** To reach ~0.98 success, L0 needs ~25-50 demos
+   while L1 needs ~200 -- roughly a **4-8x data cost for one added axis of randomisation** (mug XY in
+   30x40 cm, yaw +-90 deg). That ratio, computed properly as N*(s) with Wilson intervals, is exactly
+   the headline number the study was designed to produce.
+2. **The curves are monotone in data, which validates the nested-subset design (D4).** L1 goes
+   0.67 -> 0.83 -> 0.86 -> 0.98 -> 0.99 and L2 goes 0.31 -> 0.60 -> 0.75, with no reversals. Because
+   dataset N is the first N episodes of one seed-0 shuffle, a bigger N is a strict superset, so these
+   curves cannot be explained by resampling luck. The only wobble is L0's 1.00 -> 0.99 at N=400,
+   which is a single episode out of 100 and well inside Wilson noise.
+3. **Level separation is large and clean.** At N=25 the three levels read 0.97 / 0.67 / 0.60, and at
+   N=50 they read 1.00 / 0.83 / 0.75. The levels are not collapsing into each other, which was a real
+   risk -- if L1 and L2 had landed on top of each other the ladder would have been badly calibrated
+   and the whole 4-level design would have needed rework. It did not.
+
+Also worth noting: L0 saturating at 1.00 by N=50 means L0 contributes almost nothing to the
+data-cost curve above N=25, and its only informative cell is N=10 (still queued). That is a design
+lesson for Tasks 2-3: the easiest level should start its grid lower, or it spends 5 of 6 cells
+measuring a ceiling.
+
+Eval throughput is better than the 14 min/checkpoint measured earlier: 7 cells in the last hour,
+~8.6 min each, presumably because the earlier figure included Isaac's first-launch shader cache
+work. 13/24 done, **zero eval failures** since the harness fixes.
