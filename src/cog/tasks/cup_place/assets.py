@@ -29,11 +29,26 @@ CUP_RIGID_PROPS = RigidBodyPropertiesCfg(
     disable_gravity=False,
 )
 
+# OBJECT PALETTE -- INVARIANT: every entry must keep its green channel <= 0.30 (D28).
+#
+# The goal marker is green (0.10, 0.70, 0.10) and the policy has to locate it from pixels. Any
+# GREEN-ISH object becomes a second marker-shaped blob, and the policy places onto the wrong one.
+# Measured 2026-08-20 by scoring the L2-trained policy (which only ever saw cyl_m_red) across all
+# ten L3 variants: red 0.95/0.90, purple 0.80, blue 0.65/0.80 -- but green 0.10/0.10 and
+# yellow 0.15. The failures track the GREEN channel (green G=0.60, yellow G=0.80) and not distance
+# from the training colour: blue is much further from red than yellow is, yet blue works and yellow
+# does not. The L3-trained policy showed the same ordering (green 0.30, yellow 0.35 vs red ~0.48),
+# so training on green cups does not repair it.
+#
+# Per the user's instruction the marker keeps its colour and the OBJECTS move away from it. Order is
+# load-bearing: levels.py lists these names positionally, so replacing in place keeps every L3
+# variant index stable, and "red" must stay for DEFAULT_CUP / DEFAULT_BOX (= L0-L2 datasets, which
+# stay valid and are NOT regenerated).
 COLORS: dict[str, tuple[float, float, float]] = {
     "red": (0.80, 0.05, 0.05),
-    "green": (0.05, 0.60, 0.05),
+    "orange": (0.90, 0.30, 0.02),      # was green (G=0.60): aliased with the marker
     "blue": (0.05, 0.10, 0.80),
-    "yellow": (0.85, 0.80, 0.05),
+    "magenta": (0.90, 0.10, 0.55),     # was yellow (G=0.80): worst aliaser after green
     "purple": (0.50, 0.05, 0.60),
 }
 

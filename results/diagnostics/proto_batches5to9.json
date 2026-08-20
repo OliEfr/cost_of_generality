@@ -1,0 +1,6 @@
+{
+ "num_envs": 20,
+ "batches": 5,
+ "base_seed": 5005,
+ "comment": "Frozen L0-L2 eval set, batches 5-9 (seeds 5005-5009). Not a new benchmark: these are the second half of the same 200-episode set protocol.json defines for headline comparisons."
+}

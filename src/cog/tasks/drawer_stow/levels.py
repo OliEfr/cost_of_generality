@@ -59,7 +59,8 @@ def _mk(key: str, level: str, variant: str, obj_range: dict | None, cab_range: d
 
 
 L3_VARIANTS: list[str] = [
-    f"box_{s}_{c}" for s in ("s", "m") for c in ("red", "green", "blue", "yellow", "purple")
+    # colours per assets.COLORS, positionally stable across the D28 recolouring
+    f"box_{s}_{c}" for s in ("s", "m") for c in ("red", "orange", "blue", "magenta", "purple")
 ]
 
 SUB_LEVELS: dict[str, SubLevelCfg] = {}

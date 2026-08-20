@@ -44,13 +44,18 @@ PUCK_MASS = 0.15
 PUCK_FRICTION_STATIC = 0.8
 PUCK_FRICTION_DYNAMIC = 0.7
 
-# Marker green is reserved for the target disk, so pucks never use it.
+# Marker green is reserved for the target disk, so pucks never use it -- but excluding pure green is
+# not enough (D28). YELLOW carries G=0.80, higher than the marker's own 0.70, and measured on T1 it
+# was the second-worst aliaser after green (0.15 vs red's 0.95). Replaced with magenta, keeping this
+# dict's ORDER intact: the variant loop below assigns colours by index, and index 4 (orange) is
+# DEFAULT_PUCK, which T3's L0-L2 datasets were generated with and which must not change.
+# INVARIANT: green channel <= 0.40 for every entry (orange is the loosest, and is the default).
 PUCK_COLORS: dict[str, tuple[float, float, float]] = {
     "red": (0.80, 0.05, 0.05),
     "blue": (0.05, 0.10, 0.80),
-    "yellow": (0.85, 0.80, 0.05),
+    "magenta": (0.90, 0.10, 0.55),     # was yellow (G=0.80)
     "purple": (0.50, 0.05, 0.60),
-    "orange": (0.90, 0.40, 0.05),
+    "orange": (0.90, 0.40, 0.05),      # DEFAULT_PUCK's colour -- position 4 is pinned
 }
 
 

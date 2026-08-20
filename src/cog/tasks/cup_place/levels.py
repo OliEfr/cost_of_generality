@@ -59,8 +59,10 @@ def _mk(key: str, level: str, variant: str, cup_range: dict | None, goal_range: 
 
 # L3 variant set: 2 cylinder sizes x 5 colors (10). Mug meshes (mug_s, mug_m)
 # are appended only after P3 grasp/render QA -- edit L3_VARIANTS then.
+# Colour order matches assets.COLORS positionally so variant indices are unchanged by the D28
+# recolouring (v01 was cyl_s_green, is now cyl_s_orange). Keep in sync with COLORS.
 L3_VARIANTS: list[str] = [
-    f"cyl_{s}_{c}" for s in ("s", "m") for c in ("red", "green", "blue", "yellow", "purple")
+    f"cyl_{s}_{c}" for s in ("s", "m") for c in ("red", "orange", "blue", "magenta", "purple")
 ]
 
 SUB_LEVELS: dict[str, SubLevelCfg] = {}
