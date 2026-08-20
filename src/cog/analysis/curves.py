@@ -26,7 +26,11 @@ import math
 import pathlib
 import re
 
-FNAME = re.compile(r"eval_(?P<level>[A-Za-z0-9_]+)_n(?P<n>\d+)_(?P<step>\d+)\.json$")
+# Result files are task-tagged: eval_T2_L1_n50_080000.json. The task group is optional so the
+# pre-migration T1 names still parse, defaulting to T1. Without the tag the greedy level group
+# would swallow "T1_L0" as a single level name and quietly mix tasks into one table.
+FNAME = re.compile(
+    r"eval_(?:(?P<task>T\d)_)?(?P<level>L\d)_n(?P<n>\d+)_(?P<step>\d+)\.json$")
 TARGETS = (0.50, 0.80, 0.90)
 
 
@@ -52,6 +56,7 @@ def load(results_dir: pathlib.Path) -> list[dict]:
             continue
         d = json.loads(path.read_text())
         out.append({
+            "task_id": m.group("task") or "T1",
             "level": m.group("level"),
             "n_demos": int(m.group("n")),
             "step": int(m.group("step")),
@@ -154,12 +159,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
     ap.add_argument("--out", default="experiments/curves.csv")
+    ap.add_argument("--task", default="T1",
+                    help="which task's cells to analyse (T1/T2/T3). Tasks are NEVER pooled: each "
+                         "has its own levels and its own L0 baseline, so a shared table would "
+                         "compute cost ratios across unrelated tasks.")
     args = ap.parse_args()
 
-    records = load(pathlib.Path(args.results))
+    records = [r for r in load(pathlib.Path(args.results)) if r["task_id"] == args.task]
     if not records:
-        print(f"no eval_*.json found under {args.results}")
+        print(f"no eval_*.json for task {args.task} under {args.results}")
         return
+    print(f"task {args.task}")
     cells = best_of_last3(records)
     print(f"{len(records)} eval files -> {len(cells)} cells")
 

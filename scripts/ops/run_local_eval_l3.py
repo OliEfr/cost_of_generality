@@ -20,7 +20,7 @@ is unreliable, and a per-variant process also means one crashed variant cannot p
 Output is the SAME schema as the L0-L2 results plus a `per_variant` breakdown, so
 update_registry_from_evals.py consumes it with no special-casing.
 
-usage: run_local_eval_l3.py NDEMOS [STEP]
+usage: run_local_eval_l3.py TASK NDEMOS [STEP]   e.g. run_local_eval_l3.py T2 100
 """
 
 import json
@@ -74,12 +74,25 @@ def wait_for_gpu(logfile: Path) -> bool:
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         print(__doc__)
         return 2
-    ndemos = sys.argv[1]
-    step = sys.argv[2] if len(sys.argv) > 2 else "080000"
-    run_id = f"t1_L3_n{ndemos}_s0"
+    task_tag = sys.argv[1].upper()
+    ndemos = sys.argv[2]
+    step = sys.argv[3] if len(sys.argv) > 3 else "080000"
+    # All three tasks expand L3 into 10 variants (verified against configs/eval_sets/{L3,T2_L3,
+    # T3_L3}.json). MAX_STEPS follows each env's own episode_length_s at 20 Hz -- drawer_stow allows
+    # 1200 steps and its demos run 675-743, so the rollout_eval default of 600 would truncate every
+    # episode and read as "T2 is very hard" instead of a harness bug.
+    gym_prefix, max_steps = {
+        "T1": ("Cog-CupPlace", 600),
+        "T2": ("Cog-DrawerStow", 1200),
+        "T3": ("Cog-PushTarget", 800),
+    }.get(task_tag, (None, None))
+    if gym_prefix is None:
+        print(f"unknown task tag {task_tag!r} (expected T1/T2/T3)", file=sys.stderr)
+        return 2
+    run_id = f"{task_tag.lower()}_L3_n{ndemos}_s0"
 
     results_dir = REPO / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -88,7 +101,7 @@ def main() -> int:
     logfile = REPO / "ops" / f"local_eval_{run_id}.log"
     logfile.parent.mkdir(parents=True, exist_ok=True)
 
-    final_out = results_dir / f"eval_L3_n{ndemos}_{step}.json"
+    final_out = results_dir / f"eval_{task_tag}_L3_n{ndemos}_{step}.json"
     if final_out.exists() and final_out.stat().st_size > 0:
         log(f"{final_out.name} already exists, nothing to do", logfile)
         return 0
@@ -107,7 +120,7 @@ def main() -> int:
 
     for v in range(N_VARIANTS):
         vkey = f"L3v{v:02d}"
-        task = f"Cog-CupPlace-{vkey}-IK-Rel-Visuomotor-v0"
+        task = f"{gym_prefix}-{vkey}-IK-Rel-Visuomotor-v0"
         part = tmp_dir / f"{run_id}_{step}_{vkey}.json"
 
         if not part.exists() or part.stat().st_size == 0:
@@ -131,6 +144,7 @@ def main() -> int:
                    "--checkpoint", str(ckpt),
                    "--protocol", str(proto),
                    "--num_inference_steps", "10",
+                   "--max_steps", str(max_steps),
                    "--out", str(part),
                    "--headless", "--enable_cameras"]
             # Isaac prompts "Do you accept the EULA? (Yes/No)" on a non-tty and then dies with
@@ -140,6 +154,10 @@ def main() -> int:
             env = dict(os.environ)
             env["OMNI_KIT_ACCEPT_EULA"] = "YES"
             env["HF_HUB_OFFLINE"] = "1"
+            # `cog` is an EDITABLE install pointing at the main checkout, so without this a
+            # COG_REPO-directed run silently executes the main checkout's cog code while reading
+            # this tree's checkpoints. Harmless when the two agree; a trap the moment they do not.
+            env["PYTHONPATH"] = f"{REPO / 'src'}:{env.get('PYTHONPATH', '')}".rstrip(":")
             with logfile.open("a") as lf:
                 rc = subprocess.run(cmd, cwd=REPO, stdout=lf, stderr=lf, env=env).returncode
             # Kit exits 0 after fatal errors (D6): the artifact is the verdict, not the return code.
@@ -169,7 +187,7 @@ def main() -> int:
     episodes = sum(pv["episodes"] for pv in per_variant.values())
 
     payload = {
-        "task": "Cog-CupPlace-L3-IK-Rel-Visuomotor-v0 (pooled over 10 variants)",
+        "task": f"{gym_prefix}-L3-IK-Rel-Visuomotor-v0 (pooled over 10 variants)",
         "checkpoint": str(ckpt),
         "num_inference_steps": 10,
         "success_rate": round(successes / episodes, 4),

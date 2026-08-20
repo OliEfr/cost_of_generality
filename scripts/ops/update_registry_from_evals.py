@@ -27,7 +27,7 @@ REPO = Path(__file__).resolve().parents[2]
 REGISTRY = REPO / "experiments" / "registry.csv"
 RESULTS = REPO / "results"
 
-RUN_RE = re.compile(r"^t1_(L\d)_n(\d+)_s0$")
+RUN_RE = re.compile(r"^t(?P<t>[123])_(?P<lvl>L\d)_n(?P<n>\d+)_s0$")
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -44,14 +44,15 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 def load_results() -> dict[str, dict]:
     """run_id -> parsed eval JSON for the 080000 checkpoint."""
     out = {}
-    for f in sorted(RESULTS.glob("eval_L*_n*_080000.json")):
+    for f in sorted(RESULTS.glob("eval_T*_L*_n*_080000.json")):
         if "sharedenc" in f.name:          # superseded architecture; never mix into the matrix
             continue
-        m = re.match(r"eval_(L\d)_n(\d+)_080000\.json$", f.name)
+        m = re.match(r"eval_(T[123])_(L\d)_n(\d+)_080000\.json$", f.name)
         if not m:
             continue
         try:
-            out[f"t1_{m.group(1)}_n{m.group(2)}_s0"] = json.loads(f.read_text())
+            rid = f"{m.group(1).lower()}_{m.group(2)}_n{m.group(3)}_s0"
+            out[rid] = json.loads(f.read_text())
         except json.JSONDecodeError as e:
             print(f"  WARN unreadable {f.name}: {e}", file=sys.stderr)
     return out
