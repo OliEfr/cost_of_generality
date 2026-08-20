@@ -3538,3 +3538,91 @@ wave scripts, effective seed printed for provenance). L3 regeneration + retrain 
 ~40 GPU-h. Existing L3 runs are kept as a pose-diversity ablation at fixed N, with results renamed
 `*_poseredundant` so they cannot be confused with the corrected arm. The 48 T2/T3 training cells
 launched yesterday are unaffected for L0-L2 (36 cells); their 12 L3 cells become the ablation arm.
+
+## 2026-08-20 (later) -- L3 rerun with fixed poses + recoloured objects (D27/D28), and gen_bias figures
+
+**User asks, this session:** rerun the L3 pipeline with the pose fix; change the OBJECT colours
+rather than the goal marker; and produce plots/statistics for the generation-bias analysis across all
+tasks, especially T2 where the bias may be real.
+
+**Cross-evaluation completed first** (it was still running when the seeding bug was found), and it
+is worth recording because it is what makes the diagnosis airtight:
+
+| run | result |
+|---|---|
+| L2-trained policy on the **L3** diagonal (200 eps) | **0.54** |
+| L3-trained policy on the **L2** eval set (100 eps) | **0.76** |
+| L2-trained policy on L2 eval **batches 5-9** (100 eps) | **0.99** |
+
+The first row is the headline: a policy trained on 400 demos of ONE red cylinder beats the
+ten-object-trained policy (0.45) on the ten-object benchmark. The second shows the L3 policy is also
+degraded on the single default object it did see (0.76 vs L2's 1.00) -- consistent with training on
+43 unique poses. The third closes a protocol gap I had flagged: our L0-L2 cells used eval batches
+0-4 while the L3 diagonal spans 0-9, so the headline comparison mixed pose sets; batches 5-9 score
+0.99 against batches 0-4's 1.00, so the two halves are equally hard and the comparison stands.
+
+**D28, the colour fix.** Per-variant results from that same cross-eval isolate the mechanism: the
+L2-trained policy scores red 0.95/0.90, purple 0.80, blue 0.65/0.80, but green 0.10/0.10 and yellow
+0.15. Failure tracks the object's GREEN CHANNEL (green G=0.60, yellow G=0.80) and not distance from
+the training colour -- blue sits much further from red in RGB than yellow does, yet blue works. The
+goal marker is green (0.10,0.70,0.10), so a greenish object is a second marker-coloured blob. Per the
+user's instruction the marker keeps its colour and the objects move: green -> orange
+(0.90,0.30,0.02), yellow -> magenta (0.90,0.10,0.55), replaced IN PLACE so every L3 variant index is
+stable. T3's palette already excluded pure green but still had yellow, whose G=0.80 exceeds the
+marker's own 0.70; replaced there too, keeping palette index 4 pinned because that is DEFAULT_PUCK
+and T3's L0-L2 datasets depict it. Verified PALETTE_CHECK_PASS: names resolve, all G within limits,
+all three defaults byte-identical. L0-L2 are therefore NOT regenerated, and the frozen eval poses are
+untouched (colour is a static material, it does not enter reset sampling).
+
+Because red/blue/purple are unchanged, comparing those variants between the old and new L3 arms
+isolates the pose fix from the colour fix at zero extra training cost.
+
+**The rerun.** L3 regenerates for all three tasks as level key `L3b`, with per-variant seeds
+(T1 1000+v, T2 2000+v, T3 3000+v; clear of the eval seeds 5000-5009). A distinct key is not
+cosmetic: `train.sbatch` auto-resumes when checkpoints exist, so reusing `t*_L3_*` would have
+resumed the pose-redundant runs, found them at 80k and exited having trained nothing.
+`launch_matrix`/`train.sbatch` already derive run id and dataset name from the level string, so L3b
+needed no changes there; `curves.py` and the registry updater now accept `L\d[a-z]?` so L3b is its
+own cell rather than being folded into L3. Regression-checked: T1 still reproduces 8.31x/9.38x at
+90% with every N* unchanged.
+
+**Cancelled the 12 in-flight t{2,3}_L3 cells** and marked them superseded. They train on the
+redundant data, and with the new palette in place evaluating them would require restoring the old
+colours, so they cannot contribute; that frees ~28 GPU-h. The 36 T2/T3 L0-L2 cells are unaffected by
+both bugs and keep running. T1's L3 arm is already fully measured and stays as the ablation.
+
+**gen_bias figures + statistics** (`paper/figures/gen_bias_{T1,T2,T3,summary}.png`,
+`experiments/gen_bias.csv`, 12 level rows). Per task: generator SR with attempt counts, unique-pose
+count against the 400 reference, the rejected-fraction upper bound, KS D per axis with significance
+marks, and for the most-skewed level an ECDF plus a workspace scatter of where generation succeeded
+versus failed. Both the CLI table and the figures now read `gen_bias.level_stats`, so the paper's
+numbers cannot drift from the terminal's.
+
+What the figures show, by task:
+* **T1** -- SR flat 86.4/85.8/85.1/87.9%, no axis skewed once poses are deduplicated, bound ~12-15
+  points. Generation is an unbiased thinning; not a confound.
+* **T2** -- the real case. SR falls 54.9 -> 44.2 -> 30.6 -> 32.7%; yaw is skewed from L1 onward
+  (D=0.167, 0.232, 0.352; p<=0.001) with x and y joining at L2, and the bound reaches 67-69 points.
+  The retained demos sit at negative yaw while the rejected ones sit positive, so the policy trains
+  on a rotationally lopsided slice of a symmetric eval distribution. **T2's cost-of-generality
+  numbers will therefore conflate "the policy needs more data" with "the demonstrator degrades", and
+  the honest normalisation is policy SR against generator SR on the same distribution.** Also
+  T2_L0 fails 45% of attempts on a *fixed* scene, so that expert is brittle in itself rather than
+  merely pose-sensitive.
+* **T3** -- SR 88.5-98.5%. y is statistically significant at L1 (p<0.001) but the rejected fraction
+  caps it at 5 points, which is exactly why the bound is plotted beside the test: significance
+  without magnitude would have read as a problem.
+
+One presentational correction: at L0 there is a single initial pose, so a filter cannot shift the
+pose distribution at all and those rejections are demonstrator stochasticity, not selection. Those
+bars are drawn hollow and annotated "n/a: 1 pose" so they are not read as a bias bound.
+
+Also hardened: the HDF5 loader raises `FileLockedError` rather than reading a file a generation job
+is still writing, and the caller drops the whole level -- a partially generated level must never
+enter a figure. And `gen_L3_wave.sh` is now task-parameterised and L3-only, because the T2/T3
+full-wave scripts also regenerate L0-L2 and have no clobber guard, so reusing them to redo L3 would
+have destroyed four valid datasets.
+
+**Pending:** T1/T3/T2 L3b datagen (~5 h local, zero grant cost), then 18 L3b cells (~40 GPU-h),
+then the L3b diagonal evals. Prediction on record (D27 VERIFY b): corrected L3 keeps rising past
+N=50 instead of flattening at ~0.47.
