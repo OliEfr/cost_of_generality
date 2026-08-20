@@ -3900,3 +3900,29 @@ T3's corrected L3 arm so far: N=10 -> 0.305, N=25 -> 0.510. For comparison the *
 never evaluated (its cells were cancelled), so T3 has no redundant-pose baseline -- the T1 comparison
 is the only within-study evidence for the artifact, which is worth stating plainly in the write-up
 rather than implying all three tasks demonstrated it.
+
+### 2026-08-20 22:30-23:40 -- two concurrent evals are NOT delivering the predicted speedup
+
+The user authorised two parallel evals on the strength of my estimate that it would roughly halve the
+~30 h eval queue. First measurements say otherwise, and the reason is partly outside our control.
+
+* `t2_L0_n200` reached only **batch 2 of 5 in 62 min** under concurrency. Solo it was 43 min for all
+  five batches (~8.6 min/batch); concurrent it is ~31 min/batch, i.e. **~3.6x slower per batch**, far
+  worse than the 40-50 % mutual slowdown the datagen-sharing measurement suggested.
+* **The foreign eval job became active in the same window.** It was 16 % of SM time earlier today and
+  is now 34 %, with memory unchanged at 1.6 GB. So the card is in three-way contention: foreign 34 %,
+  our two evals 35 % and 21 % -- our aggregate share is ~56 %, against ~66 % when only one of ours
+  runs alongside the foreign job. On that arithmetic two slots make our *aggregate* throughput
+  slightly WORSE, not better, because two Isaac processes thrash more than one and the foreign job
+  takes a larger slice under heavier contention.
+
+Two things worth separating. **Safety is unchanged**: the threshold protects against OOM and the
+foreign job's memory is still 1.6 GB, so the ~8.6 GB free with two evals running remains ample --
+lowering 14000 -> 10000 did not put the foreign job at risk (rule 2 respected). **The benefit is
+what failed to materialise.** I am not reverting unilaterally on one sample against an explicit
+authorisation; the next completed cell gives a clean duration to compare against the 43 min solo
+baseline, and I will report the aggregate either way.
+
+If it confirms, the honest conclusion is that this GPU is SM-bound, not memory-bound, for Isaac
+rollouts -- so the single-slot arrangement was already optimal and the only real lever on eval
+wall-clock is moving evaluation off this card entirely (the CINECA Vulkan question).
