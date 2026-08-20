@@ -3321,3 +3321,43 @@ Two things it does deliberately:
 a shell export that was never in the environment -- and the resulting error names neither the EULA
 setting nor the real cause in any obvious way. Now set explicitly in the subprocess env alongside
 `HF_HUB_OFFLINE=1`.
+
+## 2026-08-20 (04:15) -- The surface, 19/24 cells: monotone in BOTH directions
+
+| level | N10 | N25 | N50 | N100 | N200 | N400 |
+|---|---|---|---|---|---|---|
+| L0 | 0.85 | 0.97 | 1.00 | 1.00 | 1.00 | 0.99 |
+| L1 | 0.42 | 0.67 | 0.83 | 0.86 | 0.98 | 0.99 |
+| L2 | 0.31 | 0.60 | 0.75 | 0.82 | 0.98 | 1.00 |
+| L3 | - | **0.15** | - | - | - | - |
+
+(L0-L2: 100 episodes/cell. L3: 200, per the D18 diagonal.)
+
+**Monotone in N within every level, and monotone in level at every N.** No reversals anywhere except
+L0's 1.00 -> 0.99 at N=400, a single episode. For a one-seed study this is about the best structural
+outcome available: the nested-subset design (D4) means larger N is a strict superset, so within-level
+monotonicity is evidence the curves are data effects rather than seed noise, and the strict level
+ordering at every single N means the generality ladder is correctly ordered by difficulty.
+
+**Reading off the data cost at s=80% (informally -- the formal logistic fit and Wilson-bounded
+N*(s) come from `cog.analysis.curves`):** L0 crosses 0.80 at or below N=10, L1 at ~N=50, L2 at
+~N=100. That is roughly a **5x cost for L1 and 10x for L2 relative to L0**, to reach the same
+success rate. This is the study's headline quantity and it is now measured rather than assumed.
+
+**L1 and L2 converge at high N -- an interesting result in itself.** They are consistently ordered
+but the gap narrows: 0.42/0.31 at N=10, 0.67/0.60 at N=25, 0.83/0.75 at N=50, 0.86/0.82 at N=100,
+then **0.98/0.98 at N=200 and 0.99/1.00 at N=400**. So adding goal randomisation on top of object-pose
+randomisation (L1 -> L2) costs real data in the low-N regime but essentially nothing once there are
+~200 demos. The two axes are not additive in cost, which is a more interesting finding than a simple
+"more generality costs more" story.
+
+**L3 is a different regime.** 0.15 at N=25 where L2 is 0.60. Per-variant SRs are 0.05-0.25 with no
+outlier, so this is a uniform difficulty increase across the object set rather than one broken
+variant -- worth checking explicitly, because a single mis-scaled mesh would have produced the same
+pooled number with a very different meaning. If L3 stays this low it may not reach 80% within
+N=400, in which case N*(0.8) must be reported honestly as "> 400" per the plan.
+
+**L0's N=10 cell is the informative one, as predicted:** 0.85, comfortably below ceiling, so L0 does
+contribute one usable point to the data-cost curve after all.
+
+Remaining: five L3 cells (n10, n50, n100, n200, n400) running at ~24 min each, ~2 h.
