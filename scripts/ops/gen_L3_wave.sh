@@ -49,8 +49,25 @@ cd "${MAIN}"
 for i in 0 1 2 3 4 5 6 7 8 9; do
   V=$(printf "L3v%02d" "$i")                # env id fragment: the registered L3v** variant
   OUT=$(printf "%s%02d" "${STEM}" "$i")     # output stem, e.g. L3v00 or L3bv00
+  # Resumable, but never silently: a variant that already holds the full 40 demos is skipped, while
+  # one that exists with a different count is a PARTIAL file (e.g. the wave was interrupted) and
+  # aborts the run, because folding a short variant into the merged dataset would quietly unbalance
+  # the nested subsets. Move the partial aside and re-run to regenerate just that variant.
   if [ -s "${DATA}/${OUT}.hdf5" ]; then
-    echo "REFUSING to overwrite existing ${OUT}.hdf5 -- set COG_L3_OUT_STEM to a fresh stem." >&2
+    ND=$(python -c "
+import h5py, sys
+try:
+    with h5py.File(sys.argv[1], 'r') as f:
+        print(len(f['data'].keys()))
+except Exception as e:
+    print('ERR', e)
+" "${DATA}/${OUT}.hdf5" 2>/dev/null | head -1)
+    if [ "${ND}" = "40" ]; then
+      echo "[gen] ${OUT}.hdf5 already complete (40 demos) -- skipping"
+      continue
+    fi
+    echo "REFUSING: ${DATA}/${OUT}.hdf5 exists with ${ND} demos, expected 40 or absent. Move it "\
+         "aside (or set COG_L3_OUT_STEM) and re-run." >&2
     exit 1
   fi
   date
