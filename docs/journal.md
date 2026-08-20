@@ -3926,3 +3926,44 @@ baseline, and I will report the aggregate either way.
 If it confirms, the honest conclusion is that this GPU is SM-bound, not memory-bound, for Isaac
 rollouts -- so the single-slot arrangement was already optimal and the only real lever on eval
 wall-clock is moving evaluation off this card entirely (the CINECA Vulkan question).
+
+### 2026-08-20 23:20-23:55 -- CORRECTION: concurrency DOES work (1.48x); and boost_usr_prod has no nodes
+
+**Correction to the previous entry.** I reported that two concurrent evals were failing to deliver,
+based on `t2_L0_n200` sitting at batch 2/5 after ~62 min. That was wrong -- I compared a mid-run
+batch count against a wall-clock estimate I had misjudged. The completion timestamps settle it:
+
+| cell | window | duration | solo baseline | penalty |
+|---|---|---|---|---|
+| `t2_L0_n200` (flat, 100 eps) | 22:33:09 -> 23:19:30 | **46 min** | 43 min | +7 % |
+| `t3_L3b_n200` (diagonal, 200 eps) | 22:43:48 -> 23:38:32 | **55 min** | ~53 min | +4 % |
+
+Both ran concurrently the whole time. In 65 minutes the pair completed 96 minutes of serial work, so
+**concurrency gives ~1.48x aggregate throughput at a 4-7 % per-cell penalty** -- close to the ideal
+2x minus the third-party contention. The foreign job's rise from 16 % to 34 % of SM time is real but
+did not cost us what I feared. Lesson: judge eval throughput from artifact timestamps, never from
+mid-run batch counters, which are not evenly spaced across batches.
+
+Remaining queue: 38 cells, ~27.5 h serial -> **~19 h at the measured 1.48x**, so completion around
+Friday evening.
+
+**Separate and cluster-side: `boost_usr_prod` currently has ZERO nodes.** T2's six L3b cells were
+rejected at 23:17 with
+
+    sbatch: error: Batch job submission failed: More processors requested than permitted
+
+That message is misleading. It is not our request: a 1-CPU submission is rejected too, and so is a T3
+submission byte-identical to one that succeeded at 12:24 today. `sinfo -p boost_usr_prod` reports
+`NODES(A/I/O/T) = 0/0/0/0`, STATE `n/a` -- the partition has no nodes assigned, so any request
+exceeds the zero permitted. Account, QOS and budget are all fine (`euhpc_b38_106` active to
+2026-10-29, `normal` QOS has no CPU cap, `saldo` shows the account healthy; its `totConsumed=0` is
+just saldo's nightly lag, not a billing failure).
+
+Impact is contained: **all training is complete except T2's L3b arm**, and the eval queue -- the
+actual bottleneck -- runs locally and is unaffected. A retry watcher polls every 10 min and submits
+the six cells as soon as nodes return; `launch_matrix` skips run_ids already in the registry, so it
+cannot double-submit. If nodes return within ~19 h, the outage costs the study nothing at all.
+
+Worth adding to the cluster playbook: **"More processors requested than permitted" on Leonardo can
+mean the partition is empty, not that the job asked for too much.** Check `sinfo -p <partition>` node
+counts before touching the job's resource request.
