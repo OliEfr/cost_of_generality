@@ -3361,3 +3361,69 @@ N=400, in which case N*(0.8) must be reported honestly as "> 400" per the plan.
 contribute one usable point to the data-cost curve after all.
 
 Remaining: five L3 cells (n10, n50, n100, n200, n400) running at ~24 min each, ~2 h.
+
+## 2026-08-20 (06:15) -- T1 COMPLETE: all 24 cells trained and evaluated; data-cost curves computed
+
+**Full surface** (SR at 80k; L0-L2 100 episodes/cell, L3 200 via the D18 diagonal):
+
+| level | N10 | N25 | N50 | N100 | N200 | N400 |
+|---|---|---|---|---|---|---|
+| L0 | 0.85 | 0.97 | 1.00 | 1.00 | 1.00 | 0.99 |
+| L1 | 0.42 | 0.67 | 0.83 | 0.86 | 0.98 | 0.99 |
+| L2 | 0.31 | 0.60 | 0.75 | 0.82 | 0.98 | 1.00 |
+| L3 | 0.03 | 0.15 | 0.48 | 0.47 | 0.53 | 0.45 |
+
+**N*(s) from `cog.analysis.curves`** (logistic fit in log N, preferred because it pools all six
+cells; interpolated crossings in brackets):
+
+| level | N*(50%) | N*(80%) | N*(90%) | interpolated N*(90%) |
+|---|---|---|---|---|
+| L0 | 0 | 2 | 4 | 16 |
+| L1 | 15 | 42 | 76 | 133 |
+| L2 | 22 | 45 | 69 | 150 |
+| L3 | 193 | **>400** | **>400** | >400 |
+
+**Cost ratio vs L0 at 90%** (interpolated crossings): **L1 8.31x, L2 9.38x, L3 not reached**.
+
+### Three findings, in order of how much they change the story
+
+**1. L3 does not have a data cost -- it has a ceiling.** L3 is flat from N=50 to N=400:
+0.48, 0.47, 0.53, 0.445, with every Wilson interval overlapping. Crucially this is NOT an artefact of
+spreading demos over 10 objects. The converter interleaves variants round-robin so every nested
+prefix is variant-balanced, and I verified this exactly from `conversion_manifest.json`: N=10 gives
+1 demo per object, N=50 gives 5, N=400 gives **40**. So the plateau spans an **8x increase in
+per-object data with no improvement whatsoever**. Whatever limits L3 is not the number of
+demonstrations.
+
+  This matters for the plan's "extend to N=800 for unsaturated levels" rule, which implicitly
+  assumed unsaturated == still rising. L3 is neither at ceiling nor rising -- it is plateaued at
+  ~0.47. **On this evidence an N=800 arm for L3 is not indicated**: 8x more per-object data bought
+  nothing, so 2x more is very unlikely to. The informative follow-ups would instead disentangle
+  object-count from per-object-count (e.g. 40 demos each of 2 objects vs 8 each of 10), or probe
+  capacity (larger encoder, more inference steps). That is a scope decision for the user, not
+  something to just do.
+
+**2. The two randomisation axes are not additive: L1 ~= L2.** The logistic fit puts them at
+N*(80%) 42 vs 45 and N*(90%) 76 vs 69 -- L2 slightly *below* L1 at 90%, i.e. the ordering reverses
+within noise. Their raw curves converge too (0.98/0.98 at N=200, 0.99/1.00 at N=400). So adding goal
+randomisation on top of object-pose randomisation costs real data at low N but essentially nothing
+asymptotically. A naive "each axis multiplies the cost" model is wrong here.
+
+**3. The grid does not resolve L0, which breaks the 50%/80% cost ratios.** L0 reaches 0.85 at our
+smallest N=10, so its interpolated N*(50%) and N*(80%) are both "<=10" -- not numeric, so the ratio
+column reports n/a for those targets and only the 90% ratio survives. The logistic fit's L0 values
+(0, 2, 4) are extrapolations below the grid and should not be quoted as measurements. Design lesson,
+now quantified: **the easiest level needed N=2 and N=5 points**. For Tasks 2-3, either start the grid
+lower on L0 or accept that L0 serves only as a qualitative reference rather than a ratio denominator.
+
+### Caveats to carry into the report
+- **One seed (seed 0) per cell**, per the user's directive. No seed variance is measured, so
+  cell-to-cell differences of a few points are not separable from seed noise. The nested-subset
+  design is what makes the *within-level* curves trustworthy despite this.
+- L3's SR rests on 200 episodes vs 100 for L0-L2, so its CIs are tighter by construction -- fine for
+  within-L3 comparisons, but cross-level statements should use the equal-coverage 200-episode sets
+  the protocol defines for headline reruns.
+- `sr_40k`/`sr_60k` are empty by design (D24, last-checkpoint-only), so "best-of-3" equals
+  "last" in the analysis output; that column is not evidence about checkpoint selection.
+
+Spend: **55.6 GPU-h** (2.5% of the 2,200 ceiling). Local eval added 0 grant hours.
