@@ -82,3 +82,33 @@ one local 4090 -- **~5.6 h**, i.e. nearly 3x the training time, and it cannot be
 because the GPU is shared with a foreign job that must not be disturbed (rule 2). For Tasks 2-3
 that becomes ~11 h of local eval. This is what makes the CINECA Vulkan question (docs/
 cineca_ticket_vulkan.md) worth pursuing: it is worth ~11 h of wall-clock, not any GPU-hours.
+
+## 2026-08-20 -- actuals after the L3 rerun (D27/D28)
+
+Measured from `experiments/registry.csv` (`gpu_h` filled from sacct elapsed; on Leonardo a 1-GPU
+cell allocates `billing=8` and 8 billing-h = 1 A100-h, so elapsed hours == GPU-h exactly).
+
+| arm | cells | GPU-h |
+|---|---|---|
+| T2/T3 L0-L2 | 36 | 78.6 |
+| T1 (complete, incl. the pose-redundant L3 ablation) | 25 | 53.3 |
+| L3b corrected arm (T1 + T3, still running) | 12 | 15.9 |
+| **T2/T3 L3 -- cancelled, wasted** | 12 | **13.3** |
+| bring-up / smoke | 6 | 2.3 |
+| **spent so far** | **91** | **163.4** |
+
+**Projection to completion:** the 12 L3b cells in flight finish around 2.2 h each (~26 GPU-h total,
+of which 15.9 is already counted) and T2's 6 L3b cells add ~13, so the study lands at roughly
+**190 GPU-h -- about 9% of the 2,200 ceiling.** The grant remains a non-constraint at any plausible
+scope, including N=800 extension arms if they turn out to be warranted.
+
+**The 13.3 GPU-h wasted** is the honest cost of D27: 12 T2/T3 L3 cells trained for ~1:06 each on the
+pose-redundant datasets before the bug was found, and were cancelled rather than run to 80k (which
+would have cost ~28 GPU-h more for numbers that could not be used). T1's equivalent arm is NOT
+counted as waste -- it completed, it is retained as the pose-diversity ablation, and its flat
+plateau plus 4x-low training loss are what exposed the bug.
+
+**The binding constraint is still local eval wall-clock, not GPU-hours**, and it got worse: 36 T2/T3
+L0-L2 evals plus 18 L3b diagonal evals (200 episodes each) on one shared 4090. Eval also has to
+interleave with L3b datagen on the same card. This is the case for pursuing the CINECA Vulkan
+question (`docs/cineca_ticket_vulkan.md`, drafted, unsent): it buys wall-clock, not GPU-hours.

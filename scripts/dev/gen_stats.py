@@ -19,13 +19,20 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import os
 import pathlib
 import re
 
 import h5py
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-HDF5_DIR = REPO / "data" / "hdf5"
+# data/ is gitignored and lives ONLY in the main checkout, shared across worktrees, so it cannot be
+# resolved relative to REPO: run from a worktree that way, the glob matches nothing and this script
+# happily rewrites gen_stats.csv as an empty file, destroying the ground truth that rule 9 says the
+# paper's generation numbers must come from. Output stays REPO-relative so the CSV is committed to
+# whichever branch is being worked on.
+HDF5_DIR = pathlib.Path(os.environ.get(
+    "COG_DATA_HDF5", "/home/admin_07/cost_of_generality/data/hdf5"))
 OUT = REPO / "experiments" / "gen_stats.csv"
 
 FIELDS = [
@@ -136,6 +143,15 @@ def main() -> None:
             prev = end
 
     rows.sort(key=lambda r: (r["task"], r["level"], r["variant"]))
+    # Never let a scan that found nothing (wrong HDF5_DIR, unmounted disk) overwrite a good CSV --
+    # this file is the ground truth rule 9 requires the paper's generation numbers to come from.
+    if not rows:
+        raise SystemExit(f"refusing to write an empty {OUT.name}: no datasets found under "
+                         f"{HDF5_DIR} (set COG_DATA_HDF5 if the data lives elsewhere)")
+    prior = sum(1 for _ in OUT.open()) - 1 if OUT.exists() else 0
+    if prior > len(rows):
+        print(f"  NOTE: {OUT.name} had {prior} rows, now {len(rows)} -- fewer than before. "
+              f"Expected only if datasets were intentionally moved aside.")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=FIELDS)
