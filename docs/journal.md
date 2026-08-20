@@ -3681,3 +3681,37 @@ first real run is, and it should be run on a single cell before a 36-cell driver
 
 No results were affected: the 34 failures produced no artifacts, so nothing wrong was ever written
 to results/ or the registry.
+
+### 2026-08-20 -- D27 also corrupted the reported GENERATION SR for L3, and only where it matters
+
+The regenerated L3b waves give per-variant generation SRs that differ from the old L3 figures in a
+revealing pattern:
+
+| task | old L3 gen SR (shared seed) | new L3b gen SR (per-variant seeds) |
+|---|---|---|
+| T1 cup_place | 87.9 % | ~86.9 % (range 78.4-95.2 across variants) |
+| T3 push_target | 88.5 % | ~91.5 % (range 88.9-100) |
+| T2 drawer_stow | 32.7 % | **~27 %** (v00 26.8, v01 27.0, v03 running at 21.4) |
+
+T1 and T3 barely move; T2 drops by about six points. That is exactly what the bias analysis
+predicts. Generation success on T1/T3 is essentially pose-independent (KS D small, no axis skewed),
+so estimating gen SR from one pose set repeated ten times still gave the right answer by luck. On T2
+generation success is strongly pose-dependent -- the retained-vs-rejected yaw skew is D=0.35,
+p<0.001 -- so a single pose set is a badly biased sample of the L3 distribution's difficulty.
+
+So D27's damage was wider than the training data: **the "generation SR per level" number the plan
+asks us to report as a finding was also wrong for L3, in all three tasks, and materially wrong for
+T2.** The `gen_stats.csv` L3 rows were computed over 43-48 unique poses, not 400. The L3b rows are
+the first honest estimate. The L0-L2 rows were always fine (single generation run, 400 unique poses).
+
+Corollary for the write-up: the T2 demonstrator-SR curve is steeper than we reported. It now reads
+roughly 54.9 / 44.2 / 30.6 / ~27 % across L0-L3 rather than bottoming out at 32.7, which strengthens
+rather than weakens the point that a large share of T2's apparent cost of generality belongs to the
+data collector.
+
+Also measured while checking: T2 datagen is running ~37 min per variant rather than the 23 min in
+`timings.md`, because it is sharing the 4090 with the eval driver. Both keep progressing; the
+timings table's ~40-50 % mutual slowdown under GPU sharing holds. Disk went 297 -> 242 GB free in
+~2.5 h, mostly T2's `_failed.hdf5` files (4.9 GB for three variants, ~16 GB projected for ten,
+because a rejected T2 attempt still stores ~680 frames of video). Projected floor ~200 GB free --
+comfortable, but this is the first leg where the failed-attempt archive is a material disk cost.
