@@ -675,11 +675,15 @@ one artifact that showed it (identical attempt counts per variant in `gen_stats.
 without being read as a signal. `gen_bias.py` now reports unique-pose counts and flags any level
 above 1.1x redundancy, and it belongs in dataset QA (G3) rather than being run ad hoc.
 
-**VERIFY:** (a) after regeneration, `gen_bias --levels L3` must report UNIQUE ~400 and no redundancy
-flag, for each task. (b) re-measure the L3 curve; the specific prediction is that corrected L3 keeps
-rising past N=50 instead of flattening, and that its N=400 point lands well above 0.45. (c) confirm
-the corrected L3 training loss no longer sits below L2's floor -- if it still does, redundancy was
-not the whole story.
+**VERIFY:** (a) **DONE 2026-08-20** -- T1 L3b reports 401 unique poses (was 43) and T3 L3b 400
+(was 48), redundancy 1.0x, no flag; both variant-balanced at exactly 400 episodes after the
+`--max_episodes 400` cap. (b) **CONFIRMED 2026-08-20** -- corrected T1 L3 rises 0.465 -> 0.700
+between N=50 and N=100 with Wilson intervals that do not overlap the old arm's 0.470 at N=100, where
+the old arm was flat (0.480 -> 0.470) and stayed flat to N=400. The plateau was the artifact. Note
+the two arms coincide at N=50 (0.465 vs 0.480): at 5 demos per object the binding constraint is
+per-object data, and pose diversity only binds above that. N=200/400 still to come. (c) still open --
+re-read the corrected arm's training loss; if it still sits ~4x below L2's floor, redundancy was not
+the whole story.
 
 ## D28 -- 2026-08-20: L3 object palettes move away from the green goal marker (marker colour unchanged)
 

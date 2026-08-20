@@ -3790,3 +3790,39 @@ scored 0.54 on the ten-object diagonal, above the ten-object policy's 0.45.
 D28 sanity check at N=10 (not a verification -- 20 episodes per variant): orange 0.15/0.25 and
 magenta 0.15/0.10 sit at or above red 0.00/0.00, blue 0.05/0.05, purple 0.15/0.00. No sign of the
 green/yellow cliff they replaced, but the N>=100 diagonals are what will settle it.
+
+### 2026-08-20 -- D27 VERIFY (b) CONFIRMED: the L3 plateau was the pose-redundancy artifact
+
+| N | L3b (400 unique poses) | L3 (43 unique poses) |
+|---|---|---|
+| 10 | 0.090 [0.058,0.138] | 0.030 [0.014,0.064] |
+| 25 | 0.235 [0.182,0.298] | 0.150 [0.107,0.206] |
+| 50 | 0.465 [0.397,0.534] | 0.480 [0.412,0.549] |
+| **100** | **0.700 [0.633,0.759]** | **0.470 [0.402,0.539]** |
+| 200 | pending | 0.530 [0.461,0.598] |
+| 400 | pending | 0.445 [0.378,0.514] |
+
+The corrected arm rises 0.465 -> 0.700 between N=50 and N=100, with non-overlapping Wilson
+intervals against the old arm at N=100. The old arm was flat across exactly that interval
+(0.480 -> 0.470) and stayed flat to N=400. **The plateau was an artifact of pose redundancy, not a
+property of L3.** The prediction recorded before the measurement holds, and the retraction stands:
+"L3 has a ceiling, not a data cost" was wrong, and the N=800 question is genuinely open again --
+still not to be launched without the user's say-so.
+
+Note the N=50 coincidence (0.465 vs 0.480) was real and is now explained: at 5 demos per object the
+binding constraint is per-object data, not pose diversity, so both arms sit at the same place. Pose
+diversity only becomes the binding constraint above that, which is exactly where the old arm stopped
+improving and the corrected one did not. I flagged at N=50 that my mechanism claim was at risk; the
+risk resolved in its favour, but the flag was the right call on the evidence available then.
+
+**D28: consistent, but not isolated.** At N=100 every variant lands in 0.45-0.80 with no low
+outlier, and the replacement colours (orange 0.80/0.65, magenta 0.75/0.70) sit at or above red
+(0.70/0.45), blue (0.80/0.75) and purple (0.70/0.70). But L3b changed poses AND colours at once, so
+this is not a controlled test of the recolouring. Using the colours that did NOT change as the
+control: red/blue/purple improved by ~0.15-0.30 (pose fix alone), and the changed colours improved
+by ~0.25-0.30 against the green/yellow they replaced -- comparable, i.e. **no large additional colour
+effect for a policy trained on all ten colours.** That is consistent with the original evidence,
+which came from the L2-policy cross-eval (green 0.10/0.10, yellow 0.15 for a policy that had never
+seen them): the aliasing mainly damaged *generalization to unseen* greenish objects, not the
+in-distribution case. The recolouring remains justified -- it removes a perceptual confound from the
+level's design -- but it should be reported as a design correction, not as the cause of the plateau.
