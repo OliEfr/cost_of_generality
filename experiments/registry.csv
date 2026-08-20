@@ -78,3 +78,15 @@ t3_L3_n50_s0,push_target,L3,-,50,local/T3_L3,53195393,superseded,,,,,L3,,,launch
 t3_L3_n100_s0,push_target,L3,-,100,local/T3_L3,53195394,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
 t3_L3_n200_s0,push_target,L3,-,200,local/T3_L3,53195395,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
 t3_L3_n400_s0,push_target,L3,-,400,local/T3_L3,53195396,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t1_L3b_n10_s0,cup_place,L3b,-,10,local/L3b,53209136,submitted,,,,,L3b,,,launched by launch_matrix.py
+t1_L3b_n25_s0,cup_place,L3b,-,25,local/L3b,53209138,submitted,,,,,L3b,,,launched by launch_matrix.py
+t1_L3b_n50_s0,cup_place,L3b,-,50,local/L3b,53209141,submitted,,,,,L3b,,,launched by launch_matrix.py
+t1_L3b_n100_s0,cup_place,L3b,-,100,local/L3b,53209144,submitted,,,,,L3b,,,launched by launch_matrix.py
+t1_L3b_n200_s0,cup_place,L3b,-,200,local/L3b,53209145,submitted,,,,,L3b,,,launched by launch_matrix.py
+t1_L3b_n400_s0,cup_place,L3b,-,400,local/L3b,53209147,submitted,,,,,L3b,,,launched by launch_matrix.py
+t3_L3b_n10_s0,push_target,L3b,-,10,local/T3_L3b,53216337,submitted,,,,,L3b,,,launched by launch_matrix.py
+t3_L3b_n25_s0,push_target,L3b,-,25,local/T3_L3b,53216338,submitted,,,,,L3b,,,launched by launch_matrix.py
+t3_L3b_n50_s0,push_target,L3b,-,50,local/T3_L3b,53216339,submitted,,,,,L3b,,,launched by launch_matrix.py
+t3_L3b_n100_s0,push_target,L3b,-,100,local/T3_L3b,53216340,submitted,,,,,L3b,,,launched by launch_matrix.py
+t3_L3b_n200_s0,push_target,L3b,-,200,local/T3_L3b,53216341,submitted,,,,,L3b,,,launched by launch_matrix.py
+t3_L3b_n400_s0,push_target,L3b,-,400,local/T3_L3b,53216342,submitted,,,,,L3b,,,launched by launch_matrix.py

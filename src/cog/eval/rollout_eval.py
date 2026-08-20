@@ -1,4 +1,4 @@
-"""Batched rollout evaluation of a LeRobot diffusion policy in the cup_place env.
+"""Batched rollout evaluation of a LeRobot diffusion policy in any of the study's task envs.
 
 Frozen protocol (configs/eval_sets/protocol.json): per level, `batches` x
 `num_envs` episodes; batch b resets the vectorized env with seed base_seed+b,
@@ -35,7 +35,29 @@ import os
 import gymnasium as gym
 import torch
 
-import cog.tasks.cup_place  # noqa: F401
+import importlib
+
+# Gym ids are registered as an import SIDE EFFECT of each task package, so the package matching
+# --task has to be imported before gym.make. This was hardcoded to cup_place, which meant no T2/T3
+# eval could ever run: the failure surfaces as
+#   NameNotFound: Environment `Cog-PushTarget-L2-IK-Rel-Visuomotor` doesn't exist.
+#                 Did you mean: `Cog-CupPlace-L2-IK-Rel-Visuomotor`?
+# which reads like a typo in the task name rather than a missing import, and Kit still exits 0
+# (D6). Found the first time a T2/T3 cell was evaluated -- the T1 path had always worked, so the
+# earlier T2/T3 readiness audit (max_steps, result filenames, PYTHONPATH) never exercised this.
+_TASK_MODULES = {
+    "Cog-CupPlace": "cog.tasks.cup_place",
+    "Cog-DrawerStow": "cog.tasks.drawer_stow",
+    "Cog-PushTarget": "cog.tasks.push_target",
+}
+_prefix = next((p for p in _TASK_MODULES if args_cli.task.startswith(p)), None)
+if _prefix is None:
+    # Unknown prefix: register everything rather than guess, so a new task family still evaluates.
+    for _m in _TASK_MODULES.values():
+        importlib.import_module(_m)
+else:
+    importlib.import_module(_TASK_MODULES[_prefix])
+
 from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
 from lerobot.policies.diffusion.modeling_diffusion import DiffusionPolicy

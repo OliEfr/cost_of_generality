@@ -3654,3 +3654,30 @@ datagen leaves 13.6 GB, so evaluation queues behind datagen and starts when it e
 finishing ~20:30. The threshold is deliberately left alone: an eval's own footprint is ~7 GB so
 concurrency would fit, but that 14 GB margin is what protects the foreign job on this card (rule 2),
 and trading it away is the user's call, not a unilateral optimisation.
+
+### 2026-08-20 -- T2/T3 evaluation was impossible: rollout_eval registered only cup_place
+
+The first 34 T2/T3 evals all "failed" in ~11 s each. Not a headroom wait and not a result:
+`rollout_eval.py` had `import cog.tasks.cup_place` hardcoded, and the gym ids are registered as an
+import SIDE EFFECT of each task package, so no `Cog-DrawerStow-*` or `Cog-PushTarget-*` id ever
+existed in the registry. The error reads
+
+    NameNotFound: Environment `Cog-DrawerStow-L0-IK-Rel-Visuomotor` doesn't exist.
+                  Did you mean: `Cog-CupPlace-L0-IK-Rel-Visuomotor`?
+
+which looks like a typo in the task name rather than a missing import, and Kit still exits 0 (D6),
+so the only signal was the missing artifact.
+
+Now imports the package matching the `--task` prefix, falling back to importing all three for an
+unrecognised prefix. Verified: the same cell boots the DrawerStow env and proceeds into rollouts.
+
+**Why the earlier T2/T3 readiness audit missed it.** That audit fixed three real things --
+`--max_steps` per task, task-tagged result filenames, PYTHONPATH shadowing -- by *reading* the eval
+path, and it regression-tested the T1 numbers. It never actually ran a T2 or T3 eval, because at
+that point no T2/T3 cell had finished training. Reading the code found the bugs that were visible in
+the code; this one only appears at import time in a process that reports success by absence.
+Lesson worth keeping: for a path that has never once executed, the audit is not the check -- the
+first real run is, and it should be run on a single cell before a 36-cell driver is turned loose.
+
+No results were affected: the 34 failures produced no artifacts, so nothing wrong was ever written
+to results/ or the registry.
