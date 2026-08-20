@@ -274,8 +274,10 @@ the driver, since generation cost scales with simulated steps.
 | T3 push_target | ~310 | ~3.5 min | ~35 min | 5.1 GB |
 | T2 drawer_stow | ~675 | ~23 min | **~3.9 h** | 7.3 GB |
 
-**LeRobot conversion (400 episodes, h264, both cameras):** ~14 min for T1. Scales with total frames,
-so expect ~50 min for T2.
+**LeRobot conversion (400 episodes, h264, both cameras):** ~14 min for T1 L3b, consistent with the
+~20 min recorded for T1 in 2026-08-16. For T2 do NOT extrapolate from that -- the measured T2 figure
+is **~1 h 53 min per level** (see the T2 conversion table above), because T2 episodes are ~680
+frames against T1's ~190 and h264 encode is single-core. T2_L3b will take about two hours.
 
 **Checkpoint sync-down ($WORK -> local, 080000 only):** ~65 s per cell (1.1 GB).
 
