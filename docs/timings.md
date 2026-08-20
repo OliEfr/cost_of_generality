@@ -308,3 +308,24 @@ on A100s would move ~30 h of serial wall-clock onto a cluster that runs cells in
 wall-clock, not GPU-hours.
 
 First real T2 number, for the record: **T2 L0 N=10 -> SR 0.65 (65/100)**, versus T1 L0 N=10's 0.85.
+
+### Two concurrent evals (user-authorised 2026-08-20)
+
+With L3b datagen finished, the 4090 has room for two simultaneous evals: each rollout process holds
+~7 GB and the foreign job ~1.6 GB, so two run at ~16 GB of 24.5 GB. `COG_EVAL_MIN_FREE_MIB` lowered
+**14000 -> 10000**, which admits exactly two and still blocks a third (two running leaves ~8.5 GB
+free, under the threshold). Verified live: both drivers reported `headroom OK` within a minute and
+ran side by side.
+
+Why 14000 was right before and is not now: it was set while datagen held ~6 GB, where it correctly
+prevented a second eval from squeezing the foreign job. The margin protecting that job is now the
+~8.5 GB left with two evals running, which is ample.
+
+Effect on the remaining queue: the serial estimate was **~30 h** for 41 outstanding cells (T2 flat
+43 min/cell measured, T2 diagonal ~113 min derived, T3 flat ~20 min estimated, T3/T1 diagonal 53 min
+measured). Two slots should give **~15-20 h** rather than exactly half, because the two processes
+contend for SM time as well as memory -- the earlier datagen-sharing measurement showed ~40-50 %
+mutual slowdown, so treat 15 h as the optimistic end.
+
+Do not raise this to three concurrent evals: 3 x 7 + 1.6 = 22.6 GB of 24.5 leaves under 2 GB, and
+Isaac's allocation spikes during scene load.
