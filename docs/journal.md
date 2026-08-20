@@ -4007,3 +4007,34 @@ written -- and that session has now exited. T2's six L3b diagonals therefore had
 which would have been invisible because nothing errors when a queue is simply absent. A dedicated
 driver is now running; at ~113 min per T2 diagonal it is ~11 h of work and is the single largest
 remaining block.
+
+### 2026-08-21 01:55 -- latent bash bug silently killed a driver's polling loop
+
+`evalt2l3b` exited 7 seconds after launch having logged only its final line. Root cause, reproduced
+in isolation (`bash 5.2.21`):
+
+    set -u
+    declare -A FAILED          # empty associative array
+    echo "${#FAILED[@]}"       # -> "FAILED: unbound variable"
+
+Under `set -u`, `${#arr[@]}` on an **empty** associative array is an unbound-variable error. It does
+not merely return 0, and it does not abort the script -- it **aborts the enclosing loop** and
+execution resumes after it. So the driver ran one pass, hit the summary line
+`say "round ... ${#FAILED[@]} failed"`, silently abandoned its polling loop, printed its DONE line
+and exited looking like a clean completion.
+
+Nasty because the failure mode is invisible three ways over: it needs the array to be empty (i.e.
+nothing has failed yet -- the *healthy* case), it produces a success-looking final log line, and the
+consequence is not an error but an absence, namely a queue that stops polling for checkpoints that
+have not finished training yet. Same family as the watcher-exit-code bug recorded yesterday: **the
+monitoring layer reporting success while doing nothing.**
+
+Affects all three eval drivers written today. Actual damage: only `evalt2l3b`, which had 6 cells to
+wait for and stopped waiting. `evall3b` hit it too but had already finished all 12 of its cells on the
+one pass it completed, so nothing was lost -- which is exactly why it went unnoticed. `evalt23`
+carries the bug but is mid-pass over 30+ cells at ~46 min each, so it will not reach the summary line
+for many hours; it is left running rather than restarted, since a restart would discard the in-flight
+cell, and a fixed copy is staged to swap in when it stops.
+
+Fix: replace `${#FAILED[@]}` with a plain integer counter incremented alongside the array. Verified
+the fixed driver now logs `round 1: 0/6 T2 L3b cells evaluated, 0 failed` and keeps polling.
