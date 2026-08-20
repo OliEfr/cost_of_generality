@@ -262,3 +262,47 @@ that job's rate.
 Matrix total to date: **~50 GPU-h** across 31 registry rows (includes partial elapsed for the 5
 cells still running, so expect it to settle near 52). Still under the original 48-GPU-h estimate's
 order of magnitude and far under the 2,200 ceiling.
+
+## L3 regeneration + T2/T3 evaluation -- measured 2026-08-20
+
+**Datagen, per L3 variant (local 4090, `--num_envs 8`, 40 successes each):** mean episode length is
+the driver, since generation cost scales with simulated steps.
+
+| task | mean ep len (steps) | per variant | 10 variants | size |
+|---|---|---|---|---|
+| T1 cup_place | ~188 | ~2.8 min | ~28 min | 3.1 GB |
+| T3 push_target | ~310 | ~3.5 min | ~35 min | 5.1 GB |
+| T2 drawer_stow | ~675 | ~23 min | **~3.9 h** | 7.3 GB |
+
+**LeRobot conversion (400 episodes, h264, both cameras):** ~14 min for T1. Scales with total frames,
+so expect ~50 min for T2.
+
+**Checkpoint sync-down ($WORK -> local, 080000 only):** ~65 s per cell (1.1 GB).
+
+**Rollout eval, 100 episodes (5 batches x 20 envs) -- REVISED, and much worse than the T1 number:**
+
+| task | max_steps | measured | note |
+|---|---|---|---|
+| T1 cup_place | 600 | ~8 min | the figure earlier planning used |
+| T2 drawer_stow | 1200 | **43 min** | `t2_L0_n10`, 12:42:28 -> 13:25:27 |
+| T3 push_target | 800 | not yet measured | expect ~15-25 min |
+
+T2's episode limit is 2x T1's and its policy must be queried at every step of it, so the eval is
+~5x slower, not 2x -- part of that is sharing the card with L3b datagen, but the step count is the
+dominant term. **This invalidates the "~5 h to work through the 36 T2/T3 evals" estimate.** Serial
+local projection:
+
+* 18 T2 L0-L2/L3b cells x ~43 min (L3b's 200-episode diagonal is ~2x again) -> **~13-20 h**
+* 18 T3 cells -> ~6-10 h
+* T1's 6 L3b diagonal evals -> ~2.5 h
+
+i.e. **on the order of 25-35 h of serial local eval**, against ~190 GPU-h of cluster training that
+completes in a couple of wall-clock hours. Planning rule: **budget local eval at 45 min/cell for T2,
+20 min for T3, 10 min for T1**, and double it for an L3 diagonal (200 episodes, 10 Isaac boots).
+
+This is now by far the study's binding constraint and it is the strongest argument yet for the
+CINECA Vulkan question (`docs/cineca_ticket_vulkan.md`, drafted and unsent): getting Isaac to render
+on A100s would move ~30 h of serial wall-clock onto a cluster that runs cells in parallel. It buys
+wall-clock, not GPU-hours.
+
+First real T2 number, for the record: **T2 L0 N=10 -> SR 0.65 (65/100)**, versus T1 L0 N=10's 0.85.
