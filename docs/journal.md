@@ -3271,3 +3271,53 @@ measuring a ceiling.
 Eval throughput is better than the 14 min/checkpoint measured earlier: 7 cells in the last hour,
 ~8.6 min each, presumably because the earlier figure included Isaac's first-launch shader cache
 work. 13/24 done, **zero eval failures** since the harness fixes.
+
+## 2026-08-20 (03:45) -- L0/L1/L2 evaluated (18/24); all six L3 cells failed on an eval-path gap
+
+**L0, L1, L2 are complete: 18/24 cells evaluated, zero failures.** Then all six L3 cells failed
+identically:
+
+```
+gymnasium.error.NameNotFound: Environment `Cog-CupPlace-L3-IK-Rel-Visuomotor` doesn't exist.
+Did you mean: `Cog-CupPlace-L2-IK-Rel-Visuomotor`?
+```
+
+**Not a typo -- a real gap between the design and the eval harness.** L3's generality axis IS the
+object, so `levels.py` deliberately expands L3 into **10 sub-levels** `L3v00..L3v09`
+(2 cylinder sizes x 5 colours), and registers an env per sub-level. There is intentionally no
+single `Cog-CupPlace-L3-*` env. But `run_local_eval.sh` builds its task id as
+`f"Cog-CupPlace-{LEVEL}-IK-Rel-Visuomotor-v0"`, which is correct for L0-L2 and cannot work for L3.
+
+Why this stayed invisible until now: **training never touches the env** -- it only reads the
+LeRobot dataset -- so all six L3 cells trained perfectly and produced valid checkpoints. The gap
+existed only on the eval path, and L3 is the last level evaluated. Worth remembering as a class of
+bug: a level whose *data* pipeline is fine can still be unevaluable, and the training wave will
+report 24/24 success either way.
+
+**The protocol was already decided; only the implementation was missing.** `protocol.json` and
+`configs/eval_sets/L3.json` both specify D18: **variant v is evaluated on batch v** (the diagonal),
+pooling to 10 x 20 = **200 episodes with 200 distinct poses**. The eval set explicitly warns that
+running batch 0 on all ten variants would also total 200 episodes but yield only **20 distinct
+poses**, because the variants share the pose RNG stream. So the diagonal is load-bearing, not a
+stylistic choice. Note this makes L3's standard eval 200 episodes where L0-L2 use 100 -- frozen
+design (rule 8), and it gives L3 a tighter CI than the other levels by construction.
+
+**Implemented `scripts/ops/run_local_eval_l3.py`**: for each variant it writes a one-batch protocol
+with `base_seed = 5000 + v` (which is exactly batch v), runs `cog.eval.rollout_eval` in its own
+Isaac process, and pools the ten partials into a single result JSON using the same schema as L0-L2
+plus a `per_variant` breakdown -- so `update_registry_from_evals.py` needs no special-casing. One
+process per variant because creating a second gym env inside a live Kit instance is unreliable, and
+because a single crashed variant then cannot poison the other nine.
+
+Two things it does deliberately:
+- **Refuses to write a pooled result if any variant failed**, rather than averaging over a partial
+  diagonal. That would silently understate coverage while looking like a valid number. This guard
+  fired on the first attempt and is the reason no bad L3 number was ever written.
+- Waits for >=14 GB free VRAM before each variant, same as the L0-L2 path (rule 2).
+
+**First attempt failed on a missing env var, not on logic**: every variant died with
+`Do you accept the EULA? (Yes/No): Unable to bootstrap inner kit kernel: EOF when reading a line`.
+`run_local_eval.sh` exports `OMNI_KIT_ACCEPT_EULA=YES`, but a python `subprocess` does not inherit
+a shell export that was never in the environment -- and the resulting error names neither the EULA
+setting nor the real cause in any obvious way. Now set explicitly in the subprocess env alongside
+`HF_HUB_OFFLINE=1`.
