@@ -29,8 +29,11 @@ import re
 # Result files are task-tagged: eval_T2_L1_n50_080000.json. The task group is optional so the
 # pre-migration T1 names still parse, defaulting to T1. Without the tag the greedy level group
 # would swallow "T1_L0" as a single level name and quietly mix tasks into one table.
+# The level may carry a single-letter suffix: "L3b" is the L3 arm regenerated with per-variant seeds
+# and the corrected object palette (D27/D28), which must stay a SEPARATE row from the original "L3"
+# rather than being merged into it -- the two differ in pose diversity, which is the whole point.
 FNAME = re.compile(
-    r"eval_(?:(?P<task>T\d)_)?(?P<level>L\d)_n(?P<n>\d+)_(?P<step>\d+)\.json$")
+    r"eval_(?:(?P<task>T\d)_)?(?P<level>L\d[a-z]?)_n(?P<n>\d+)_(?P<step>\d+)\.json$")
 TARGETS = (0.50, 0.80, 0.90)
 
 

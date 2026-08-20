@@ -92,7 +92,12 @@ def main() -> int:
     if gym_prefix is None:
         print(f"unknown task tag {task_tag!r} (expected T1/T2/T3)", file=sys.stderr)
         return 2
-    run_id = f"{task_tag.lower()}_L3_n{ndemos}_s0"
+    # Which L3 ARM's checkpoints to score. The eval envs are always the registered L3v** variants --
+    # the arm only changes which training run supplied the weights and where the result is written.
+    # "L3b" is the arm regenerated with per-variant seeds and the corrected palette (D27/D28).
+    # Env var, not a positional, so the T2/T3 pipeline cron's call stays byte-identical.
+    level = os.environ.get("COG_L3_LEVEL", "").strip() or "L3"
+    run_id = f"{task_tag.lower()}_{level}_n{ndemos}_s0"
 
     # DIAGNOSTIC OVERRIDES (both optional, both default to no-ops). These exist to run a
     # CROSS-EVALUATION: put a policy trained at one level onto another level's frozen eval set --
@@ -120,9 +125,9 @@ def main() -> int:
     if out_tag:
         results_dir = results_dir / "diagnostics"
         results_dir.mkdir(parents=True, exist_ok=True)
-        final_out = results_dir / f"eval_{task_tag}_L3_n{ndemos}_{step}_{out_tag}.json"
+        final_out = results_dir / f"eval_{task_tag}_{level}_n{ndemos}_{step}_{out_tag}.json"
     else:
-        final_out = results_dir / f"eval_{task_tag}_L3_n{ndemos}_{step}.json"
+        final_out = results_dir / f"eval_{task_tag}_{level}_n{ndemos}_{step}.json"
     if final_out.exists() and final_out.stat().st_size > 0:
         log(f"{final_out.name} already exists, nothing to do", logfile)
         return 0

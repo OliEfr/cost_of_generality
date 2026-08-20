@@ -680,3 +680,57 @@ flag, for each task. (b) re-measure the L3 curve; the specific prediction is tha
 rising past N=50 instead of flattening, and that its N=400 point lands well above 0.45. (c) confirm
 the corrected L3 training loss no longer sits below L2's floor -- if it still does, redundancy was
 not the whole story.
+
+## D28 -- 2026-08-20: L3 object palettes move away from the green goal marker (marker colour unchanged)
+
+**Trigger.** Cross-evaluating the L2-trained T1 policy (trained on `cyl_m_red` only) across all ten
+L3 variants gave a strikingly bimodal result:
+
+| variant colour | SR (small / medium cylinder) |
+|---|---|
+| red | 0.95 / 0.90 |
+| purple | 0.80 / 0.50 |
+| blue | 0.65 / 0.80 |
+| **yellow** | **0.15 / --** |
+| **green** | **0.10 / 0.10** |
+
+**Mechanism.** The failures track the object's GREEN CHANNEL, not its distance from the training
+colour: green G=0.60 and yellow G=0.80 fail, while blue (G=0.10) succeeds despite being far further
+from red in RGB than yellow is. The goal marker is green `(0.10, 0.70, 0.10)` and the policy has to
+locate it from pixels, so a green-ish object presents a second marker-coloured blob and the policy
+places onto the wrong one. Training on the colours does not repair it: the L3-trained policy still
+scored green 0.30 and yellow 0.35 against red ~0.48.
+
+**Decision (user instruction 2026-08-20): keep the marker green, move the OBJECTS.** In
+`cup_place/assets.py::COLORS` (shared with `drawer_stow`), green -> **orange** `(0.90,0.30,0.02)` and
+yellow -> **magenta** `(0.90,0.10,0.55)`. In `push_target/assets.py::PUCK_COLORS`, yellow -> magenta
+(that palette already excluded pure green, but excluding green is not sufficient -- yellow's G=0.80
+is *higher* than the marker's own 0.70).
+
+**Invariant, now documented at both palettes:** every object colour keeps green channel <= 0.30
+(<= 0.40 for push_target, whose default is orange). Any future variant must satisfy this.
+
+**Two things deliberately preserved.**
+1. **Positional order.** `levels.py` lists colour names positionally, so replacing in place keeps
+   every L3 variant index stable (v01 was `cyl_s_green`, is now `cyl_s_orange`). Comparing a colour
+   that did NOT change (red/blue/purple) between the old and new L3 arms therefore isolates the D27
+   pose fix from this colour fix, at no extra training cost.
+2. **The defaults.** `red` keeps its exact RGB, so `DEFAULT_CUP`/`DEFAULT_BOX` are untouched. For
+   push_target, colour is assigned to variants BY INDEX, so palette position 4 is pinned to orange
+   because that is `DEFAULT_PUCK` -- had the order shifted, T3's L0-L2 datasets would silently depict
+   a differently-coloured puck and would have needed regenerating too. Verified: `PALETTE_CHECK_PASS`
+   (names resolve, all G within limits, all three defaults unchanged).
+
+**Scope.** Only L3 is regenerated (with D27's seed fix, as level stem `L3b`). L0-L2 use the default
+object in every task and are unaffected, so they are NOT regenerated.
+
+**Eval sets (rule 8) are respected.** Object colour is a static material on a per-variant sub-env; it
+does not touch the reset sampling, so the frozen L3 eval poses and the committed state snapshots in
+`configs/eval_sets/` remain exactly as they were. What changes is the appearance of the object at
+those same poses.
+
+**VERIFY:** (a) the corrected L3 arm's per-variant SRs should no longer show the two-colour cliff --
+specifically orange and magenta should behave like red/blue/purple rather than like the green/yellow
+they replace. (b) If a cliff persists on some other colour, the invariant is not the whole story and
+the marker itself should be reconsidered (the user's preference is to leave it, so that would be a
+discussion, not a unilateral change).

@@ -27,7 +27,9 @@ REPO = Path(__file__).resolve().parents[2]
 REGISTRY = REPO / "experiments" / "registry.csv"
 RESULTS = REPO / "results"
 
-RUN_RE = re.compile(r"^t(?P<t>[123])_(?P<lvl>L\d)_n(?P<n>\d+)_s0$")
+# L3b = the L3 arm regenerated with per-variant seeds + corrected palette (D27/D28); it is a
+# separate cell from L3, not a replacement for its row.
+RUN_RE = re.compile(r"^t(?P<t>[123])_(?P<lvl>L\d[a-z]?)_n(?P<n>\d+)_s0$")
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -47,7 +49,7 @@ def load_results() -> dict[str, dict]:
     for f in sorted(RESULTS.glob("eval_T*_L*_n*_080000.json")):
         if "sharedenc" in f.name:          # superseded architecture; never mix into the matrix
             continue
-        m = re.match(r"eval_(T[123])_(L\d)_n(\d+)_080000\.json$", f.name)
+        m = re.match(r"eval_(T[123])_(L\d[a-z]?)_n(\d+)_080000\.json$", f.name)
         if not m:
             continue
         try:

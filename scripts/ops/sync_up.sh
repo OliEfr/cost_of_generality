@@ -45,16 +45,23 @@ case "$what" in
       "${REPO}/" "${REMOTE}:${WORK_REMOTE}/repo/"
     ;;
   datasets)
+    # Datasets live in the MAIN checkout's data/ (gitignored, shared between worktrees), NOT under
+    # COG_REPO -- pointing COG_REPO at a worktree for the code sync would otherwise make this rsync
+    # an empty source directory, which silently uploads nothing.
+    LEROBOT="${COG_DATA_LEROBOT:-/home/admin_07/cost_of_generality/data/lerobot}"
     for task in "$@"; do
       case "$task" in
         T1) sets="L0 L1 L2 L3" ;;
         T2) sets="T2_L0 T2_L1 T2_L2 T2_L3" ;;
         T3) sets="T3_L0 T3_L1 T3_L2 T3_L3" ;;
-        *) echo "unknown task ${task}"; exit 2 ;;
+        # anything else is taken as a literal dataset name, so a single regenerated arm can be
+        # pushed on its own: sync_up.sh datasets L3b T2_L3b
+        *) sets="$task" ;;
       esac
       for s in $sets; do
-        echo "[sync] ${s}"
-        rsync -az --info=stats1 "${REPO}/data/lerobot/${s}/" \
+        [ -d "${LEROBOT}/${s}" ] || { echo "[sync] MISSING ${LEROBOT}/${s}" >&2; exit 3; }
+        echo "[sync] ${s} <- ${LEROBOT}/${s}"
+        rsync -az --info=stats1 "${LEROBOT}/${s}/" \
           "${REMOTE}:${FAST_REMOTE}/${s}/"
       done
     done

@@ -48,12 +48,12 @@ t2_L2_n50_s0,drawer_stow,L2,-,50,local/T2_L2,53195360,submitted,,,,,L2,,,launche
 t2_L2_n100_s0,drawer_stow,L2,-,100,local/T2_L2,53195361,submitted,,,,,L2,,,launched by launch_matrix.py
 t2_L2_n200_s0,drawer_stow,L2,-,200,local/T2_L2,53195362,submitted,,,,,L2,,,launched by launch_matrix.py
 t2_L2_n400_s0,drawer_stow,L2,-,400,local/T2_L2,53195363,submitted,,,,,L2,,,launched by launch_matrix.py
-t2_L3_n10_s0,drawer_stow,L3,-,10,local/T2_L3,53195364,submitted,,,,,L3,,,launched by launch_matrix.py
-t2_L3_n25_s0,drawer_stow,L3,-,25,local/T2_L3,53195365,submitted,,,,,L3,,,launched by launch_matrix.py
-t2_L3_n50_s0,drawer_stow,L3,-,50,local/T2_L3,53195366,submitted,,,,,L3,,,launched by launch_matrix.py
-t2_L3_n100_s0,drawer_stow,L3,-,100,local/T2_L3,53195367,submitted,,,,,L3,,,launched by launch_matrix.py
-t2_L3_n200_s0,drawer_stow,L3,-,200,local/T2_L3,53195368,submitted,,,,,L3,,,launched by launch_matrix.py
-t2_L3_n400_s0,drawer_stow,L3,-,400,local/T2_L3,53195369,submitted,,,,,L3,,,launched by launch_matrix.py
+t2_L3_n10_s0,drawer_stow,L3,-,10,local/T2_L3,53195364,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t2_L3_n25_s0,drawer_stow,L3,-,25,local/T2_L3,53195365,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t2_L3_n50_s0,drawer_stow,L3,-,50,local/T2_L3,53195366,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t2_L3_n100_s0,drawer_stow,L3,-,100,local/T2_L3,53195367,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t2_L3_n200_s0,drawer_stow,L3,-,200,local/T2_L3,53195368,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t2_L3_n400_s0,drawer_stow,L3,-,400,local/T2_L3,53195369,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
 t3_L0_n10_s0,push_target,L0,-,10,local/T3_L0,53195370,submitted,,,,,L0,,,launched by launch_matrix.py
 t3_L0_n25_s0,push_target,L0,-,25,local/T3_L0,53195371,submitted,,,,,L0,,,launched by launch_matrix.py
 t3_L0_n50_s0,push_target,L0,-,50,local/T3_L0,53195372,submitted,,,,,L0,,,launched by launch_matrix.py
@@ -72,9 +72,9 @@ t3_L2_n50_s0,push_target,L2,-,50,local/T3_L2,53195387,submitted,,,,,L2,,,launche
 t3_L2_n100_s0,push_target,L2,-,100,local/T3_L2,53195388,submitted,,,,,L2,,,launched by launch_matrix.py
 t3_L2_n200_s0,push_target,L2,-,200,local/T3_L2,53195389,submitted,,,,,L2,,,launched by launch_matrix.py
 t3_L2_n400_s0,push_target,L2,-,400,local/T3_L2,53195390,submitted,,,,,L2,,,launched by launch_matrix.py
-t3_L3_n10_s0,push_target,L3,-,10,local/T3_L3,53195391,submitted,,,,,L3,,,launched by launch_matrix.py
-t3_L3_n25_s0,push_target,L3,-,25,local/T3_L3,53195392,submitted,,,,,L3,,,launched by launch_matrix.py
-t3_L3_n50_s0,push_target,L3,-,50,local/T3_L3,53195393,submitted,,,,,L3,,,launched by launch_matrix.py
-t3_L3_n100_s0,push_target,L3,-,100,local/T3_L3,53195394,submitted,,,,,L3,,,launched by launch_matrix.py
-t3_L3_n200_s0,push_target,L3,-,200,local/T3_L3,53195395,submitted,,,,,L3,,,launched by launch_matrix.py
-t3_L3_n400_s0,push_target,L3,-,400,local/T3_L3,53195396,submitted,,,,,L3,,,launched by launch_matrix.py
+t3_L3_n10_s0,push_target,L3,-,10,local/T3_L3,53195391,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t3_L3_n25_s0,push_target,L3,-,25,local/T3_L3,53195392,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t3_L3_n50_s0,push_target,L3,-,50,local/T3_L3,53195393,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t3_L3_n100_s0,push_target,L3,-,100,local/T3_L3,53195394,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t3_L3_n200_s0,push_target,L3,-,200,local/T3_L3,53195395,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
+t3_L3_n400_s0,push_target,L3,-,400,local/T3_L3,53195396,superseded,,,,,L3,,,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
