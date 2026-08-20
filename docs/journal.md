@@ -3427,3 +3427,47 @@ lower on L0 or accept that L0 serves only as a qualitative reference rather than
   "last" in the analysis output; that column is not evidence about checkpoint selection.
 
 Spend: **55.6 GPU-h** (2.5% of the 2,200 ceiling). Local eval added 0 grant hours.
+
+## 2026-08-20 (07:00) -- Tasks 2 and 3 LAUNCHED (48 cells); readiness audit caught three bugs first
+
+User approved the full pipeline for T2 (drawer_stow) and T3 (push_target). Before submitting
+anything I audited the pipeline against what T1 had already taught us, and found **three defects,
+each of which would have produced plausible-looking but wrong results**.
+
+**1. `--max_steps` would have truncated every T2 episode.** `rollout_eval` defaults to
+`--max_steps 600`. That is not a neutral default -- it happens to match cup_place *exactly*
+(`episode_length_s = 30.0` at 20 Hz = 600 steps), which is why T1 was fine. But drawer_stow sets
+`episode_length_s = 60.0` (1200 steps) and its generated demos run **675-743 steps**; push_target
+sets 40.0 s (800 steps) with demos at 307-399. So every single T2 episode would have been cut off
+before the task could complete, and T2 would have reported a near-zero success rate across the board.
+That is the worst kind of bug available here: it looks exactly like a scientific finding
+("drawer_stow is much harder than cup_place"). Now derived per task from the env cfgs: T1 600,
+T2 1200, T3 800.
+
+**2. Result filenames had no task component, so T2 would have silently inherited T1's numbers.**
+Names were `eval_<LEVEL>_n<N>_<step>.json`. T2's L0/N=25 result would therefore be written to
+`eval_L0_n25_080000.json` -- the exact path T1 already occupies -- and because `run_local_eval.sh`
+skips any cell whose output file already exists, T2's cells would have been *skipped* and T1's
+success rates read back as T2's. No error, no warning, and the surface would have looked plausible.
+Names are now `eval_<TASK>_<LEVEL>_n<N>_<step>.json`; the 27 existing T1 files were migrated;
+`curves.py` parses the tag (optional, defaulting to T1 so old names still work) and takes a `--task`
+filter, because tasks must never be pooled -- each has its own L0 baseline, so one shared table would
+compute cost ratios across unrelated tasks.
+
+**3. The editable install was shadowing the worktree.** `cog` is installed editable pointing at the
+MAIN checkout, and this repo uses a `src/` layout, so `cd $COG_REPO` does NOT put the worktree's code
+on `sys.path`. Every eval so far read *this* tree's checkpoints while executing the *main* tree's
+`cog` package. I verified by `diff -rq` that the two `src/cog` trees were identical apart from
+`__pycache__`, so **T1's 24 results are unaffected** -- but this was luck, not design, and it would
+have silently ignored any src fix made here. Both eval scripts now set `PYTHONPATH` explicitly.
+
+Also generalised `run_local_eval_l3.py` to T1/T2/T3 (verified from the eval sets that all three
+expand L3 into exactly 10 variants) and the registry updater to `t1_/t2_/t3_` run ids.
+
+**Regression-checked before launching**, since renaming 27 result files could have quietly corrupted
+a finished result: `curves.py` reproduces T1 identically (cost ratios 8.31x and 9.38x at 90%, same
+N* everywhere) and the registry updater finds all 24 results and changes **0** fields.
+
+**Launched:** 48 cells, jobs 53195xxx, all **RUNNING** immediately. Datasets verified first: all
+eight T2/T3 levels present on `$FAST` with 400 episodes each. Expect ~2-3 h per cell and ~105 GPU-h,
+which would take the study to ~160 GPU-h total (~7% of the 2,200 ceiling).
