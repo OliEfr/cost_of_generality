@@ -3967,3 +3967,43 @@ cannot double-submit. If nodes return within ~19 h, the outage costs the study n
 Worth adding to the cluster playbook: **"More processors requested than permitted" on Leonardo can
 mean the partition is empty, not that the job asked for too much.** Check `sinfo -p <partition>` node
 counts before touching the job's resource request.
+
+### 2026-08-21 00:00-00:55 -- partition recovered; T3's L3b arm complete, with a non-monotone tail
+
+**The `boost_usr_prod` outage lasted ~45 min.** Nodes returned and the retry watcher submitted T2's
+six L3b cells at 00:04:35, so the outage cost the study nothing -- training resumed well inside the
+~19 h the local eval queue still needs.
+
+**T3's corrected L3 arm is complete**, and shows the same rising shape as T1's up to N=200, then dips:
+
+| N | T3 L3b | Wilson 95 % |
+|---|---|---|
+| 10 | 0.305 | [0.245,0.372] |
+| 25 | 0.510 | [0.441,0.578] |
+| 50 | 0.605 | [0.536,0.670] |
+| 100 | 0.780 | [0.718,0.832] |
+| 200 | **0.920** | [0.874,0.950] |
+| 400 | **0.840** | [0.783,0.884] |
+
+The N=400 point sits *below* N=200 with intervals that overlap only in [0.874, 0.884] -- marginal,
+but it should not be smoothed over. Three readings, in order of prior plausibility:
+
+1. **Single-seed training variance.** The protocol is one seed per cell (user directive), so each
+   point is one draw from the training distribution and an 8-point swing between adjacent N is well
+   within what a different seed can produce. This is the limitation the plan already lists, and it is
+   the first place in the study where it visibly bites.
+2. A genuine effect (more data changing which modes the diffusion policy commits to). Possible but
+   unsupported by anything else we have measured.
+3. An eval or checkpoint artifact. Ruled out as far as it can be cheaply: the diagonal is the frozen
+   protocol, all ten variants completed, and the pooled count is a clean 168/200.
+
+For the write-up the honest treatment is to report both points with intervals, note that the logistic
+fit (which pools all six cells) is the primary estimator precisely because it is robust to one noisy
+cell, and cite this as the concrete cost of the one-seed design rather than burying it. T1's
+equivalent tail was monotone (0.935 -> 0.945), so this is not systematic.
+
+**Gap closed:** `eval_l3b.sh` only ever covered T1 and T3 -- T2's dataset did not exist when it was
+written -- and that session has now exited. T2's six L3b diagonals therefore had no driver at all,
+which would have been invisible because nothing errors when a queue is simply absent. A dedicated
+driver is now running; at ~113 min per T2 diagonal it is ~11 h of work and is the single largest
+remaining block.
