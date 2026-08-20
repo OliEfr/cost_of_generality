@@ -3626,3 +3626,31 @@ have destroyed four valid datasets.
 **Pending:** T1/T3/T2 L3b datagen (~5 h local, zero grant cost), then 18 L3b cells (~40 GPU-h),
 then the L3b diagonal evals. Prediction on record (D27 VERIFY b): corrected L3 keeps rising past
 N=50 instead of flattening at ~0.47.
+
+### 2026-08-20 addendum -- the regenerated L3b arm needs `--max_episodes 400`
+
+T1's L3b conversion produced **401** episodes and the pre-launch verify caught it, so no GPU-h was
+spent on an unbalanced dataset. Cause: generation runs in `num_envs=8` batches, so a variant can
+overshoot its 40-success target -- `L3bv01` produced 41. The original L3 arm hit exactly 40 in every
+variant only because all ten runs shared one seed (D27) and therefore overshot identically; with
+independent seeds the overshoot is per-variant and irregular.
+
+Fix: convert with `--max_episodes 400`. The converter interleaves the variants round-robin *before*
+truncating, so the first 400 episodes are exactly 40 per variant and any overshoot lands at the tail.
+The 401-episode root was moved aside as `L3b_401ep_unbalanced` rather than deleted.
+
+Worth noting the verify gate is what made this a five-minute correction instead of a silently
+lopsided L3 arm -- the same class of check whose absence produced D27 in the first place. It now
+asserts 400 episodes AND that every nested prefix (N=10..400) covers all ten variants within one
+episode of balance.
+
+`gen_L3_wave.sh` also became resumable while fixing an interrupted T3 wave: a variant holding exactly
+40 demos is skipped, anything else aborts and asks for the partial to be moved aside. T3 resumed at
+v03 keeping its three finished variants.
+
+**Local GPU is now the bottleneck, not the cluster.** 31 of the 36 T2/T3 L0-L2 cells are at 80k and
+their checkpoints sync down fine (GPU-free), but each eval waits for 14 GB free VRAM and the L3b
+datagen leaves 13.6 GB, so evaluation queues behind datagen and starts when it ends (~15:30),
+finishing ~20:30. The threshold is deliberately left alone: an eval's own footprint is ~7 GB so
+concurrency would fit, but that 14 GB margin is what protects the foreign job on this card (rule 2),
+and trading it away is the user's call, not a unilateral optimisation.
