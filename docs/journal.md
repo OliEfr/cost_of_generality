@@ -3471,3 +3471,70 @@ N* everywhere) and the registry updater finds all 24 results and changes **0** f
 **Launched:** 48 cells, jobs 53195xxx, all **RUNNING** immediately. Datasets verified first: all
 eight T2/T3 levels present on `$FAST` with 400 episodes each. Expect ~2-3 h per cell and ~105 GPU-h,
 which would take the study to ~160 GPU-h total (~7% of the 2,200 ceiling).
+
+## 2026-08-20 -- "why does L3 not reach high SR?" turns out to be a seeding bug in datagen (D27)
+
+The user asked whether L3's low success rate could come from the *generation* pipeline: Mimic failing
+on configurations that eval nonetheless tests, so the policy is trained on an easier distribution
+than it is scored on. Chasing that produced three separable findings, only one of which is the
+originally suspected mechanism.
+
+**1. For T1 the suspected mechanism is ruled out, quantitatively.** New tool `cog.analysis.gen_bias`
+compares the retained demos against the *rejected* attempts, which `generate_level` happens to keep
+in a parallel `<level>_failed.hdf5`. T1 generation SR is flat across the ladder -- 86.4 / 85.8 / 85.1
+/ 87.9% for L0/L1/L2/L3 -- and retained vs rejected initial poses are statistically
+indistinguishable at every level (KS p 0.18-0.99 on x, y, yaw). So the filter is an unbiased ~13%
+thinning, and it applies equally at L0 (SR 1.00) and L3 (SR 0.45); it cannot explain a gap that
+appears only at L3. The bound that settles it: a selection filter can only remove what it rejects,
+so at 88% gen SR the maximum attributable deficit is ~12 points against an observed ~55.
+
+**2. The actual cause: L3 has ~9x redundant initial poses.** See D27. All ten variant generation runs
+were seeded identically, so the nominal 400-demo L3 datasets hold **43 / 45 / 48 unique initial
+poses** (T1/T2/T3) instead of 400, while L1/L2 hold 400. v00-v04 are byte-identical in pose and
+v05-v09 likewise. L3's demo axis therefore measures "5 -> 40 unique poses" where L0-L2 measure "10 ->
+400", and the plateau at ~0.45-0.53 is a pose-coverage ceiling. This retracts the earlier
+"L3 has a ceiling, not a data cost" reading, and with it the argument that the N=800 arm is
+unwarranted -- that conclusion rested on the artifact.
+
+Independent corroboration from the loss curves (read from the offline `.wandb` datastores): L2@400
+plateaus at 0.0724 by step 40k, whereas L3@400 descends monotonically to 0.0187 and is still falling
+8.8% per 20k at step 80k, with an identical annealed LR schedule. A model fitting 400 distinct
+scenes hits an aleatoric floor; one memorising ~40 trajectories does not. Normalization stats and
+`train_config.json` are identical across levels, so neither scaling nor config explains it.
+
+**3. A separate, real confound: the L3 colour set aliases with the goal marker.** Cross-evaluating
+the **L2**-trained policy (which only ever saw `cyl_m_red`) on the L3 diagonal gives, per variant:
+red 0.95/0.90, blue 0.65, purple 0.80 -- but **green 0.10/0.10 and yellow 0.15**. The goal marker is
+green `(0.10,0.70,0.10)` and yellow carries a high green channel, so two of the five L3 colours are
+confusable with the target the policy must place onto. That is a property of the task design, not of
+the data volume, and it will survive regeneration; it needs to be reported (and probably the marker
+recoloured to something outside the object palette).
+
+Notable: the L2-trained single-object policy pools to roughly the same success rate on the
+ten-object benchmark as the L3-trained policy does (~0.5 vs 0.45). A policy that saw one object
+matching one that saw ten is itself evidence that the L3 training set, not the task, is the
+limitation.
+
+**Also corrected here.** (a) `gen_bias` initially reported T1_L3 as significantly skewed at p=0.000;
+that was my own error -- the KS test ran over 400 rows that are ~9x duplicates, inflating n. It now
+deduplicates poses first, and the verdict becomes "same" at p=0.70-0.99. (b) The same tool flagged
+T3's yaw as the most significant skew in its table when yaw is a constant 0 in both populations: the
+asymptotic p-value formula returns ~0 rather than 1 at D=0. Guarded. (c) `docs/timings.md` and D26(b)
+still carried the "~16% throughput penalty" for separate encoders, read at step 7,200 during
+warm-up. Settled over all 24 T1 cells: median **2.01 h** vs the 2.00 h shared-encoder baseline, mean
+2.14 h (+6.8%, carried by a few slow cells). Claim withdrawn, planning rule now 2.2 h/cell.
+
+**T2 carries a genuine version of the user's hypothesis.** T2's generation SR falls 54.9 -> 44.2 ->
+30.6 -> 32.7% across L0-L3, and there the retained-vs-rejected comparison *is* significantly skewed:
+at T2_L2, yaw KS D=0.232 (p<0.001, 400 vs 906 unique poses, no redundancy), plus x and y. Up to ~69
+points of eval deficit is attributable to that filter. So T2's cost-of-generality numbers will
+conflate "the policy needs more data" with "the demonstrator itself degrades with generality", and
+the honest normalisation is policy SR against the generator's own SR on the same distribution.
+T2_L0 also fails 45% of attempts on a *fixed* scene, so the T2 expert is intrinsically brittle
+rather than merely pose-sensitive. T3 is clean (gen SR 88-98.5%, <=11 points attributable).
+
+**Status.** Seed fix landed (`--seed` on the vendored generator, per-variant offsets in all three
+wave scripts, effective seed printed for provenance). L3 regeneration + retrain pending: 18 cells,
+~40 GPU-h. Existing L3 runs are kept as a pose-diversity ablation at fixed N, with results renamed
+`*_poseredundant` so they cannot be confused with the corrected arm. The 48 T2/T3 training cells
+launched yesterday are unaffected for L0-L2 (36 cells); their 12 L3 cells become the ablation arm.

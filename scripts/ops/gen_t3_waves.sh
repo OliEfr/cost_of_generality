@@ -28,6 +28,8 @@ for KEY in L0 L1 L2; do
     --generation_num_trials 400 --num_envs 8 --headless --enable_cameras < /dev/null
   echo "GEN_T3_${KEY}_EXIT=$?"
 done
+# --seed per variant is load-bearing: without it all 10 runs replay one pose stream and the 400-demo
+# L3 set collapses to ~48 unique poses (D27). Verify: cog.analysis.gen_bias --levels T3_L3.
 for i in 0 1 2 3 4 5 6 7 8 9; do
   V=$(printf "L3v%02d" "$i")
   date
@@ -35,6 +37,7 @@ for i in 0 1 2 3 4 5 6 7 8 9; do
     --device cuda --task "Cog-PushTarget-${V}-IK-Rel-Visuomotor-Mimic-v0" \
     --input_file data/hdf5/T3_L2_source_annotated.hdf5 \
     --output_file "data/hdf5/T3_${V}.hdf5" \
+    --seed "$((3000 + i))" \
     --generation_num_trials 40 --num_envs 8 --headless --enable_cameras < /dev/null
   echo "GEN_T3_${V}_EXIT=$?"
 done

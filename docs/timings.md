@@ -221,16 +221,19 @@ container permissions) was found by a job costing less than half a GPU-hour.
 | architecture | steps/s | 80k projection | source |
 |---|---|---|---|
 | one shared RGB encoder | 11.2 | 2.0 h (measured exactly 02:00:04) | G5a calibration, job 52899856 |
-| **separate encoder per camera** | **9.45** | **2.35 h** | live read of job 53008600 at step 7,200 |
+| separate encoder per camera | 9.45 | 2.35 h | live read of job 53008600 at step 7,200 |
+| **separate, settled** | -- | **median 2.01 h, mean 2.14 h** | all 24 T1 cells, sacct elapsed |
 
-So untying the encoders costs **~16% throughput** (11.2 -> 9.45 steps/s), i.e. +0.35 h per cell.
-Worth noting because the loop is decode-bound (GPU util ~0% at every batch size, D23), so a +4.2%
-parameter increase was NOT expected to move wall-clock much -- it does, by more than the parameter
-delta. The extra cost is the second encoder's forward/backward over the same 2-camera batch, which
-is real compute even when the step is gated on data.
+**Use the last row.** The 2.35 h projection was read at step 7,200, inside warm-up, and it
+overstated the cost. Across all 24 completed T1 cells: total 51.3 GPU-h, mean 2.14 h, median
+**2.01 h**, range 1.84-2.83 h. So the median cell is indistinguishable from the shared-encoder
+baseline (2.00 h) and the mean penalty is **+6.8%**, carried by a few slow cells rather than by the
+architecture -- consistent with the loop being decode-bound (GPU util ~0% at every batch size, D23)
+and with 24 jobs contending for the same filesystem. The earlier "~16% throughput penalty" claim was
+an artifact of the warm-up reading and is withdrawn.
 
-Matrix re-forecast: 24 cells x 2.35 h = **~56 GPU-h** (was ~48 at the old rate). The 12 h walltime
-per cell keeps ~5x margin.
+Planning rule: **2.2 h and 2.2 GPU-h per cell** (median plus headroom); a 24-cell wave is ~52
+GPU-h. The 12 h walltime per cell keeps ~5x margin even on the slowest cell observed.
 
 **Method note, reusable:** throughput of a RUNNING job is readable without waiting for a checkpoint
 and without syncing wandb. Offline mode writes no `files/config.yaml`, and `_redirect()` leaves the

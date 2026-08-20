@@ -611,9 +611,72 @@ new one. It now honours `COG_REPO`, and prints the source repo it is using.
 `sep_enc=True group_norm=True horizon=16 n_act=8 batch=64 steps=80000`, i.e. exactly the frozen
 config; no checkpoint anywhere reports `False`. Verified from the saved `train_config.json`
 artifact, not from the config we shipped and not from an exit code (D6).
-(b) **DONE 2026-08-19** -- 9.45 steps/s on the new architecture vs 11.2 shared (-16%), 2.35 h/cell,
-matrix re-forecast ~56 GPU-h; see `docs/timings.md`. Read live from the `.wandb` datastore at step
-7,200 rather than waiting for a checkpoint. Note this exceeds the +4.2% parameter delta, because the
-second encoder's fwd/bwd is real compute even though the step is decode-gated.
+(b) **DONE 2026-08-19, REVISED 2026-08-20** -- the live read at step 7,200 said 9.45 vs 11.2 steps/s
+(-16%, 2.35 h/cell), but that was inside warm-up. Settled numbers over all 24 completed cells:
+median **2.01 h**, mean 2.14 h, total 51.3 GPU-h -- so the median cell matches the shared-encoder
+baseline (2.00 h) and the mean penalty is **+6.8%**, driven by a few slow cells rather than the
+architecture. The "-16% throughput" claim is withdrawn; see `docs/timings.md`.
 (c) still open -- re-check D24 (last-vs-best checkpoint) and L0 saturation on one new-architecture
 cell. Costs no GPU-h: checkpoints at 20/40/60/80k are saved anyway, so this is local eval time only.
+
+## D27 -- 2026-08-20: every L3 dataset in the study has ~9x redundant initial poses (seeding bug); the L3 arm is regenerated
+
+**Trigger.** The user asked whether L3's low success rate could be a *data-generation* artifact --
+Mimic failing on cases that eval still tests. Investigating that produced a different and worse
+answer: L3's demo axis is not a demo axis.
+
+**Finding.** `scripts/ops/gen_L3_wave.sh` (and the T2/T3 equivalents) call
+`datagen/vendored/generate_dataset.py` once per L3 variant, ten times per task. Upstream takes the
+generation seed **only** from `env.cfg.datagen_config.seed` and exposes no CLI override, and our task
+cfgs never set it -- so all ten calls seeded identically and replayed the same initial-pose stream.
+Measured with `cog.analysis.gen_bias` (new):
+
+| level | demos | UNIQUE initial poses |
+|---|---|---|
+| T1/T2/T3 L0 | 400 | 1 (correct -- fixed by design) |
+| T1/T2/T3 L1 | 400 | 400 |
+| T1/T2/T3 L2 | 400 | 400 |
+| **T1 L3** | 400 | **43** |
+| **T2 L3** | 400 | **45** |
+| **T3 L3** | 400 | **48** |
+
+The variants are not merely correlated, they are identical: v00-v04 share a byte-identical pose set
+(maxdiff 0.0) and v05-v09 share another; the two groups differ only because the s- and m-cylinder
+runs rejected a different number of attempts (5 vs 6). Corroborating fingerprint in
+`gen_stats.csv`, which we had already committed without noticing: every T1 L3 variant reports the
+same 45 attempts, 5 failures, and identical min/mean/max episode length -- ten independent runs do
+not coincide like that.
+
+**Consequences.**
+1. **L3's N axis is inflated ~9x.** At the nominal N=400, L3 holds 40 unique poses rendered in 10
+   appearances. So L3 at N=400 is comparable to L2 at N=40 (SR ~0.68), not L2 at N=400 (SR 1.00).
+2. **The "L3 ceiling" finding is void as stated.** The plateau at ~0.45-0.53 across N=50..400 is a
+   *pose-coverage* ceiling: the policy never sees more than ~40 initial states no matter how many
+   demos it is given, while eval samples 200 fresh ones. The earlier reading -- "L3 has a ceiling,
+   not a data cost, so the N=800 arm is unwarranted" -- was drawn from this artifact and is retracted.
+3. It also explains L3's training loss sitting **4x below** L0-L2 (0.019 vs 0.096/0.074/0.072) and
+   still descending 8.8%/20k steps at 80k while the others are flat: with ~9x redundancy the model
+   memorises 40 trajectories instead of fitting 400, so it drops through L2's aleatoric floor.
+4. It does **not** affect L0/L1/L2 in any task: those are single generation runs and hold 400 unique
+   poses each. Only the 6 L3 cells per task are implicated.
+
+**Decision.** (a) `--seed` added to the vendored generator (default None = upstream behaviour), and
+all three wave scripts now pass a per-variant seed offset by task (T1 1000+v, T2 2000+v, T3 3000+v),
+kept away from the eval seeds 5000-5009 so training and eval poses stay disjoint. The effective seed
+is printed to the log for provenance. (b) L3 is regenerated and retrained for all three tasks (18
+cells, ~40 GPU-h). (c) The existing L3 runs are **kept, not discarded**: same demo count, ~9x
+redundant poses, they are now a clean pose-diversity ablation at fixed N -- which is worth reporting
+in its own right. Their results are renamed `*_poseredundant.json` so they can never be mistaken for
+the corrected arm (the same convention already used for `*_sharedenc`).
+
+**Why this went unnoticed.** Every check we ran was a *count* check -- 400 demos present, prefixes
+variant-balanced, stats finite, replay-in-sim succeeds. Nothing asserted pose *diversity*, and the
+one artifact that showed it (identical attempt counts per variant in `gen_stats.csv`) was committed
+without being read as a signal. `gen_bias.py` now reports unique-pose counts and flags any level
+above 1.1x redundancy, and it belongs in dataset QA (G3) rather than being run ad hoc.
+
+**VERIFY:** (a) after regeneration, `gen_bias --levels L3` must report UNIQUE ~400 and no redundancy
+flag, for each task. (b) re-measure the L3 curve; the specific prediction is that corrected L3 keeps
+rising past N=50 instead of flattening, and that its N=400 point lands well above 0.45. (c) confirm
+the corrected L3 training loss no longer sits below L2's floor -- if it still does, redundancy was
+not the whole story.

@@ -94,25 +94,48 @@ def main() -> int:
         return 2
     run_id = f"{task_tag.lower()}_L3_n{ndemos}_s0"
 
+    # DIAGNOSTIC OVERRIDES (both optional, both default to no-ops). These exist to run a
+    # CROSS-EVALUATION: put a policy trained at one level onto another level's frozen eval set --
+    # e.g. the L2-trained policy on the L3 diagonal. That is the control that separates "L3 is
+    # genuinely hard" from "L3's training data is broken": if a policy that saw ONE object beats the
+    # policy that saw TEN on the ten-object benchmark, the deficit is in the L3 data path, not in
+    # the difficulty of the task.
+    #
+    # Deliberately env vars, not CLI args: the T2/T3 pipeline cron invokes this script positionally,
+    # and leaving the signature untouched means the production call is byte-identical. When
+    # COG_L3_OUT_TAG is set, output goes to results/diagnostics/ so it can never be picked up by
+    # update_registry_from_evals.py (glob results/eval_T*...) or curves.py (glob results/eval_*),
+    # which would silently overwrite a real matrix cell with a cross-eval number.
+    ckpt_run = os.environ.get("COG_L3_CKPT_RUN", "").strip() or run_id
+    out_tag = os.environ.get("COG_L3_OUT_TAG", "").strip()
+
     results_dir = REPO / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     tmp_dir = results_dir / "_l3_partials"
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    logfile = REPO / "ops" / f"local_eval_{run_id}.log"
+    stem = f"{ckpt_run}_{out_tag}" if out_tag else run_id
+    logfile = REPO / "ops" / f"local_eval_{stem}.log"
     logfile.parent.mkdir(parents=True, exist_ok=True)
 
-    final_out = results_dir / f"eval_{task_tag}_L3_n{ndemos}_{step}.json"
+    if out_tag:
+        results_dir = results_dir / "diagnostics"
+        results_dir.mkdir(parents=True, exist_ok=True)
+        final_out = results_dir / f"eval_{task_tag}_L3_n{ndemos}_{step}_{out_tag}.json"
+    else:
+        final_out = results_dir / f"eval_{task_tag}_L3_n{ndemos}_{step}.json"
     if final_out.exists() and final_out.stat().st_size > 0:
         log(f"{final_out.name} already exists, nothing to do", logfile)
         return 0
 
-    ckpt = REPO / "experiments" / "runs" / run_id / "checkpoints" / step / "pretrained_model"
+    ckpt = REPO / "experiments" / "runs" / ckpt_run / "checkpoints" / step / "pretrained_model"
     weights = ckpt / "model.safetensors"
     if not weights.exists() or weights.stat().st_size == 0:
         log(f"MISSING or incomplete weights: {weights}", logfile)
         return 3
 
-    log(f"start {run_id} step={step} -- {N_VARIANTS} variants x {NUM_ENVS} envs (diagonal)", logfile)
+    log(f"start policy={ckpt_run} on {task_tag}_L3 eval step={step} -- "
+        f"{N_VARIANTS} variants x {NUM_ENVS} envs (diagonal)"
+        + (f" [DIAGNOSTIC {out_tag}]" if out_tag else ""), logfile)
 
     outcomes: list = []
     per_variant: dict[str, dict] = {}
@@ -121,7 +144,7 @@ def main() -> int:
     for v in range(N_VARIANTS):
         vkey = f"L3v{v:02d}"
         task = f"{gym_prefix}-{vkey}-IK-Rel-Visuomotor-v0"
-        part = tmp_dir / f"{run_id}_{step}_{vkey}.json"
+        part = tmp_dir / f"{stem}_{step}_{vkey}.json"
 
         if not part.exists() or part.stat().st_size == 0:
             if not wait_for_gpu(logfile):
