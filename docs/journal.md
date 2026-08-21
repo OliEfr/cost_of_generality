@@ -4475,6 +4475,28 @@ Corrected numbers (success AND raw object_over_drawer; raw stage latches are art
 - Timing: five T2 evals at 22-24 min each with the GPU otherwise free (vs 43 min measured shared
   on 2026-08-20) -- timings.md updated.
 
+### 2026-08-21 21:51 -- CLEAN RE-EVAL SWEEP LAUNCHED (user-authorised): 54 flat cells + D24 re-check, fixed harness
+
+User: "yes, rerun eval. use two slots if gpu permits. check hourly. if gpu later permits increase
+parallelism." Launched `scripts/ops/resweep_eval.py` in tmux `cog_resweep`: 56 evals (54 flat
+cells at 080000 + t1_L0_n25 at 040000/060000 to re-check D24), frozen protocol, fixed harness
+(t==0 phantom guard), --stages kept on for T2 cells. Outputs `results/eval_*_fixed.json`
+(originals untouched); resume-safe (skips existing outputs).
+
+Parallelism is admission-controlled rather than a fixed slot count: a new eval starts only when
+free VRAM >= 10 GB, starts staggered 5 min apart, hard cap 3 concurrent (3 x ~7 GB + margin;
+timings.md forbids more). With the foreign job resident this yields exactly 2 slots; the 3rd
+admits itself if the card empties -- which implements the "increase parallelism if gpu permits"
+directive without ever squeezing the foreign job (rule 2). Per-job 150-min kill timeout;
+per-job logs `ops/resweep/`. Watcher + hourly cron armed (rule 10). Estimate ~7-9 h wall at 2
+slots (T2 23 min, T3 ~17, T1 ~9 per cell).
+
+Analysis planned on completion: recompute the corrected surface from the _fixed results, compare
+against the constraint-propagation point estimates in `experiments/stale_corrected_sr.csv`
+(a direct validation of that estimator), regenerate the corrected-vs-published figure with final
+numbers, re-derive N*/cost-ratio tables and the finding-4 (object-axis) verdict, update the
+report artifact, and re-judge D24 (last-checkpoint-only) on clean numbers.
+
 ### 2026-08-21 -- Generator-filter contamination audit CLOSED for all 12 cells: no cell's SR is credibly inflated by the generator's selection filter
 
 The 2026-08-20 concern -- "demos exist only where generation succeeded, so measured SR partly
