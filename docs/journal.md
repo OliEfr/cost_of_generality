@@ -4517,6 +4517,46 @@ explicitly (noted for the merge). Checkpoints reach the worktree via per-run sym
 so these re-runs exist for the stage funnel and the same-harness consistency check, not for
 correction. Watcher + the hourly cron (prompt updated to cover both phases) armed.
 
+### 2026-08-22 00:30 -- Clean-sweep anomaly investigated: old T2_L1 n50/n100 evals are untrustworthy; env-index correlation discovered; guard verified sound
+
+First four clean T2_L1 cells: n400 0.15, n200 0.18, n100 0.31, n50 0.32 -- n50/n100 EXCEED even
+their uncorrected published numbers (0.19/0.30), which phantom-removal alone cannot do. Worked
+through the hypothesis chain, each with a measurement:
+
+1. **Checkpoint mislabeling in the main checkout: DEAD.** Every run dir's embedded
+   `train_config.json` (written by the training job itself) matches its directory: job_name,
+   output_dir, dataset repo_id, and the exact episode list [0..n-1]. 0 mismatches across all 80
+   run dirs (`scripts/dev/` check, this session).
+2. **`terminated` also stale at t=0 (guard would censor carried envs as phantom failures): DEAD.**
+   Under censoring no env could be recorded success in consecutive batches; the clean runs show
+   consecutive successes in 7/9, 10/15, 16/24, 15/25 of opportunities, and post-success failures
+   are not frozen at t=0 (`scripts/dev/censoring_check.py`). The t==0 guard removes phantom
+   LABELS only; the fixed harness is sound.
+3. **What the censoring check exposed instead: success is strongly ENV-INDEX-correlated.** Envs
+   that truly succeeded in batch b-1 succeed again in batch b at 60-78%, against base rates of
+   15-32%. The 20 vectorized clones are not statistically identical episodes-across-batches --
+   plausible mechanism: per-env-origin differences (RTX lighting/shadows vary across clone
+   positions), or physics-state persistence across manual batch resets. CONSEQUENCES:
+   (a) the constraint-propagation POINT estimates in stale_corrected_sr.csv are biased LOW --
+   they exclude exactly the episodes that follow a success, i.e. the good envs. The hard BOUNDS
+   are logic-only and stand. (b) Success-by-env-index uniformity should be tested on the full
+   clean sweep (flag for completion analysis).
+4. **The old n50/n100 runs contradict their own hard bounds: the original evals of (at least)
+   these cells did not measure today's checkpoints.** Original n50's true SR is provably <= 0.14
+   (recorded 0.19 with proven phantoms; bound is assumption-free given the carryover identity);
+   the clean re-run on identical seeds, verified checkpoints, unchanged task code (last
+   drawer_stow change 530df00, before the original evals) measures 0.32. Old-vs-new episode
+   agreement is only 0.73-0.75 on these cells. Most plausible: the docs-dp-default-diff
+   worktree's checkpoint copies for some cells were stale/corrupt at original eval time (that
+   worktree's runs/ is gone -- moved, not copied -- so unverifiable by hash). n400/n200 old runs
+   are consistent with clean (within correction + nondeterminism), so the damage is per-cell,
+   not global.
+
+**Bottom line: published numbers are not reliably correctable post hoc -- for some cells the
+original measurement itself is wrong, beyond the carryover bug. The clean sweep (running) is the
+only authoritative surface.** The report's corrected-estimates table is hereby demoted to
+"bounds where the original run was sound"; final tables come from the sweep alone.
+
 ### 2026-08-21 -- Generator-filter contamination audit CLOSED for all 12 cells: no cell's SR is credibly inflated by the generator's selection filter
 
 The 2026-08-20 concern -- "demos exist only where generation succeeded, so measured SR partly
