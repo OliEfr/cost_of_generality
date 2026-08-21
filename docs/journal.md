@@ -4275,3 +4275,33 @@ rounded away.
 `curves.csv` is removed (superseded by `curves_T1.csv`). The cross-task summary generator, which had
 been living in a scratch directory, is now `src/cog/analysis/summary.py` -- a committed CSV whose
 generator is not in the repo is a number nobody can reproduce.
+
+## Consolidation, and a half-applied rename found on the way (2026-08-21)
+
+The whole study has been living on the branch `worktree-docs-dp-default-diff` in the worktree of the
+same name -- created 2026-08-19 22:25 for a small "DP default deltas" doc task, then simply never left.
+`main` is 46 commits behind and 0 ahead, i.e. a strict ancestor, so consolidation is a fast-forward.
+Pushed to origin; the fast-forward of `main` itself has to run in the main checkout.
+
+**Two run dirs exist under the same name in both checkouts, and they are NOT copies:**
+
+* `t1_L0_n25_s0` -- the main checkout's is 1,067,218,908 bytes and dated 08-19 20:34; this worktree's
+  is 1,112,015,188 bytes, dated 08-20 00:41. The difference is 44,796,280 bytes, one resnet18: the
+  main-checkout copy is the **pre-D26 SHARED-encoder** run, and the worktree's is the canonical
+  two-encoder cell. The registry has called that run `t1_L0_n25_s0_sharedenc` since D26 and records
+  the rename as done *on $WORK* -- **the local rename was never applied**, so a stale directory has
+  been sitting under a run_id the registry reassigned to a different architecture. Anything that had
+  resolved a checkpoint path by run_id in the main checkout would have silently scored the wrong
+  model. Renaming the local copy to match (`t1_L0_n25_s0_sharedenc`) is the fix; nothing is deleted.
+* `g4_smoke_L0_n25` -- the worktree holds only the 92 KB of git-tracked skeleton files (the weights
+  are gitignored and were never there); the main checkout holds the real 3.0 GB. Main's is the one to
+  keep.
+
+**Lesson worth generalising:** a rename recorded as done in the registry was only done on one of the
+two machines. "Renamed to X" in a note should say WHERE, and a size check is a cheap way to tell two
+architectures apart when the config files do not name the flag.
+
+81 GB of checkpoints (79 dirs, ~1.1 GB each, `training_state` already pruned to 32 KB total) are
+gitignored and live only in this worktree, so they must move into the main checkout BEFORE the
+worktree is removed. Both paths are on `/dev/nvme0n1p5`, so the move is a rename, not a copy.
+The only other copy is `$WORK/cog/checkpoints` on Leonardo, which dies with the grant on 2026-10-29.
