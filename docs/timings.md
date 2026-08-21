@@ -286,7 +286,8 @@ frames against T1's ~190 and h264 encode is single-core. T2_L3b will take about 
 | task | max_steps | measured | note |
 |---|---|---|---|
 | T1 cup_place | 600 | ~8 min | the figure earlier planning used |
-| T2 drawer_stow | 1200 | **43 min** | `t2_L0_n10`, 12:42:28 -> 13:25:27 |
+| T2 drawer_stow | 1200 | **43 min** | `t2_L0_n10`, 12:42:28 -> 13:25:27, GPU shared with L3b datagen |
+| T2 drawer_stow, GPU otherwise free | 1200 | **22-24 min** | five consecutive evals 2026-08-21 (t2fu queue); use this for exclusive-GPU planning |
 | T3 push_target | 800 | not yet measured | expect ~15-25 min |
 
 T2's episode limit is 2x T1's and its policy must be queried at every step of it, so the eval is

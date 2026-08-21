@@ -134,6 +134,15 @@ def main():
                 action = post(policy.select_action(batch))
             obs, _, terminated, truncated, _ = env.step(action.to(env.device))
             succ_now = env.termination_manager.get_term("success")
+            # BATCH-BOUNDARY CARRYOVER BUG (found 2026-08-21): on the FIRST step after a
+            # manual env.reset(), get_term("success") still returns the previous batch's
+            # value, so every env that genuinely succeeded in batch b-1 latches a phantom
+            # success at t=0 of batch b (verified: 20/20 batch transitions, phantom
+            # episodes never even lift the object). Genuine success at t=0 is physically
+            # impossible in all three tasks (shortest demo >= 150 steps), so drop it.
+            # All evals before this fix are affected; see docs/journal.md 2026-08-21.
+            if t == 0:
+                succ_now = torch.zeros_like(succ_now)
             if stages_on:
                 alive = ~finished  # same latching semantics as the official success
                 jpos = cab.data.joint_pos[:, jid]

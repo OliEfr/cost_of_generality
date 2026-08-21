@@ -4387,6 +4387,94 @@ the inversion is training-side (cleaner filtered demos / DR-augmentation), as th
 analysis concluded; if it drops to ~0.23 (L1's level), the eval-side explanations were wrongly
 excluded and the inversion story needs rework.
 
+# 2026-08-21 (night) -- EVAL HARNESS BUG: batch-boundary success carryover inflates EVERY multi-batch SR
+
+Found via the stage instrumentation's first-latch timestamps: roughly half of all recorded
+successes had t_success = 0 -- success on the first policy step after a batch reset, which is
+physically impossible (the drawer starts closed; the shortest demo in any task is >= 150 steps).
+
+**Mechanism, established empirically (scripts/dev/t2_t0_artifact_check.py, batch_pattern_check.py):**
+on the first `env.step()` after the manual between-batch `env.reset(seed=...)`,
+`termination_manager.get_term("success")` still returns the PREVIOUS batch's value. The official
+latch `success |= succ_now & ~finished` therefore records a phantom success at t=0 of batch b for
+every env that genuinely succeeded in batch b-1. Evidence, all from data already on disk:
+1. Zeros never occur in batch 0 (nothing to carry): 0/60+ across five stage-instrumented runs.
+2. Exact carryover identity: phantom count in batch b == true-success count in batch b-1 in
+   20 of 20 batch transitions (one off by one).
+3. Phantom episodes never lift the object or bring it over the drawer (scene-state reads are
+   fresh; the stale read is confined to the termination buffer at t=0 -- min genuine
+   t_success across runs is 606).
+4. The published per-episode outcomes show the predicted signature everywhere: batch-0 SR is the
+   lowest batch in 36 of 38 non-saturated flat cells (sign test p = 6e-10; mean rest-minus-b0
+   gap +0.20). L3 cells ran ONE batch per variant in fresh processes and are therefore CLEAN.
+
+**Scope:** every multi-batch eval ever run with rollout_eval.py -- all 54 flat cells of the
+published study, the D24 checkpoint comparison, and this session's five follow-up evals (whose
+stage data exposed it). Recorded SR = P(true(b) or true(b-1)), so inflation is largest exactly
+where SR is mid/low -- the scientifically interesting cells.
+
+**Fix:** rollout_eval.py now zeroes succ_now at t == 0 (genuine t=0 success is impossible in all
+three tasks). One line; commit in this worktree.
+
+**Post-hoc correction without re-running** (scripts/dev/stale_correction.py,
+experiments/stale_corrected_sr.csv): the mechanism gives recorded(b,e) = true(b,e) OR true(b-1,e),
+which constraint-propagates per env chain: recorded=0 forces both terms false (and identifies the
+previous episode); recorded=1 after a known-false resolves true. Yields exact per-episode truth for
+~85-95% of episodes in low/mid-SR cells, plus hard bounds [all-unknowns-false, all-unknowns-true]
+everywhere. Validated on the five stage runs: truth (success AND raw object_over_drawer) inside the
+bounds 5/5. Point estimates are unreliable for near-saturated cells (few identifiable episodes) --
+those cells are barely inflated in absolute terms anyway.
+
+**Corrected headline movements (point estimates, n_identified 82-99 unless noted):**
+- T2 cliff DEEPENS: L1 0.08-0.15 across N (published 0.12-0.30); L2 0.06-0.21 (published
+  0.11-0.41). L3b unchanged (clean). The "generality cliff" finding strengthens.
+- T1/T3 mid-curve cells drop hard: T1_L1_n25 0.67->0.38, T1_L2_n50 0.75->0.43, T3_L2_n25
+  0.63->0.34. All N*(50/80/90%) thresholds move right; every cost ratio needs recomputation.
+- LEVEL ORDERINGS involving L3 arms flip in places, because flat cells were inflated and L3 cells
+  were not: e.g. T1 L3b at N=100 is 0.70 (clean) vs L2 corrected ~0.50 -- published order said L2
+  0.82 > L3b 0.70. Finding 4 ("the object axis dominates the cost") is now in doubt and must be
+  re-derived from corrected numbers.
+- Saturated cells (>=0.95): inflation bounded by (1-p)^2 arithmetic; conclusions unaffected.
+
+**Decision needed (user):** a clean re-eval of the 54 flat cells with the fixed harness costs
+roughly 15 h serial on the 4090 (T2 ~23 min/cell measured tonight exclusive, T1 ~9, T3 ~17), ~8-10 h
+with two slots. The constraint-propagation numbers are defensible for the paper's qualitative
+claims, but exact N*/cost-ratio tables should come from the re-run. Not launched unasked.
+
+### The T2 follow-up results themselves (all five evals completed, ~23 min each exclusive)
+
+Corrected numbers (success AND raw object_over_drawer; raw stage latches are artifact-free):
+
+| policy -> eval set | opened | lifted | over drawer | stowed (corr) | recorded (buggy) |
+|---|---|---|---|---|---|
+| L0 -> L0 | 0.90 | 0.92 | 0.87 | 0.86 | 0.94 |
+| L1 -> L1 | 0.87 | 0.19 | 0.17 | 0.17 | 0.26 |
+| L2 -> L1 (cross) | 0.85 | 0.29 | 0.27 | 0.27 | 0.43 |
+| L1 -> L2 (cross) | 0.79 | 0.26 | 0.22 | 0.22 | 0.37 |
+| L2 -> L2 | 0.87 | 0.33 | 0.29 | 0.29 | 0.47 |
+
+- **Cross-eval verdict (the D-question from this afternoon): the L2>L1 inversion is a POLICY
+  effect, confirmed on corrected data.** 2x2 decomposition: policy effect +10/+7 pts at fixed
+  set, set effect +5/+2 at fixed policy. Episode-paired McNemar on recorded outcomes (identical
+  object poses): pooled policy effect p=0.0045; pooled set effect p=0.11. The
+  cleaner-survivor-demos explanation stands; the small ns set effect hints L1's fixed nominal
+  cabinet is marginally harder than L2's randomized average.
+- **Stage funnel: the drawer phase is essentially solved at every level** (0.79-0.90 opened,
+  median t_open ~155 steps regardless of policy), **and stowing is free once the object is over
+  the drawer (P(stow|over) = 1.00 in all five runs, 107/107).** The single bottleneck is
+  open->lift: 1.00 (L0) vs 0.38 (L2) vs 0.22 (L1). T2's generality cliff is entirely "grasp the
+  object mid-rollout after ~300 steps of accumulated drift" -- the same pick that works at ~0.95+
+  in T1 at matched level/N. This localises the compounding-error mechanism.
+- **"Shorten the task?"** (user question): splitting at the drawer would work as measurement --
+  an open-drawer-start variant isolates the true bottleneck and cuts ~25% of horizon -- but the
+  funnel predicts its SR at ~P(lift|open) = 0.2-0.4, so shortening alone does not rescue T2;
+  the pick-under-drift is the expensive part, not the drawer.
+- Determinism note: same-seed re-runs agree with published outcomes on only ~83-84% of episodes
+  (recorded-vs-recorded); net SR drift +3/+6 pts. Per-episode nondeterminism is real; McNemar
+  pairings are noisy but unbiased.
+- Timing: five T2 evals at 22-24 min each with the GPU otherwise free (vs 43 min measured shared
+  on 2026-08-20) -- timings.md updated.
+
 ### 2026-08-21 -- Generator-filter contamination audit CLOSED for all 12 cells: no cell's SR is credibly inflated by the generator's selection filter
 
 The 2026-08-20 concern -- "demos exist only where generation succeeded, so measured SR partly
