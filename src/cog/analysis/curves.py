@@ -30,11 +30,42 @@ import re
 # pre-migration T1 names still parse, defaulting to T1. Without the tag the greedy level group
 # would swallow "T1_L0" as a single level name and quietly mix tasks into one table.
 # The level may carry a single-letter suffix: "L3b" is the L3 arm regenerated with per-variant seeds
-# and the corrected object palette (D27/D28), which must stay a SEPARATE row from the original "L3"
-# rather than being merged into it -- the two differ in pose diversity, which is the whole point.
+# and the corrected object palette (D27/D28). Parsing keeps it a SEPARATE key from the original "L3"
+# -- the two differ in pose diversity, which is the whole point -- and the reporting rename happens
+# later, in canonical(), so the file layer never loses which dataset a number came from.
 FNAME = re.compile(
     r"eval_(?:(?P<task>T\d)_)?(?P<level>L\d[a-z]?)_n(?P<n>\d+)_(?P<step>\d+)\.json$")
 TARGETS = (0.50, 0.80, 0.90)
+
+# Reporting names (D29, 2026-08-21). "L3b" is the L3 arm regenerated with per-variant seeds and the
+# corrected object palette (D27/D28). It is THE L3 of the study, so it is REPORTED as "L3".
+# The original "L3" files keep their own name on disk -- they are the pose-redundancy ablation and
+# their provenance has to stay traceable -- but as a generality LEVEL they are deprecated: those
+# datasets hold only 43-48 of a nominal 400 unique initial poses, so their curve measures a data bug,
+# not a breadth of distribution. No reported table, CSV or figure may contain both.
+REPORT_AS = {"L3b": "L3"}
+DEPRECATED_LEVELS = {"L3"}
+
+
+def canonical(records: list[dict], keep_deprecated: bool = False) -> list[dict]:
+    """Apply the study's reporting names.
+
+    Default: drop the deprecated levels, then rename what survives (L3b -> L3). The drop is decided
+    on the RAW name and happens FIRST, so the rename cannot collide with the name it takes over.
+
+    keep_deprecated=True returns every record under its raw name instead -- the ablation view, where
+    "L3" and "L3b" must stay distinguishable. It deliberately does NOT rename, because renaming
+    while keeping both would merge two different datasets into one cell.
+    """
+    if keep_deprecated:
+        return [dict(r, level_raw=r["level"]) for r in records]
+    out = []
+    for r in records:
+        raw = r["level"]
+        if raw in DEPRECATED_LEVELS:
+            continue
+        out.append(dict(r, level=REPORT_AS.get(raw, raw), level_raw=raw))
+    return out
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -194,14 +225,22 @@ def cost_ratio(a: str, b: str) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
-    ap.add_argument("--out", default="experiments/curves.csv")
+    # Default derived from --task below: a fixed "curves.csv" default meant three tasks overwrote
+    # one file, and the file that survived carried no clue which task it held.
+    ap.add_argument("--out", default=None)
     ap.add_argument("--task", default="T1",
                     help="which task's cells to analyse (T1/T2/T3). Tasks are NEVER pooled: each "
                          "has its own levels and its own L0 baseline, so a shared table would "
                          "compute cost ratios across unrelated tasks.")
+    ap.add_argument("--include-deprecated", action="store_true",
+                    help="ablation view: keep the deprecated pose-redundant L3 as its own row under "
+                         "its raw name, instead of reporting L3b as L3 (see DEPRECATED_LEVELS).")
     args = ap.parse_args()
+    out_path = args.out or f"experiments/curves_{args.task}.csv"
 
-    records = [r for r in load(pathlib.Path(args.results)) if r["task_id"] == args.task]
+    records = canonical([r for r in load(pathlib.Path(args.results))
+                         if r["task_id"] == args.task],
+                        keep_deprecated=args.include_deprecated)
     if not records:
         print(f"no eval_*.json for task {args.task} under {args.results}")
         return
@@ -210,11 +249,11 @@ def main() -> None:
     print(f"{len(records)} eval files -> {len(cells)} cells")
 
     rows = sorted(cells.values(), key=lambda r: (r["level"], r["n_demos"]))
-    with open(args.out, "w", newline="") as fh:
+    with open(out_path, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
-    print(f"wrote {args.out}")
+    print(f"wrote {out_path}")
 
     by_level: dict[str, list[tuple[int, float]]] = {}
     by_level_last: dict[str, list[tuple[int, float]]] = {}
