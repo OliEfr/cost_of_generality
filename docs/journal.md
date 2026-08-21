@@ -4038,3 +4038,61 @@ cell, and a fixed copy is staged to swap in when it stops.
 
 Fix: replace `${#FAILED[@]}` with a plain integer counter incremented alongside the array. Verified
 the fixed driver now logs `round 1: 0/6 T2 L3b cells evaluated, 0 failed` and keeps polling.
+
+### 2026-08-21 04:40 -- T2's L1 plateau is NOT a coverage problem; but the fixed step budget is not equal across tasks
+
+**T2 L1 is complete and plateaus: 0.12 / 0.22 / 0.19 / 0.30 / 0.25 / 0.23** across N=10-400. Flat from
+N=25, so 8x more data buys nothing, and it never reaches 50 % -- meaning every T2 L1 cost ratio would
+be "not reached". Given the shape is exactly what the D27 artifact produced on T1, it needed testing
+rather than reporting.
+
+**Not D27:** T2_L1 holds 400 unique poses, redundancy 1.0.
+
+**Not generation coverage either.** `gen_bias` flags T2_L1's yaw as skewed, and the direction is
+informative: retained attempts have yaw sd 0.392 against the rejected attempts' 0.509, i.e.
+generation succeeded preferentially at SMALL |yaw|. That predicts the policy should fail at large
+|yaw|. New tool `cog.analysis.success_vs_pose` joins the frozen eval-set snapshot (which commits
+per-episode initial poses) to the per-episode outcomes and tests it directly:
+
+| \|yaw\| bin (equal-count over eval) | n | SR |
+|---|---|---|
+| [0.001, 0.166) | 25 | 0.280 |
+| [0.166, 0.365) | 25 | 0.120 |
+| [0.365, 0.582) | 25 | 0.280 |
+| [0.582, 0.781) | 25 | 0.240 |
+
+Flat. And the demos cover the tested range (demo \|yaw\| max 0.784 vs eval max 0.781; demo mean 0.339
+vs eval 0.386). **The prediction is refuted: T2 L1's failures are spread uniformly across yaw, so the
+generation skew is real but immaterial to the policy.** Worth recording as a negative result -- it
+closes off the explanation the whole gen_bias apparatus was built to test, for this level.
+
+**What it does look like: the fixed 80k-step budget is not equal across tasks.** At the same 80k steps
+and 5.12M samples (L1, N=400):
+
+| task | epochs over its own data | mean episode length | final train loss |
+|---|---|---|---|
+| T1 cup_place | **67.9** | ~188 frames | 0.0748 |
+| T3 push_target | **40.1** | ~310 | 0.0655 |
+| T2 drawer_stow | **18.4** | ~680 | 0.0412 |
+
+T2 gets **3.7x fewer passes over its demonstrations than T1** at identical step count, purely because
+its episodes are 3.6x longer. The protocol (fixed 80k steps, one seed, identical hyperparameters --
+user directive, frozen after G5a) equalises *gradient steps*, not *epochs*, and the tasks differ ~3.7x
+in frames per demo.
+
+Scope of the damage, stated precisely:
+* **Within-task cost ratios are unaffected.** Episode length is essentially constant across a task's
+  levels, so L0/L1/L2/L3b for a given task all get the same epochs at the same N. T1's headline table
+  (8.31x / 9.38x / 11.56x) stands, and T2's and T3's will be internally valid too.
+* **Cross-task SR comparisons are confounded.** "T2 is harder than T1" currently conflates task
+  difficulty with 3.7x less training per demo. Any statement comparing absolute SR between tasks must
+  either report epochs alongside or be dropped.
+
+Two possible responses, both the user's call: report it as a stated limitation with the epoch table,
+or retrain T2 at matched epochs (~300k steps, ~3.7x, roughly 100 GPU-h for its 24 cells -- affordable
+against the ~190 GPU-h spent and the 2,200 ceiling) which would break the frozen-protocol rule that
+every cell trains for exactly 80k steps. I am not doing the latter unasked.
+
+Note also that final train loss runs *opposite* to epochs (T2 lowest at 0.041 despite fewest passes),
+which is the third time this session that loss magnitude has proved incomparable across datasets --
+it tracks the conditional entropy of the action given the observation, not fit quality.
