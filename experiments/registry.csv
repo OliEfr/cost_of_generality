@@ -62,16 +62,16 @@ t3_L0_n200_s0,push_target,L0,-,200,local/T3_L0,53195375,done,,,1.0,1.0,L0,100,1.
 t3_L0_n400_s0,push_target,L0,-,400,local/T3_L0,53195376,done,,,1.0,1.0,L0,100,2.14,"launched by launch_matrix.py | eval 080000 only (D24); 100/100 successes; Wilson95 [0.963,1.000]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
 t3_L1_n10_s0,push_target,L1,-,10,local/T3_L1,53195378,done,,,0.58,0.58,L1,100,2.25,"launched by launch_matrix.py | eval 080000 only (D24); 58/100 successes; Wilson95 [0.482,0.672]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
 t3_L1_n25_s0,push_target,L1,-,25,local/T3_L1,53195380,done,,,0.81,0.81,L1,100,2.0,"launched by launch_matrix.py | eval 080000 only (D24); 81/100 successes; Wilson95 [0.722,0.875]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
-t3_L1_n50_s0,push_target,L1,-,50,local/T3_L1,53195381,submitted,,,,,L1,,2.01,launched by launch_matrix.py
-t3_L1_n100_s0,push_target,L1,-,100,local/T3_L1,53195382,submitted,,,,,L1,,1.92,launched by launch_matrix.py
-t3_L1_n200_s0,push_target,L1,-,200,local/T3_L1,53195383,submitted,,,,,L1,,1.99,launched by launch_matrix.py
-t3_L1_n400_s0,push_target,L1,-,400,local/T3_L1,53195384,submitted,,,,,L1,,2.04,launched by launch_matrix.py
-t3_L2_n10_s0,push_target,L2,-,10,local/T3_L2,53195385,submitted,,,,,L2,,2.31,launched by launch_matrix.py
-t3_L2_n25_s0,push_target,L2,-,25,local/T3_L2,53195386,submitted,,,,,L2,,2.07,launched by launch_matrix.py
-t3_L2_n50_s0,push_target,L2,-,50,local/T3_L2,53195387,submitted,,,,,L2,,1.91,launched by launch_matrix.py
-t3_L2_n100_s0,push_target,L2,-,100,local/T3_L2,53195388,submitted,,,,,L2,,1.95,launched by launch_matrix.py
-t3_L2_n200_s0,push_target,L2,-,200,local/T3_L2,53195389,submitted,,,,,L2,,2.12,launched by launch_matrix.py
-t3_L2_n400_s0,push_target,L2,-,400,local/T3_L2,53195390,submitted,,,,,L2,,2.17,launched by launch_matrix.py
+t3_L1_n50_s0,push_target,L1,-,50,local/T3_L1,53195381,done,,,0.95,0.95,L1,100,2.01,"launched by launch_matrix.py | eval 080000 only (D24); 95/100 successes; Wilson95 [0.888,0.978]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L1_n100_s0,push_target,L1,-,100,local/T3_L1,53195382,done,,,0.97,0.97,L1,100,1.92,"launched by launch_matrix.py | eval 080000 only (D24); 97/100 successes; Wilson95 [0.915,0.990]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L1_n200_s0,push_target,L1,-,200,local/T3_L1,53195383,done,,,0.98,0.98,L1,100,1.99,"launched by launch_matrix.py | eval 080000 only (D24); 98/100 successes; Wilson95 [0.930,0.994]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L1_n400_s0,push_target,L1,-,400,local/T3_L1,53195384,done,,,0.96,0.96,L1,100,2.04,"launched by launch_matrix.py | eval 080000 only (D24); 96/100 successes; Wilson95 [0.902,0.984]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L2_n10_s0,push_target,L2,-,10,local/T3_L2,53195385,done,,,0.41,0.41,L2,100,2.31,"launched by launch_matrix.py | eval 080000 only (D24); 41/100 successes; Wilson95 [0.319,0.508]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L2_n25_s0,push_target,L2,-,25,local/T3_L2,53195386,done,,,0.63,0.63,L2,100,2.07,"launched by launch_matrix.py | eval 080000 only (D24); 63/100 successes; Wilson95 [0.532,0.718]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L2_n50_s0,push_target,L2,-,50,local/T3_L2,53195387,done,,,0.88,0.88,L2,100,1.91,"launched by launch_matrix.py | eval 080000 only (D24); 88/100 successes; Wilson95 [0.802,0.930]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L2_n100_s0,push_target,L2,-,100,local/T3_L2,53195388,done,,,0.94,0.94,L2,100,1.95,"launched by launch_matrix.py | eval 080000 only (D24); 94/100 successes; Wilson95 [0.875,0.972]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L2_n200_s0,push_target,L2,-,200,local/T3_L2,53195389,done,,,0.98,0.98,L2,100,2.12,"launched by launch_matrix.py | eval 080000 only (D24); 98/100 successes; Wilson95 [0.930,0.994]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
+t3_L2_n400_s0,push_target,L2,-,400,local/T3_L2,53195390,done,,,0.95,0.95,L2,100,2.17,"launched by launch_matrix.py | eval 080000 only (D24); 95/100 successes; Wilson95 [0.888,0.978]; num_inference_steps=10; sep_rgb_encoder_per_camera=true (D26)"
 t3_L3_n10_s0,push_target,L3,-,10,local/T3_L3,53195391,superseded,,,,,L3,,1.1,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
 t3_L3_n25_s0,push_target,L3,-,25,local/T3_L3,53195392,superseded,,,,,L3,,1.1,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm
 t3_L3_n50_s0,push_target,L3,-,50,local/T3_L3,53195393,superseded,,,,,L3,,1.1,launched by launch_matrix.py | cancelled 2026-08-20: trained on the ~9x pose-redundant L3 dataset (D27) and would need the pre-D28 object palette to evaluate; superseded by the L3b arm

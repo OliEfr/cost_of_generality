@@ -158,6 +158,39 @@ def n_star(points: list[tuple[int, float]], target: float,
     return f">{pts[-1][0]}" if pts else "n/a"
 
 
+def cost_ratio(a: str, b: str) -> str:
+    """Ratio of two N* strings, propagating their bounds instead of giving up.
+
+    N* comes back as "57" (measured crossing), "<=10" (already above target at the smallest N on the
+    grid) or ">400" (never reached inside it). Requiring both to be plain integers threw away real
+    information: T3's L0 saturates below N=10, so every T3 ratio printed n/a even though the
+    numerators are measured. The bounds compose in one direction only --
+      * numerator ">A" or denominator "<=B" both make the ratio a LOWER bound,
+      * numerator "<=A" or denominator ">B" would make it an upper bound, which is not informative
+        here (it would read "the cost is at most X" for a level whose cost we could not measure),
+    so those are reported as n/a rather than dressed up.
+    """
+    def parse(s: str) -> tuple[str, float] | None:
+        s = s.strip()
+        if s.isdigit():
+            return ("=", float(s))
+        if s.startswith("<=") and s[2:].isdigit():
+            return ("<=", float(s[2:]))
+        if s.startswith(">") and s[1:].isdigit():
+            return (">", float(s[1:]))
+        return None
+
+    pa, pb = parse(a), parse(b)
+    if pa is None or pb is None or pb[1] <= 0:
+        return "n/a"
+    ka, va = pa
+    kb, vb = pb
+    if ka == "<=" or kb == ">":
+        return "n/a"                     # would be an upper bound; not the quantity of interest
+    lower = ka == ">" or kb == "<="
+    return f"{'>=' if lower else ''}{va / vb:.2f}x"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="results")
@@ -221,15 +254,11 @@ def main() -> None:
         print(f"  {level:6} best-of-3 {b:>8}   last {l:>8}")
 
     base = "L0" if "L0" in stars else sorted(stars)[0]
-    print(f"\ncost ratios vs {base} (numeric crossings only):")
+    print(f"\ncost ratios vs {base} (>= means a bound, not a point estimate):")
     for level in sorted(stars):
         parts = []
         for t in TARGETS:
-            a, b = stars[level][t], stars[base][t]
-            if a.isdigit() and b.isdigit() and int(b) > 0:
-                parts.append(f"{int(t*100)}%: {int(a)/int(b):.2f}x")
-            else:
-                parts.append(f"{int(t*100)}%: n/a")
+            parts.append(f"{int(t * 100)}%: {cost_ratio(stars[level][t], stars[base][t])}")
         print(f"  {level:6} " + "  ".join(parts))
 
 

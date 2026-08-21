@@ -4146,3 +4146,77 @@ brittle expert, and at L1 the retained attempts are yaw-narrower than the reject
 skew is measurable but not the mechanism. (d) Whether a longer schedule would clear the cliff is
 untested; the honest statement is that it is unresolved at the frozen budget, and testing it needs a
 protocol exception the user has not authorised.
+
+# 2026-08-21 -- STUDY COMPLETE: all 78 cells evaluated, cross-task synthesis
+
+Every cell of all three tasks is trained and evaluated: 78 result files (T1 30 including its
+pose-redundant L3 ablation, T2 24, T3 24). Total cost **188.1 GPU-h over 97 cells**, about 8.5 % of
+the 2,200 h ceiling, of which 13.3 h was the waste from D27's cancelled cells.
+
+## The headline table
+
+`experiments/cost_of_generality_summary.csv`; per-task detail in `experiments/curves_T{1,2,3}.csv`.
+
+| task | level | SR@10 | SR@100 | SR@400 | N*(50%) | N*(80%) | N*(90%) | cost vs L0 @90% |
+|---|---|---|---|---|---|---|---|---|
+| cup_place | L0 | 0.85 | 1.00 | 0.99 | <=10 | <=10 | 16 | 1.00x |
+| cup_place | L1 | 0.42 | 0.86 | 0.99 | 15 | 45 | 133 | 8.31x |
+| cup_place | L2 | 0.31 | 0.82 | 1.00 | 20 | 86 | 150 | 9.38x |
+| cup_place | **L3b** | 0.09 | 0.70 | 0.94 | 57 | 143 | **185** | **11.56x** |
+| drawer_stow | L0 | 0.65 | 0.90 | 0.96 | <=10 | 18 | 23 | 1.00x |
+| drawer_stow | L1 | 0.12 | 0.30 | 0.23 | >400 | >400 | >400 | >=17.4x |
+| drawer_stow | L2 | 0.17 | 0.32 | 0.41 | >400 | >400 | >400 | >=17.4x |
+| drawer_stow | **L3b** | 0.04 | 0.11 | 0.14 | >400 | >400 | >400 | >=17.4x |
+| push_target | L0 | 0.99 | 1.00 | 1.00 | <=10 | <=10 | <=10 | -- |
+| push_target | L1 | 0.58 | 0.97 | 0.96 | <=10 | 24 | 41 | >=4.1x |
+| push_target | L2 | 0.41 | 0.94 | 0.95 | 16 | 42 | 67 | >=6.7x |
+| push_target | **L3b** | 0.30 | 0.78 | 0.84 | 24 | 114 | **186** | >=18.6x |
+
+## Four findings
+
+**1. Generality has a monotone, large demonstration cost in every task.** Reaching 90 % costs 8.3x
+more demos under pose randomisation and 11.6x once the object varies (cup_place); 4.1x and 18.6x
+respectively (push_target). No task escapes it and no level is free.
+
+**2. The absolute cost of full generality is nearly identical on the two tractable tasks -- and the
+ratio is not.** cup_place needs **185** demos for L3b at 90 %, push_target **186**. Their ratios differ
+almost threefold (11.6x vs >=18.6x) purely because push_target's fixed-scene baseline is easier
+(<=10 demos vs 16). **So the ratio is a statement about the baseline as much as about generality, and
+absolute N* is the more robust primary quantity.** Cost ratios should be reported with their
+denominators visible; ours are in the table above for exactly that reason.
+
+**3. On a long-horizon task, modest generality is unaffordable inside 400 demos.** drawer_stow goes
+0.96 -> 0.23 the moment one object's pose randomises, and 40x more data barely moves it: every level
+above L0 has N* > 400 at every target. Not undertraining (all cells converged at 80k, and L0 succeeds
+on the same 18.4 epochs) and not generation coverage (`success_vs_pose` found failures spread
+uniformly across the skewed axis). The evidence points to compounding error over ~680 steps in a
+four-phase task, with no recovery behaviour in the demos because Mimic keeps only successes. **The
+cost of generality is not merely larger for harder tasks; it can be prohibitive.**
+
+**4. The randomisation axes are not additive, and the object axis dominates.** Adding goal
+randomisation on top of pose randomisation costs little (cup_place 8.31x -> 9.38x; push_target
+>=4.1x -> >=6.7x), while adding object variation costs the most (-> 11.56x and >=18.6x). Whatever the
+policy struggles with, it is not the number of randomised dimensions but which ones.
+
+## What the study also produced, beyond the surface
+
+* A measured demonstrator-degradation curve per task (generation SR by level: cup_place flat at
+  85-88 %, push_target 88-98 %, drawer_stow **54.9 / 44.2 / 30.6 / 29.7 %**), which is itself a finding:
+  on drawer_stow the *data collector* degrades with generality, so part of any naive cost measurement
+  belongs to the pipeline rather than the policy.
+* A reusable bias-audit tool (`cog.analysis.gen_bias`) that compares retained against rejected
+  generation attempts, plus `cog.analysis.success_vs_pose` which joins frozen eval-set initial states
+  to per-episode outcomes. The second refuted the coverage hypothesis for drawer_stow L1 -- a negative
+  result that mattered.
+* A pose-diversity ablation for free: cup_place's original L3 arm (43 unique poses over 400 demos)
+  against its corrected arm (401), same demo count. 0.445 vs 0.945 at N=400. **Pose diversity, not
+  demo count, is what the demo axis has to measure** -- the single most expensive lesson of the study.
+
+## Standing caveats, all recorded
+
+One seed per cell (visible as push_target L3b's non-monotone tail, 0.920 at N=200 against 0.840 at
+N=400). Fixed 80k steps gives drawer_stow 3.7x fewer epochs than cup_place, so absolute SR is not
+comparable across tasks even though within-task ratios are unaffected. The L3 object axis is mostly
+appearance: the two cylinder sizes differ by 4 mm of radius. And whether a longer schedule would clear
+drawer_stow's cliff is untested -- it needs a protocol exception, and is the one experiment worth
+~8 GPU-h if that claim is to be airtight.
