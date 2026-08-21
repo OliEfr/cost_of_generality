@@ -738,3 +738,56 @@ specifically orange and magenta should behave like red/blue/purple rather than l
 they replace. (b) If a cliff persists on some other colour, the invariant is not the whole story and
 the marker itself should be reconsidered (the user's preference is to leave it, so that would be a
 discussion, not a unilateral change).
+
+## D29 -- 2026-08-21 (USER DIRECTIVE): the regenerated arm is reported as "L3"; the original L3 is deprecated and excluded from all reporting
+
+**Directive.** "leave all L3* out of reporting [name as deprecated] and report L3b as L3, because
+this is the current version."
+
+**Decision.** There are two naming layers, and they are deliberately not the same:
+
+| layer | name | why |
+|---|---|---|
+| on disk / run ledger | `L3b` for the regenerated arm (datasets, LeRobot dirs, run_ids `t1_L3b_n100_s0`, `results/eval_T1_L3b_*.json`) and `L3` for the original | provenance. A number must stay traceable to the artifact it came from, and renaming files would break every existing registry row, checkpoint path and eval filename |
+| reported | `L3` is the regenerated arm; the original appears nowhere | the design has ONE L3 level. Two names for it in a paper implies two levels |
+
+**Why the original L3 is deprecated rather than reported as a second variant.** Its datasets held
+43-48 unique initial poses against a nominal 400 (D27), so its SR(N) curve measures a seeding bug,
+not a breadth of distribution. Printing it beside the corrected arm invites exactly the wrong reading
+-- that the study measured two kinds of object generality -- when what differs is data correctness.
+T2's and T3's original L3 arms were cancelled before evaluation and have no results at all; T1's was
+fully evaluated and is kept as a labelled **ablation**: at an identical 400 demos, 43 unique poses
+give SR 0.445 and N*(90 %) > 400, where 400 unique poses give 0.945 and 185.
+
+**Implementation -- one function, not a convention.** A convention would have been re-implemented per
+script and would have drifted. `cog.analysis.curves.canonical()` owns the mapping
+(`REPORT_AS = {"L3b": "L3"}`, `DEPRECATED_LEVELS = {"L3"}`) and every reporting path goes through it:
+`curves` (per-task tables), the new `summary` (cross-task table), `figures` (both figure families) and
+`gen_bias_plots` (which keys datasets by stem, so it maps the other way: reported `L3` -> stem `L3b`).
+Two properties, because both were bugs waiting to happen:
+
+1. **The drop happens before the rename.** Deciding deprecation on the raw name first means
+   `L3b -> L3` cannot collide with the `L3` it takes over. Renaming first would have merged two
+   different datasets into one cell -- silently, since both have the same six N values.
+2. **`--include-deprecated` does not rename at all.** In the ablation view both arms must stay
+   distinguishable, so that flag returns raw names. There is no mode in which two datasets share a
+   reported name.
+
+**A bug this exposed.** `figures.fig_gen_sr` aggregated `gen_stats.csv` by its `level` column, and
+that CSV keys the two arms differently: the original has `level="L3"` with the variant in its own
+column, while the regenerated arm encodes the variant in the level (`L3bv07`). So the published
+generation-SR figure was plotting the *deprecated* L3 (87.9 / 32.7 / 88.5 %) while silently dropping
+all thirty L3b rows for not matching a known level name. Fixed by stripping the `v\d\d` suffix before
+applying the same mapping; the figure and `paper/limitations.md` now read 86.6 / 29.7 / 92.2 %, which
+agrees with the independent HDF5-level audit in `experiments/gen_bias.csv`. **Lesson: an identifier
+that is sometimes a level and sometimes level+variant is not a key.** A future arm must carry its
+variant in the `variant` column only.
+
+**Also changed.** `cog.analysis.curves --out` no longer defaults to `experiments/curves.csv`; it
+derives `experiments/curves_<TASK>.csv` from `--task`, because the fixed default let three tasks
+overwrite one file whose surviving contents named no task. The stale `experiments/curves.csv` (a T1
+snapshot predating the regeneration) is removed, superseded by `curves_T1.csv`.
+
+**VERIFY:** any new reporting script must call `canonical()` rather than filtering levels itself. If a
+second corrected arm ever appears (an `L2b`, say), the only edit should be to `REPORT_AS` /
+`DEPRECATED_LEVELS` -- if it is not, the mapping has leaked out of that module again.

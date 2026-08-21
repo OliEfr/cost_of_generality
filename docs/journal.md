@@ -4214,9 +4214,64 @@ policy struggles with, it is not the number of randomised dimensions but which o
 
 ## Standing caveats, all recorded
 
-One seed per cell (visible as push_target L3b's non-monotone tail, 0.920 at N=200 against 0.840 at
+One seed per cell (visible as push_target L3's non-monotone tail, 0.920 at N=200 against 0.840 at
 N=400). Fixed 80k steps gives drawer_stow 3.7x fewer epochs than cup_place, so absolute SR is not
 comparable across tasks even though within-task ratios are unaffected. The L3 object axis is mostly
 appearance: the two cylinder sizes differ by 4 mm of radius. And whether a longer schedule would clear
 drawer_stow's cliff is untested -- it needs a protocol exception, and is the one experiment worth
 ~8 GPU-h if that claim is to be airtight.
+
+# 2026-08-21 -- reporting names settled (L3b IS L3), per-task curve figures, and a published figure that had been plotting the deprecated arm
+
+**User directive:** "leave all L3* out of reporting [name as deprecated] and report L3b as L3, because
+this is the current version. generate line plots for all three tasks (one per task with 4 lines each)".
+
+**What the rename is and is not.** Files keep their names (`L3b` datasets, `t1_L3b_n100_s0` run ids,
+`eval_T1_L3b_*.json`); only the reporting layer renames, via one function --
+`cog.analysis.curves.canonical()` -- so a reported number stays traceable to the artifact it came
+from. Rationale, the disk/report split, and the two ordering properties that keep it safe are in
+**D29**. The registry now says `REPORTED AS L3 (D29)` on all 18 L3b rows and
+`DEPRECATED as a reported level` on T1's six original-L3 rows (T2/T3's were already `superseded`).
+
+**Regenerated, all from the eval JSONs, no hand-typed numbers:** `experiments/curves_T{1,2,3}.csv`
+(24 cells each, levels L0-L3), `experiments/cost_of_generality_summary.csv` (12 rows), and the
+figures. Headline N* values are unchanged by the rename, as they must be: T1 16/133/150/185,
+T2 23/>400/>400/>400, T3 <=10/41/67/186.
+
+**New figures `paper/figures/fig_sr_vs_n_T{1,2,3}.png`** -- one per task, four lines, Wilson bars,
+log-N, `N*(90 %)` printed in each legend entry. Two things worth keeping:
+* the legend sits BELOW the axes. Inside, no corner is free on all three tasks -- matplotlib's
+  "best" put T2's legend on top of its own L0 point at N=10, because three of T2's four curves live
+  under 45 %. A legend that hides a data point on one task is worse than 15 % of figure height on
+  every task.
+* Wilson offsets are clamped at zero. At p = 1.0 the interval's upper limit is 0.99987, *below* the
+  point estimate, and matplotlib rejects a negative `yerr`. The interval is centred on a shrunk
+  estimate; that is not a bug in the data.
+
+**A real bug found while doing this, and it was in a published figure.** `fig_gen_sr` aggregated
+`gen_stats.csv` by its `level` column -- but that CSV keys the two arms differently: the original arm
+writes `level="L3"` with the variant in the `variant` column, while the regenerated arm encodes the
+variant IN the level (`L3bv00`..`L3bv09`). So the figure pooled the ten deprecated `L3` rows and
+silently dropped all thirty `L3b` rows for matching no known level name. It had been showing
+87.9 / 32.7 / 88.5 %; the truth is **86.6 / 29.7 / 92.2 %**. Fixed by stripping the `v\d\d` suffix
+before applying the same mapping, and cross-checked against `experiments/gen_bias.csv`, which counts
+retained and rejected attempts directly out of the HDF5s and agrees to the digit.
+
+`paper/limitations.md` carried a third set of values again (86.9 / 29.7 / 91.5) -- typed while the
+regeneration was still running. Corrected, with the correction history left visible. The argument
+built on those numbers needed weakening too: the artifact's error has no consistent sign or size
+(T1 -1.3, T2 -3.0, T3 +3.7 points), so "a single pose set is harmless where generation is
+pose-insensitive" is not supported. What survives is monotonicity -- the corrected T2 column falls
+54.9/44.2/30.6/29.7 where the old one had L3 easier to generate than L2.
+
+**Gate exceedance recorded:** T2's corrected L3 generation SR is **29.7 %**, just under the G3 floor
+of 30 %, and G3 was not re-run against the regenerated arms. The shortfall looks like a demonstrator
+genuinely struggling at full breadth on a long-horizon task rather than a mis-specified subtask
+offset, but it is an exceedance of a stated gate and is now in `paper/limitations.md` rather than
+rounded away.
+
+**Housekeeping.** `cog.analysis.curves --out` now derives `experiments/curves_<TASK>.csv` from
+`--task` instead of defaulting to a single `curves.csv` that three tasks overwrote; the stale
+`curves.csv` is removed (superseded by `curves_T1.csv`). The cross-task summary generator, which had
+been living in a scratch directory, is now `src/cog/analysis/summary.py` -- a committed CSV whose
+generator is not in the repo is a number nobody can reproduce.

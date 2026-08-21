@@ -38,14 +38,19 @@ import numpy as np                         # noqa: E402
 
 from .gen_bias import DIMS, level_stats    # noqa: E402
 
-# (task label, {level label: hdf5 stem}). L3b is the D27/D28-corrected arm; included when present so
-# the same figure shows the before/after.
+# (task label, {reported level label: hdf5 stem}). The reported "L3" is the L3b arm on disk -- the
+# one regenerated with per-variant seeds and the corrected palette (D27/D28/D29). The original L3
+# datasets are still on disk and still auditable, but they are deprecated as a generality level, so
+# they appear only under --include-deprecated.
 TASKS = {
-    "T1 cup_place": {"L0": "L0", "L1": "L1", "L2": "L2", "L3": "L3", "L3b (fixed)": "L3b"},
-    "T2 drawer_stow": {"L0": "T2_L0", "L1": "T2_L1", "L2": "T2_L2", "L3": "T2_L3",
-                       "L3b (fixed)": "T2_L3b"},
-    "T3 push_target": {"L0": "T3_L0", "L1": "T3_L1", "L2": "T3_L2", "L3": "T3_L3",
-                       "L3b (fixed)": "T3_L3b"},
+    "T1 cup_place": {"L0": "L0", "L1": "L1", "L2": "L2", "L3": "L3b"},
+    "T2 drawer_stow": {"L0": "T2_L0", "L1": "T2_L1", "L2": "T2_L2", "L3": "T2_L3b"},
+    "T3 push_target": {"L0": "T3_L0", "L1": "T3_L1", "L2": "T3_L2", "L3": "T3_L3b"},
+}
+DEPRECATED = {
+    "T1 cup_place": {"L3 (deprecated)": "L3"},
+    "T2 drawer_stow": {"L3 (deprecated)": "T2_L3"},
+    "T3 push_target": {"L3 (deprecated)": "T3_L3"},
 }
 RETAINED_C, REJECTED_C = "#2b6cb0", "#c05621"
 
@@ -200,6 +205,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--outdir", default="paper/figures")
     ap.add_argument("--csv", default="experiments/gen_bias.csv")
+    ap.add_argument("--include-deprecated", action="store_true",
+                    help="also audit the superseded pose-redundant L3 datasets (D27), labelled "
+                         "'L3 (deprecated)'. Off by default: they are not a reported level.")
     args = ap.parse_args()
     outdir = pathlib.Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -207,11 +215,13 @@ def main() -> None:
     all_stats: dict[str, dict[str, dict]] = {}
     rows = []
     for task, levels in TASKS.items():
+        if args.include_deprecated:
+            levels = {**levels, **DEPRECATED[task]}
         stats = {}
         for label, stem in levels.items():
             st = level_stats(stem)
             if st is None:
-                continue                    # e.g. L3b before regeneration finishes
+                continue                    # dataset absent, or being written right now (file lock)
             stats[label] = st
             rows.append({
                 "task": task.split()[0], "level": label, "stem": stem,

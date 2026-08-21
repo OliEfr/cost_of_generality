@@ -2,6 +2,15 @@
 
 Kept current as findings land; the report's limitations section is drawn from here.
 
+**Level naming (D29).** Everything reported here uses L0, L1, L2, L3. The reported **L3 is the arm
+regenerated with per-variant seeds and the corrected object palette**, which is stored on disk and
+in the run ledger under the name `L3b` (D27/D28). The originally generated L3 datasets are
+**deprecated**: they held 43-48 unique initial poses instead of 400, so their curves measure a
+seeding bug and not a level of generality. They appear in no reported table or figure. Task 1's is
+kept as a deliberate ablation, always labelled as such: at an identical 400 demos, 43 unique poses
+give SR 0.445 and N*(90 %) > 400, while 400 unique poses give 0.945 and N*(90 %) = 185. Pose
+diversity, not demo count, is what that arm was short of.
+
 ## 1. Tasks 1 and 2 vary placement and appearance, never shape or mechanism
 
 **Scope note (updated 2026-08-18):** this applies to Tasks 1 and 2. **Task 3 does carry a
@@ -37,7 +46,7 @@ rendered in different colours. The inference was circular: it read an artifact o
 seeding as a physical property of the object.
 
 The claim itself survives, on evidence that is now valid. After regeneration with per-variant seeds,
-colour-only variants scatter as independent samples should: Task 1's L3b generation SR runs 87.0,
+colour-only variants scatter as independent samples should: Task 1's L3 generation SR runs 87.0,
 87.2, 95.2, 88.9, 83.3 % across the five small-cylinder colours and 80.0, 95.2, 88.9, 78.4, 85.1 %
 across the five medium ones — an ~8-point spread with no colour ordering, i.e. seed noise rather than
 a colour effect. The size step is real but small (1.3 points of generation SR between the two Task 2
@@ -95,21 +104,33 @@ With Task 3 complete, generation success rate across the three tasks is:
 | L0 | 86.4 % | 54.9 % | 98.5 % |
 | L1 | 85.8 % | 44.2 % | 94.8 % |
 | L2 | 85.1 % | 30.6 % | 95.0 % |
-| L3 | **86.9 %** | **29.7 %** | **91.5 %** |
+| L3 | **86.6 %** | **29.7 %** | **92.2 %** |
 | pattern | flat | steep collapse | near-flat, high |
 
-**L3 row corrected 2026-08-21.** It previously read 87.9 / 32.7 / 88.5 %, computed over datasets that
-held only 43-48 unique initial poses instead of 400 (D27). Those figures estimated the difficulty of
-one lucky pose set replayed ten times, not of the L3 distribution. The corrected values come from the
-regenerated arms with per-variant seeds.
+Every number in this table is regenerated from `experiments/gen_stats.csv` by
+`python -m cog.analysis.figures --which gen_sr`, never read off a generator log (CLAUDE.md rule 9),
+and the L3 column is the seed-corrected arm (D29).
 
-The correction barely moves T1 and T3 (86.4->86.9, 88.5->91.5) and moves T2 by three points, which is
-itself the diagnostic: **a single pose set estimates generation difficulty correctly exactly where
-generation is pose-independent, and misestimates it where generation is pose-dependent.** T2 is the
-task whose retained-vs-rejected attempts are significantly skewed, so it is the task the artifact
-misled us about. The corrected T2 column is also now **monotone** (54.9 / 44.2 / 30.6 / 29.7); the old
-one had L3 appearing *easier to generate than L2*, a non-monotonicity that should have been read as a
+**The L3 row has been corrected twice.** (1) 2026-08-21, D27: it previously read 87.9 / 32.7 / 88.5 %,
+computed over datasets that held only 43-48 unique initial poses instead of 400. Those figures
+estimated the difficulty of one lucky pose set replayed ten times, not of the L3 distribution.
+(2) Later the same day: the replacement row (86.9 / 29.7 / 91.5) had been typed while the regeneration
+was still finishing. The values above are recomputed from the completed artifact and agree with the
+independent generation-bias audit (`experiments/gen_bias.csv`), which counts retained and rejected
+attempts straight out of the HDF5 files.
+
+The artifact's error has no consistent size or sign — T1 -1.3, T2 -3.0, T3 +3.7 points — so the
+tempting reading, that a single pose set is harmless on the pose-insensitive tasks, does not hold: a
+45-pose sample is not an estimate of a 400-pose distribution in either direction. What the correction
+does buy is monotonicity. The corrected T2 column falls 54.9 / 44.2 / 30.6 / 29.7, whereas the old one
+had L3 appearing *easier to generate than L2* — a non-monotonicity that should have been read as a
 warning when it was first tabulated.
+
+**T2's corrected L3 generation SR, 29.7 %, sits just below this study's own G3 gate floor of 30 %.**
+The gate exists to catch mis-specified subtask offsets before a wave of datagen is spent, and it was
+not re-run against the regenerated arms. Here the shortfall reflects a demonstrator that genuinely
+struggles on a long-horizon task at full breadth rather than a mis-specification — but it is an
+exceedance of a stated gate, so it is recorded rather than rounded away.
 
 Task 3 is the hardest task to CONTROL — its scripted expert needed fifteen debugging cycles
 and tops out at 85-94 %, where Task 1's exceeds 98 % — and yet it has the highest generation
