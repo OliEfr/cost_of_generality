@@ -4497,6 +4497,26 @@ against the constraint-propagation point estimates in `experiments/stale_correct
 numbers, re-derive N*/cost-ratio tables and the finding-4 (object-axis) verdict, update the
 report artifact, and re-judge D24 (last-checkpoint-only) on clean numbers.
 
+### 2026-08-21 22:12 -- PHASE 2 CHAINED: six T2 L3 cells re-run with stage telemetry (user instruction via origin session)
+
+User (relayed verbatim from the origin session): "i want full curves - just also rerun eval for
+remaining 6 cells... once scheduled queue is done". Chained `scripts/ops/resweep_l3_phase.py` in
+tmux `cog_resweep_l3`: waits for `cog_resweep` to end AND requires RESWEEP_DONE in its log (a
+crash without the marker aborts the phase), then runs t2_L3b_n{400,200,100,50,25,10} through
+`run_local_eval_l3.py` -- now passing `--stages` per variant (task-conditional, so T1/T3 L3
+would be unaffected) -- giving the drawer-open/lift/over funnel for the FULL 24-cell T2 matrix.
+N=400 first. Two cell drivers concurrently (each holds <=1 Isaac process at ~7 GB; three L3
+drivers would churn too many simultaneous Kit boots), driver-internal VRAM gate lowered to the
+standard 10 GB via COG_EVAL_MIN_FREE_MIB. Outputs use the driver's diagnostic path:
+`results/diagnostics/eval_T2_L3b_n<N>_080000_fixed.json` -- deliberately outside the
+registry/curves globs, exactly because `_fixed` flat files in `results/` DO match the
+`eval_T*` glob prefix; any curves/registry regeneration must handle the _fixed convention
+explicitly (noted for the merge). Checkpoints reach the worktree via per-run symlinks
+`experiments/runs/t2_L3b_n*_s0` -> main checkout (runs/ is gitignored). ~1.5 h/cell, ~5 h at
+2 slots after phase 1 drains. Note: the L3 carryover exposure is zero (one batch per process),
+so these re-runs exist for the stage funnel and the same-harness consistency check, not for
+correction. Watcher + the hourly cron (prompt updated to cover both phases) armed.
+
 ### 2026-08-21 -- Generator-filter contamination audit CLOSED for all 12 cells: no cell's SR is credibly inflated by the generator's selection filter
 
 The 2026-08-20 concern -- "demos exist only where generation succeeded, so measured SR partly

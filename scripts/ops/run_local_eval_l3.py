@@ -173,6 +173,7 @@ def main() -> int:
                    "--protocol", str(proto),
                    "--num_inference_steps", "10",
                    "--max_steps", str(max_steps),
+                   "--stages",  # per-episode stage latches; task-conditional (drawer_stow only), no-op elsewhere
                    "--out", str(part),
                    "--headless", "--enable_cameras"]
             # Isaac prompts "Do you accept the EULA? (Yes/No)" on a non-tty and then dies with
