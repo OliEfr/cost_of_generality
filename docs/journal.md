@@ -4354,3 +4354,63 @@ steps (62% of the longest demo). Timeout censoring cannot explain low T2 SR or t
 episode lengths, so how close successful rollouts run to 1200 is unmeasurable post hoc. Epochs
 arithmetic of the earlier entry verified exactly (18.44/18.16/67.94); the final-20k loss-drift
 numbers could not be re-verified locally (train logs live only on the cluster).
+
+### 2026-08-21 -- Generator-filter contamination audit CLOSED for all 12 cells: no cell's SR is credibly inflated by the generator's selection filter
+
+The 2026-08-20 concern -- "demos exist only where generation succeeded, so measured SR partly
+reflects the generator's filter, not the policy" -- is now tested end-to-end for every task x level,
+not just T2 L1. New tooling joins the frozen eval-set initial states (world->env-local via per-env
+origins recovered from the fixed anchor entity and validated against the declared ranges) to
+per-episode outcomes, and adds two composite measures per cell: (a) kNN local rejection rate
+(fraction rejected among an eval state's 25 nearest generation attempts, z-scored demo-observable
+dims) vs success, and (b) nearest-TRAINING-demo distance (actual N-demo subset from
+conversion_manifest.json) vs success. N=400 primary, N=100 secondary. Artifacts:
+`experiments/genbias_link.csv` (+ `_episodes.csv`, `_cells.json`),
+`paper/figures/genbias_link_{T1,T2,T3,summary}.png`,
+scripts in `scripts/dev/genbias_link_{stats,figs}.py`.
+
+**Verdicts (N=400):** T1 L1/L2/L3b absent; T2 L1/L2/L3b present-but-immaterial; T3 L1/L2/L3b
+present-but-immaterial (T3 L1 link suggestive p=0.09, bounded; T3 L3b shared-difficulty, see below).
+L0 cells exempt (single fixed pose).
+
+**The pose-blind baseline decomposition is the headline bound.** L0 rejects with NO pose variation:
+T1 13.6%, T2 45.1%, T3 1.5%. Subtracting it, the pose-SELECTIVE rejection mass is T1 <=0.6-1.3%
+(T1's filter is essentially pure controller noise), T2 <=10.8% (L1) / ~25% (L2, L3b), T3 <=3.7-6.3%.
+
+**T2: filter large and real, effect on SR absent.** Retained-vs-rejected KS: L1 skewed on |yaw|
+(p=8e-15, rejects at large |yaw|); L2/L3b skewed on SIGNED yaw (p=8e-20 / 1e-22 -- retained demos
+shifted toward negative yaw) and weakly on y. Downstream: success is flat across every filtered dim
+(L1 |yaw| p=0.66; L3b obj_yaw p=0.50), local-rejection link null (p=0.92/0.62/0.44), nearest-demo
+distance null, per-variant gen SR vs eval SR uncorrelated (Spearman -0.14, p=0.71). T2's plateaus
+(0.23/0.41/0.14) are NOT a data-coverage artifact; the epoch-deficit explanation stands. If
+anything the L2/L3b filter starved the +yaw region without hurting success there -- anti-inflation.
+
+**T3 L1, the D=0.68 mystery resolved:** the KS compares 400 unique retained vs only 22 unique
+rejected attempts; all 22 rejects sit at y>-0.088 (puck starting nearest the y=-0.04 edge), which
+is a real but tiny filter: local rejection in that strip is 12.9% (148 retained demos remain), 0%
+elsewhere. Eval SR in the strip 0.947 vs 0.968 outside; local-rejection link rb=-0.41, p=0.09 with
+only 4 failures -- suggestive direction, bounded <=~5 SR points worst-case, not material.
+
+**T3 L2/L3b carry a filter dim gen_bias.csv missed: bearing.** Demos DO record target_pos, so
+bearing is auditable end-to-end: rejects concentrate at low bearing (KS D=0.485/0.395, p=7e-5/6e-5).
+At L3b the only p<0.01 success-geometry result of the audit appears: success rises with obj_x
+(rb=+0.31, p=0.006) and suggestively with bearing (p=0.03); local-rejection link suggestive in the
+contamination direction (rb=-0.23, p=0.034; gen-easy half SR 0.892 vs gen-hard 0.786, Fisher
+p=0.053). BUT nearest-demo distance is dead null (p=0.86) -- failures are not far from training
+demos -- and the x-direction is anti-filter (rejects sit at HIGH x where success is highest). Read:
+the low-bearing/low-x region is intrinsically hard for scripted generator and learned policy alike
+(common cause), not a demo-starvation effect; bounded by 7.8% rejected mass anyway.
+
+**T1: nothing.** All retained-vs-rejected KS ns (filter spatially blind, matching the <=1.3%
+pose-selective mass); the weak obj_x success gradient at N=100 (p~0.02) cannot be generator-caused.
+
+**GOTCHA (recorded for reuse): L3b eval JSONs log batch=0 for all 200 outcomes.** The outcomes
+list is variant-major (10 blocks of 20, env 0..19 per block; block v = variant v = eval-set batch v,
+verified against per_variant successes and seeds). Joining L3b outcomes to eval-set poses on the
+recorded (batch, env) silently maps 90% of episodes to variant-0 poses -- this initially produced a
+spurious "significant" contamination link in T2 L3b (p=0.003) that vanished (p=0.44) once the join
+was fixed. Any future per-episode analysis of L3 evals must reindex batch = index//20.
+
+Negative results worth keeping: success_vs_pose's T2 L1 yaw-bin null replicates under MW/KS/logistic
+and extends to all dims and all cells; no cell shows the coverage signature (higher SR where demo
+density is high) at p<0.01 anywhere.
