@@ -24,6 +24,12 @@ parser.add_argument("--out", required=True)
 parser.add_argument("--protocol", default="/home/admin_07/cost_of_generality/configs/eval_sets/protocol.json")
 parser.add_argument("--num_inference_steps", type=int, default=10)
 parser.add_argument("--max_steps", type=int, default=600)
+parser.add_argument(
+    "--stages",
+    action="store_true",
+    help="drawer_stow only: record per-episode stage latches (drawer opened, object "
+    "lifted, object over open drawer) alongside the official success",
+)
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
@@ -80,6 +86,16 @@ def main():
     proto = json.load(open(args_cli.protocol))
     num_envs, batches, base_seed = proto["num_envs"], proto["batches"], proto["base_seed"]
 
+    # Stage instrumentation reads sim state the policy never sees; it cannot alter the
+    # rollout. Thresholds mirror the success termination (min_drawer_open=0.15) and the
+    # cavity bounds; "lifted" = 5 cm above the episode's initial object height.
+    stages_on = args_cli.stages and args_cli.task.startswith("Cog-DrawerStow")
+    if args_cli.stages and not stages_on:
+        print(f"[eval] --stages ignored: no stage definitions for {args_cli.task}", flush=True)
+    if stages_on:
+        import isaaclab.utils.math as math_utils
+        from cog.tasks.drawer_stow.assets import DRAWER_CAVITY_HALF_X, DRAWER_CAVITY_HALF_Y
+
     policy = DiffusionPolicy.from_pretrained(
         args_cli.checkpoint,
         cli_overrides=[
@@ -99,19 +115,77 @@ def main():
         policy.reset()
         success = torch.zeros(num_envs, dtype=torch.bool, device=env.device)
         finished = torch.zeros(num_envs, dtype=torch.bool, device=env.device)
-        for _ in range(args_cli.max_steps):
+        if stages_on:
+            cab, obj = env.scene["cabinet"], env.scene["object"]
+            jid = cab.find_joints(["drawer_top_joint"])[0][0]
+            bid = cab.find_bodies(["drawer_top"])[0][0]
+            obj_z0 = obj.data.root_pos_w[:, 2].clone()
+            opened = torch.zeros(num_envs, dtype=torch.bool, device=env.device)
+            lifted = torch.zeros_like(opened)
+            over = torch.zeros_like(opened)
+            max_open = torch.zeros(num_envs, device=env.device)
+            max_lift = torch.zeros(num_envs, device=env.device)
+            t_open, t_lift, t_over, t_succ = (
+                torch.full((num_envs,), -1, dtype=torch.long, device=env.device) for _ in range(4)
+            )
+        for t in range(args_cli.max_steps):
             with torch.inference_mode():
                 batch = pre(obs_to_batch(obs, dev))
                 action = post(policy.select_action(batch))
             obs, _, terminated, truncated, _ = env.step(action.to(env.device))
             succ_now = env.termination_manager.get_term("success")
+            if stages_on:
+                alive = ~finished  # same latching semantics as the official success
+                jpos = cab.data.joint_pos[:, jid]
+                opos = obj.data.root_pos_w
+                local = math_utils.quat_apply_inverse(
+                    cab.data.body_quat_w[:, bid], opos - cab.data.body_pos_w[:, bid]
+                )
+                open_now = jpos >= 0.15
+                lift_now = (opos[:, 2] - obj_z0) >= 0.05
+                over_now = (
+                    (local[:, 0].abs() < DRAWER_CAVITY_HALF_X)
+                    & (local[:, 1].abs() < DRAWER_CAVITY_HALF_Y)
+                    & open_now
+                )
+                for now, latch, t_first in (
+                    (open_now, opened, t_open),
+                    (lift_now, lifted, t_lift),
+                    (over_now, over, t_over),
+                    (succ_now, success, t_succ),
+                ):
+                    t_first[now & ~latch & alive] = t
+                opened |= open_now & alive
+                lifted |= lift_now & alive
+                over |= over_now & alive
+                max_open = torch.where(alive, torch.maximum(max_open, jpos), max_open)
+                max_lift = torch.where(alive, torch.maximum(max_lift, opos[:, 2] - obj_z0), max_lift)
             success |= succ_now & ~finished
             finished |= terminated | truncated
             if bool(finished.all()):
                 break
-        outcomes.extend(
-            {"batch": b, "env": i, "success": bool(success[i])} for i in range(num_envs)
-        )
+        if stages_on:
+            outcomes.extend(
+                {
+                    "batch": b,
+                    "env": i,
+                    "success": bool(success[i]),
+                    "drawer_opened": bool(opened[i]),
+                    "object_lifted": bool(lifted[i]),
+                    "object_over_drawer": bool(over[i]),
+                    "max_drawer_open": round(float(max_open[i]), 4),
+                    "max_object_lift": round(float(max_lift[i]), 4),
+                    "t_open": int(t_open[i]),
+                    "t_lift": int(t_lift[i]),
+                    "t_over": int(t_over[i]),
+                    "t_success": int(t_succ[i]),
+                }
+                for i in range(num_envs)
+            )
+        else:
+            outcomes.extend(
+                {"batch": b, "env": i, "success": bool(success[i])} for i in range(num_envs)
+            )
         sr_so_far = sum(o["success"] for o in outcomes) / len(outcomes)
         print(f"[eval] batch {b+1}/{batches}  running SR={sr_so_far:.3f}", flush=True)
 
@@ -127,6 +201,12 @@ def main():
         "success_rate": k / n,
         "outcomes": outcomes,
     }
+    if stages_on:
+        result["stages"] = {
+            key: sum(o[key] for o in outcomes) / n
+            for key in ("drawer_opened", "object_lifted", "object_over_drawer")
+        }
+        print(f"[eval] stage rates: {result['stages']}", flush=True)
     os.makedirs(os.path.dirname(os.path.abspath(args_cli.out)), exist_ok=True)
     with open(args_cli.out, "w") as f:
         json.dump(result, f, indent=1)

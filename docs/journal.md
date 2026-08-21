@@ -4355,6 +4355,38 @@ episode lengths, so how close successful rollouts run to 1200 is unmeasurable po
 arithmetic of the earlier entry verified exactly (18.44/18.16/67.94); the final-20k loss-drift
 numbers could not be re-verified locally (train logs live only on the cluster).
 
+### 2026-08-21 18:30 -- T2 follow-up evals LAUNCHED (user-authorised): L1<->L2 cross-evals + stage funnels
+
+User authorised local-GPU follow-ups (no cluster): (a) the decisive cross-eval for the L2>L1
+inversion -- evaluate the L2/N=400 policy on the frozen T2_L1 eval set (and the reverse) -- and
+(b) per-stage SR for T2 to locate where the ~680-step task fails, motivated by "maybe shorten
+the task?".
+
+**Stage instrumentation** (`rollout_eval.py --stages`, drawer_stow only, read-only on sim state,
+same latching semantics as the official success): `drawer_opened` = drawer_top joint >= 0.15 (the
+success criterion's own threshold); `object_lifted` = object 5 cm above its episode-initial
+height; `object_over_drawer` = object xy inside the cavity bounds in the drawer_top body frame
+while the drawer is open; plus per-episode maxima (max_drawer_open, max_object_lift) and
+first-latch step indices (t_open/t_lift/t_over/t_success). Funnel reading: opened -> lifted ->
+over -> stowed(official).
+
+**Queue** (`scripts/ops/run_t2_followup.sh`, tmux `cog_t2fu`, one eval at a time, waits for
+>=10 GB free VRAM per the 2026-08-20 threshold, checkpoints read from the main checkout,
+results into this worktree's `results/`):
+1. `eval_T2_xeval_L2n400_onL1_080000.json` -- L2 ckpt on L1 eval set (+stages)
+2. `eval_T2_L1_n400_080000_stages.json` -- L1 ckpt, own set, stage-instrumented re-run
+3. `eval_T2_L2_n400_080000_stages.json` -- L2 ckpt, own set
+4. `eval_T2_xeval_L1n400_onL2_080000.json` -- reverse cross (+stages)
+5. `eval_T2_L0_n400_080000_stages.json` -- control
+Frozen protocol untouched (same seeds/num_envs); the re-runs double as a determinism check
+against the published SRs. Budget ~45 min/eval measured + up to 12 h headroom wait; hourly cron
+fallback + watcher armed (rule 10).
+
+Prediction registered up front: if the L2-on-L1 cross-eval SR stays ~0.4 (its own-set level),
+the inversion is training-side (cleaner filtered demos / DR-augmentation), as the 2026-08-21
+analysis concluded; if it drops to ~0.23 (L1's level), the eval-side explanations were wrongly
+excluded and the inversion story needs rework.
+
 ### 2026-08-21 -- Generator-filter contamination audit CLOSED for all 12 cells: no cell's SR is credibly inflated by the generator's selection filter
 
 The 2026-08-20 concern -- "demos exist only where generation succeeded, so measured SR partly
