@@ -24,11 +24,29 @@ Task 2, concretely:
 | L2 | joint noise | 10x18 cm, yaw +-45 deg | +-5 cm, +-6 cm, +-7.5 deg | fixed | same | closed |
 | L3 | joint noise | 10x18 cm, yaw +-45 deg | +-5 cm, +-6 cm, +-7.5 deg | 2 sizes x 5 colours | same | closed |
 
-The colour dimension is **physically inert**, and this is measured rather than assumed:
-generation runs that differ only in colour produce byte-identical attempt counts
-(Task 1: 40/45 for five variants then 40/46 for the other five; Task 2: 40/120 x5 then
-40/125 x5). The size step is real but small — 1.3 points of generation success rate
-between the two Task 2 box sizes.
+The colour dimension is **physically inert**. The evidence originally cited here was wrong and is
+replaced (corrected 2026-08-21):
+
+> ~~generation runs that differ only in colour produce byte-identical attempt counts (Task 1: 40/45
+> for five variants then 40/46 for the other five; Task 2: 40/120 x5 then 40/125 x5)~~
+
+Those identical counts were not evidence about colour at all — they were the fingerprint of **D27**,
+the bug in which all ten variant generation runs of a level shared one seed and therefore replayed
+one identical pose stream. Colour-only variants agreed exactly because they were *the same episodes*
+rendered in different colours. The inference was circular: it read an artifact of the generator's
+seeding as a physical property of the object.
+
+The claim itself survives, on evidence that is now valid. After regeneration with per-variant seeds,
+colour-only variants scatter as independent samples should: Task 1's L3b generation SR runs 87.0,
+87.2, 95.2, 88.9, 83.3 % across the five small-cylinder colours and 80.0, 95.2, 88.9, 78.4, 85.1 %
+across the five medium ones — an ~8-point spread with no colour ordering, i.e. seed noise rather than
+a colour effect. The size step is real but small (1.3 points of generation SR between the two Task 2
+box sizes).
+
+Worth keeping the retraction visible rather than silently rewriting it, because the failure mode is
+instructive: *identical numbers across supposedly independent runs are a red flag, not a
+confirmation.* Had this table been read as suspicious when it was written, D27 would have been caught
+three days earlier.
 
 Consequently the top level should be read as **"appearance and mild scale variation"**,
 not "object variation", and results at that level do not speak to shape generalization.
@@ -60,7 +78,7 @@ The practical consequence is an asymmetry in what generated data costs:
 |---|---|
 | object pose | 54.9 % -> 44.2 % (10.7 points) |
 | fixture (cabinet) pose | 44.2 % -> 30.6 % (13.6 points) |
-| appearance + mild scale | ~1 point (30.6 % -> 32.7 % pooled; 33.3 % vs 32.0 % between sizes) |
+| appearance + mild scale | ~1 point (30.6 % -> 29.7 % pooled) -- see the correction below |
 
 Pose generality is expensive to *learn* but cheap to *generate*; geometry generality is
 not cheaply generatable at all under this method. This is a plausible explanation for
@@ -77,8 +95,21 @@ With Task 3 complete, generation success rate across the three tasks is:
 | L0 | 86.4 % | 54.9 % | 98.5 % |
 | L1 | 85.8 % | 44.2 % | 94.8 % |
 | L2 | 85.1 % | 30.6 % | 95.0 % |
-| L3 | 87.9 % | 32.7 % | 88.5 % |
+| L3 | **86.9 %** | **29.7 %** | **91.5 %** |
 | pattern | flat | steep collapse | near-flat, high |
+
+**L3 row corrected 2026-08-21.** It previously read 87.9 / 32.7 / 88.5 %, computed over datasets that
+held only 43-48 unique initial poses instead of 400 (D27). Those figures estimated the difficulty of
+one lucky pose set replayed ten times, not of the L3 distribution. The corrected values come from the
+regenerated arms with per-variant seeds.
+
+The correction barely moves T1 and T3 (86.4->86.9, 88.5->91.5) and moves T2 by three points, which is
+itself the diagnostic: **a single pose set estimates generation difficulty correctly exactly where
+generation is pose-independent, and misestimates it where generation is pose-dependent.** T2 is the
+task whose retained-vs-rejected attempts are significantly skewed, so it is the task the artifact
+misled us about. The corrected T2 column is also now **monotone** (54.9 / 44.2 / 30.6 / 29.7); the old
+one had L3 appearing *easier to generate than L2*, a non-monotonicity that should have been read as a
+warning when it was first tabulated.
 
 Task 3 is the hardest task to CONTROL — its scripted expert needed fifteen debugging cycles
 and tops out at 85-94 %, where Task 1's exceeds 98 % — and yet it has the highest generation
@@ -147,11 +178,45 @@ variance that is not measured. Mitigations: frozen pre-sampled evaluation sets, 
 demo subsets so curves are monotone in data rather than resampling noise, and
 best-of-last-three-checkpoints as the primary metric.
 
-## 6. Fixed step budget, not converged training
+## 6. Fixed step budget: equal in steps, unequal in epochs across tasks
 
-All cells train for the same 80k steps rather than to convergence, so results describe
-success rate at a fixed compute budget. Large-N cells may be under-trained relative to
-small-N cells.
+All cells train for the same 80k steps. Two things are now measured rather than assumed
+(2026-08-21).
+
+**Within a task, the cells are converged** -- not under-trained. Final-20k loss drift is +0.07 %
+(T2 L0), -0.13 % (T2 L1), +0.01 % (T2 L2) and +/-0.2 % for T1's L0-L2, under a cosine schedule
+annealed to ~5e-10. The counter-example proves the diagnostic works: T1's *pose-redundant* L3 arm was
+still descending 8.8 % per 20k at step 80k, i.e. genuinely unconverged, and that arm was the one with
+9x-duplicated data.
+
+**Across tasks, 80k steps buys very different amounts of training**, because episode length differs
+3.6x. At L1/N=400:
+
+| task | mean episode length | epochs at 80k steps | final train loss |
+|---|---|---|---|
+| cup_place | ~188 frames | **67.9** | 0.0748 |
+| push_target | ~310 | **40.1** | 0.0655 |
+| drawer_stow | ~680 | **18.4** | 0.0412 |
+
+Consequences, stated separately because they differ in severity:
+
+* **Within-task cost ratios are unaffected.** Episode length is essentially constant across a task's
+  levels, so every level of a task gets the same epochs at the same N. The headline per-task tables
+  are internally valid.
+* **Absolute success rates are not comparable across tasks.** Any statement of the form "drawer_stow
+  is harder than cup_place" conflates task difficulty with 3.7x less training per demonstration, and
+  must either quote epochs alongside or be dropped.
+
+This does **not** explain drawer_stow's generality cliff: its L0 reaches 0.96 on the same 18.4 epochs,
+so the budget suffices for a fixed-pose long-horizon task and fails only once poses randomise.
+Whether a longer schedule would clear that cliff is untested -- it needs a deliberate exception to the
+frozen 80k protocol, and is the single experiment most worth running next (~8 GPU-h for one
+diagnostic cell).
+
+Note also that final training loss runs *opposite* to epochs here: drawer_stow has the fewest passes
+and the lowest loss. Loss magnitude tracks the conditional entropy of action given observation, which
+differs by dataset, so it is not comparable across tasks and is used in this study only to judge
+whether a single cell's optimisation has stopped moving.
 
 ## 7. Evaluation set sizes differ between levels
 
