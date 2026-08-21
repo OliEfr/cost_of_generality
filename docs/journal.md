@@ -4220,3 +4220,52 @@ comparable across tasks even though within-task ratios are unaffected. The L3 ob
 appearance: the two cylinder sizes differ by 4 mm of radius. And whether a longer schedule would clear
 drawer_stow's cliff is untested -- it needs a protocol exception, and is the one experiment worth
 ~8 GPU-h if that claim is to be airtight.
+
+### 2026-08-21 -- T2 L2>L1 inversion investigated: real at the episode level, best explained by demo-quality selection; eval-horizon confound ruled out
+
+**Question:** T2 L2 (obj pose + cabinet pose) beats T2 L1 (obj pose only) at most N -- pooled
+N>=50 L2 137/400 vs L1 97/400 -- although L2 is nominally harder. Investigated in the
+results-analysis worktree; scripts under `scripts/dev/t2_*.py`, CSVs under `experiments/t2_*.csv`.
+
+**The two frozen eval sets share bit-identical object poses.** `configs/eval_sets/T2_L1.json` vs
+`T2_L2.json`: max |dx|,|dy|,|dyaw| = 0.0 exactly, because `events._sample_pose` draws all 6 dims
+from the global RNG even for degenerate (fixed) ranges, so the stream stays aligned across levels.
+The sets differ ONLY in cabinet pose (L1 fixed at (0.9, 0.0, yaw=pi); L2 x[0.85,0.95] y[-0.06,0.06]
+yaw pi+-0.13). Drawer starts closed (joint 0) in every episode of both. Success criterion
+(`object_stowed_in_drawer`) is drawer-BODY-frame relative with identical params; horizon identical
+(episode_length_s=60 -> 1200 steps for every T2 level). So "L1's eval set was intrinsically harder"
+is dead: same benchmark, easier (nominal, fixed) cabinet for L1.
+
+**Statistics.** Episode-level: pooled N>=50 z=3.11 p=0.0019 (Fisher p=0.0024, OR=1.63); CMH over
+all 6 N-strata chi2=5.29 p=0.021; McNemar on pose-paired episodes (N>=50 pooled: only-L2 103 vs
+only-L1 63) p=0.0024. Per N, only N=50 (35 vs 19, p=0.016) and N=400 (41 vs 23, p=0.0097) are
+individually significant; N=25 reverses (11 vs 22, p=0.056). BUT cell-level, treating each
+training run as the unit (n=6 paired diffs +5,-11,+16,+2,+4,+18): paired t p=0.24. And within-level
+single-run noise is the same magnitude as the inversion: L2 n25 (0.11) -> n50 (0.35) is Fisher
+p=0.0001 on nested subsets. One seed means episode-level significance overstates certainty.
+
+**Where L2 wins: everywhere, not in a subregion.** L2-L1 SR delta >= 0 in 11 of 12 pose-quartile
+cells (|yaw|, x, y). Cabinet dims do NOT modulate L2 success (MWU p=0.74/0.22/0.84; carry distance
+trend is even positive). So neither gen-bias subregion concentration nor easy-cabinet draws explain it.
+
+**What does differ: demo quality via survivorship.** L2's demonstrator was filtered harder
+(gen SR 30.6% vs 44.2%) and its retained demos are systematically more efficient EVEN AT MATCHED
+GEOMETRY: L2 demos with cabinet within 2 cm of L1's fixed pose run 672 steps / 3.27 m eef path vs
+L1's 694 / 3.40 m (Welch p=0.0002 / 0.0005); cabinet pose explains none of L2's length variance
+(r=0.06 n.s.). Cleaner, more direct imitation targets on a compounding-error task. A second,
+untested contributor: cabinet randomization as DR-style augmentation (would need L2-policy-on-L1-
+eval to disentangle; ~2 GPU-h, not run). The inversion is T2-specific -- T1 and T3 both show
+L1 >= L2 at every N.
+
+**Ruled out (negative results):** eval-set difficulty (identical poses), horizon (both 1200 via
+`--max_steps 1200`, commit 3370324 predates the T2 evals), epochs (18.44 vs 18.91 at N=400;
++-2.5% at every N), hyperparams (checkpoint config.json identical incl.
+use_separate_rgb_encoder_per_camera=true), dead eval batches, registry anomalies, drawer initial
+state, success-region size. L2 n25 < n10 is not significant (Fisher p=0.31).
+
+**Q2 horizon check:** eval max_steps 1200 vs demo max 743 (L2) / 724 (L1) -> minimum headroom 457
+steps (62% of the longest demo). Timeout censoring cannot explain low T2 SR or the inversion
+(and L1's 2.5%-longer demos are immaterial at that slack). Caveat: rollout_eval does not record
+episode lengths, so how close successful rollouts run to 1200 is unmeasurable post hoc. Epochs
+arithmetic of the earlier entry verified exactly (18.44/18.16/67.94); the final-20k loss-drift
+numbers could not be re-verified locally (train logs live only on the cluster).
