@@ -4096,3 +4096,53 @@ every cell trains for exactly 80k steps. I am not doing the latter unasked.
 Note also that final train loss runs *opposite* to epochs (T2 lowest at 0.041 despite fewest passes),
 which is the third time this session that loss magnitude has proved incomparable across datasets --
 it tracks the conditional entropy of the action given the observation, not fit quality.
+
+## 2026-08-21 -- TASK 2 COMPLETE: generality on a long-horizon task costs more than 400 demos
+
+T2 (drawer_stow) finished all 24 cells. Its table is qualitatively unlike T1's:
+
+| level | N*(50%) | N*(80%) | N*(90%) | SR at N=400 | fit b |
+|---|---|---|---|---|---|
+| L0 | <=10 | 18 | 23 | 0.96 | +1.20 |
+| L1 | >400 | >400 | >400 | 0.23 | +0.47 |
+| L2 | >400 | >400 | >400 | 0.29 | +0.86 |
+| L3b | >400 | >400 | >400 | 0.14 | +0.82 |
+
+**No T2 cost ratio is computable**: only L0 crosses any target. This is a cliff, not a cost curve --
+0.96 at a fixed scene, then 0.14-0.29 the moment anything is randomised, with 40x more data (N=10 ->
+400) buying almost nothing.
+
+**Undertraining is ruled out.** The obvious suspicion was the step-budget confound recorded earlier
+(T2 gets 18.4 epochs at 80k steps against T1's 67.9, because its episodes are 3.6x longer). Two
+pieces of evidence say that is not the explanation:
+
+1. **L0 reaches 0.96 on the same 18.4 epochs.** The budget is sufficient for a fixed-pose long-horizon
+   task; it fails only once poses randomise.
+2. **All three T2 cells are converged at 80k**: final-20k loss drift is +0.07 % (L0), -0.13 % (L1),
+   +0.01 % (L2). Compare T1's pose-redundant L3, which was still descending 8.8 % per 20k steps -- the
+   signature this same diagnostic caught for D27. T2's optimisation has finished; the policies simply
+   do not succeed.
+
+**What the evidence does point to: compounding error over a long horizon.** T2's training loss is the
+*lowest* in the study (0.042 at L1 against T1's 0.075), so the policies fit their demonstrations well
+and still fail at rollout. That combination -- low imitation loss, low closed-loop success -- is
+distribution shift, not underfitting. T2 is a four-phase task (grasp handle, pull open, grasp object,
+stow) over ~680 steps; an early deviation such as an incompletely opened drawer makes everything
+after it unrecoverable, and there is no recovery behaviour in the demonstrations because Mimic only
+keeps successes. L0 escapes this because a fixed scene lets the policy replay essentially one
+trajectory.
+
+**The finding, stated carefully:** on a long-horizon multi-phase task, the demonstration cost of even
+modest generality (randomising one object's pose) exceeds 400 demos -- so the cost of generality is
+not merely *larger* for harder tasks, it can be prohibitive inside a fixed budget. That is a stronger
+claim than T1 alone supports and it is the main reason having three tasks was worth the cost.
+
+**Caveats to carry into the write-up.** (a) One seed. (b) The 80k-step budget gives T2 3.7x fewer
+epochs than T1, which does not explain the cliff (see above) but does mean absolute SR is not
+comparable across tasks -- report epochs beside any cross-task statement. (c) T2's demonstrator is
+itself weak: gen SR 54.9/44.2/30.6/29.7 % across L0-L3, so the demos are a filtered subset of a
+brittle expert, and at L1 the retained attempts are yaw-narrower than the rejected ones -- though
+`success_vs_pose` showed the policy's failures are NOT concentrated where that coverage thins, so the
+skew is measurable but not the mechanism. (d) Whether a longer schedule would clear the cliff is
+untested; the honest statement is that it is unresolved at the frozen budget, and testing it needs a
+protocol exception the user has not authorised.
