@@ -4557,6 +4557,58 @@ original measurement itself is wrong, beyond the carryover bug. The clean sweep 
 only authoritative surface.** The report's corrected-estimates table is hereby demoted to
 "bounds where the original run was sound"; final tables come from the sweep alone.
 
+# 2026-08-22 -- CLEAN SWEEP COMPLETE: 62/62 evals, the final surface, and the warm-up effect that re-opens finding 4
+
+The full re-eval finished: 54 flat cells + 6 T2-L3 cells (stage-instrumented) + the D24
+40k/60k pair = **62 evals, zero failures, ~18 h wall** (2026-08-21 21:51 -> 08-22 15:32) on the
+shared 4090 with admission-controlled 2-way parallelism. Authoritative tables:
+`experiments/clean_surface.csv`, `clean_nstar.csv`, `t2_stage_funnel_full.csv`,
+`warmup_matched_f4.csv`; figure `paper/figures/corrected_vs_published_sr.png`.
+
+**The clean surface (SR at N=10..400):** T1 L0 0.89-1.00, L1 0.46->0.99, L2 0.29->1.00, L3
+0.09->0.94; T2 L0 0.71->0.95, L1 0.11/0.23/0.32/0.31/0.18/0.15, L2 0.13/0.16/0.37/0.43/0.27/0.37,
+L3 0.04-0.14; T3 L0 ~1.0, L1 0.56->0.99, L2 0.38->0.95, L3 0.30->0.84.
+
+**N\*(90%) / cost ratios (clean):** T1: 11 / 126 / 141 / 180 -> L1 11.4x, L2 12.8x, L3 16.3x.
+T2: L0 21, everything else >400 (>=18.8x). T3: <=10 / 37 / 59 / 181 -> 3.8x / 6.0x / 18.1x.
+
+**Verdicts, one by one:**
+- **Phantom-carryover bug: material only for T2 L1/L2.** Clean T1/T3/T2-L0 match published
+  within noise (only 1 of 36 comparable flat cells differs >2 sigma -- T2_L1_n50, the cell whose
+  original run was separately proven bad). T2 L1 n400 0.23->0.15, n200 0.25->0.18.
+- **D24 re-check (clean): 0.95 / 0.98 / 0.98** -- last checkpoint (joint-)best;
+  last-checkpoint-only protocol stands.
+- **Batch-0 depression = PROCESS WARM-UP, proven by probe.** A fresh process evaluating seeds
+  5001-5004 (skipping 5000) scored [0.35, 0.65, 0.80, 0.85] batch-by-batch, converging on those
+  seeds' warm values [0.85, 0.70, 0.60, 0.85]: the depression follows process position, not the
+  seed. Cost ~ the first 20 episodes (one batch), then gone. Present in 37/37 non-saturated clean
+  cells, mean -0.21 (T1 0.43-vs-0.75, T2 0.33-vs-0.50, T3 0.65-vs-0.85). Artifact:
+  `results/diagnostics/eval_T1_L1_n25_080000_warmupprobe.json`. Likely renderer (RTX
+  accumulation/shader-cache) or physics warm-up; the exact sub-mechanism is untested.
+- **Finding 4 ("object axis costs most") is CONFOUNDED and does not survive as stated.** L3's
+  protocol makes all 200 episodes first-batch-cold while flat cells are 80% warm. On the matched
+  comparison (flat batch-0-only, n=20/cell, vs L3): T1 L3 at n100 0.70 vs L1/L2 0.50; T3 L3
+  tracks L2 within noise from n25 up. A small-N premium survives (L3 worst at N<=25 everywhere).
+  The published L3 curves are conservative (true warm L3 performance is HIGHER than reported).
+  **Deciding it needs warm L3 evals: prepend one unscored burn-in batch per variant and re-run
+  the 18 L3 cells (~10-12 h local). Not launched unasked.**
+- **Env-index non-uniformity (new protocol-level finding):** success depends on which of the 20
+  clones runs the episode -- pooled chi2 p = 2.4e-6 (T1) / 1.3e-2 (T2) / 6.9e-4 (T3), and
+  repeat-success rates of 60-78% vs 15-32% base. The clones are not exchangeable; suspect
+  per-clone-origin rendering differences. Affects any per-episode statistics that assume
+  episode independence.
+- **T2 story final:** cliff confirmed and deepened; L2>L1 inversion holds on clean data (0.37 vs
+  0.15 at n400) and is policy-side (cross-evals); the full 24-cell stage funnel pins every SR to
+  the mid-rollout grasp (lift: L0 0.84-1.00, L1 0.14-0.37, L2 0.14-0.44, L3 0.07-0.18; drawer
+  opening 0.65-0.98 with no level trend; stow-once-over ~1.0 everywhere). NEW: both L1 and L2
+  show a mid-N hump (peak n50-100, decline to n400) -- unexplained, one seed, flagged.
+
+**Open decisions for the user:** (1) warm-L3 re-protocol + re-run (~10-12 h) to settle finding 4;
+(2) second seed for T2 L1/L2 (hump + inversion fragility); (3) whether the paper reports
+batches 1-4 only (n=80, warm) as the primary metric with batch 0 quantified as a limitation.
+Registry not modified (these are re-evals of existing runs; clean_surface.csv is the source of
+truth until the user merges).
+
 ### 2026-08-22 06:15 -- MAJOR REVISION: batch-0 is GENUINELY depressed; the "36/38 cells inflated" inference was two phenomena conflated
 
 Clean T1_L1 cells came in at the PUBLISHED values (n100 0.86=0.86, n50 0.84~0.83, n25 0.68~0.67),

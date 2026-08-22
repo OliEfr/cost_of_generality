@@ -288,7 +288,14 @@ frames against T1's ~190 and h264 encode is single-core. T2_L3b will take about 
 | T1 cup_place | 600 | ~8 min | the figure earlier planning used |
 | T2 drawer_stow | 1200 | **43 min** | `t2_L0_n10`, 12:42:28 -> 13:25:27, GPU shared with L3b datagen |
 | T2 drawer_stow, GPU otherwise free | 1200 | **22-24 min** | five consecutive evals 2026-08-21 (t2fu queue); use this for exclusive-GPU planning |
-| T3 push_target | 800 | not yet measured | expect ~15-25 min |
+| T2 drawer_stow, two evals sharing the card | 1200 | **47-78 min** | clean re-sweep 2026-08-21/22; grows with foreign-job load |
+| T3 push_target | 800 | **17-33 min** | clean re-sweep 2026-08-22, two slots |
+| T1 cup_place, two slots | 600 | **4-26 min** | clean re-sweep; 4-6 min when the card is otherwise empty |
+| T2 L3 cell (10 variants, one Isaac boot each, --stages) | 1200 | **78-96 min/cell** | phase-2 re-runs 2026-08-22, two cell drivers concurrently |
+
+Full-surface planning number: the complete clean re-sweep — 54 flat cells + 6 T2-L3 cells + 2
+D24 checkpoints = 62 evals — took **~18 h wall** end-to-end on the shared 4090 with
+admission-controlled 2-way parallelism (2026-08-21 21:51 → 08-22 15:32).
 
 T2's episode limit is 2x T1's and its policy must be queried at every step of it, so the eval is
 ~5x slower, not 2x -- part of that is sharing the card with L3b datagen, but the step count is the

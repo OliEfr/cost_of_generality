@@ -1,0 +1,1 @@
+{"num_envs": 20, "batches": 4, "base_seed": 5001, "comment": "warm-up probe: seeds 5001-5004 with 5001 as the FIRST batch in a fresh process; compare against the main clean run where 5001 ran warm (0.85)"}
