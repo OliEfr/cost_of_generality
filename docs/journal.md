@@ -4557,6 +4557,43 @@ original measurement itself is wrong, beyond the carryover bug. The clean sweep 
 only authoritative surface.** The report's corrected-estimates table is hereby demoted to
 "bounds where the original run was sound"; final tables come from the sweep alone.
 
+### 2026-08-22 06:15 -- MAJOR REVISION: batch-0 is GENUINELY depressed; the "36/38 cells inflated" inference was two phenomena conflated
+
+Clean T1_L1 cells came in at the PUBLISHED values (n100 0.86=0.86, n50 0.84~0.83, n25 0.68~0.67),
+not at the corrected estimates -- and the per-batch decomposition settles why: clean
+T1_L1_n100 with the t==0 guard ACTIVE is [0.50, 0.90, 0.95, 0.95, 1.00], identical to the old
+run. Batches 1-4 at 0.9-1.0 cannot be phantom-inflated in a guarded run, so **batch 0 is
+genuinely worse, not the only honest batch**. Two separate phenomena were conflated in the
+2026-08-21 night entry:
+
+1. **Carryover phantoms: real, but only where mid-batch SR is mid/low.** Mechanically proven on
+   instrumented T2 runs (20/20 identity, phantoms never lift). Where batches 1-4 run near
+   ceiling (T1 L1/L2 at N>=50, T3 high cells, T2 L0), a phantom almost always coincides with a
+   genuine success, so net inflation was NEGLIGIBLE -- clean T1/T2_L0 reproduce published. Where
+   mid-batch SR is 0.1-0.5 (T2 L1/L2), phantom inflation was real (clean L1 n400 0.15 vs
+   published 0.23).
+2. **Batch-0 depression: a real, run-independent effect** present in old AND guarded-clean runs,
+   across tasks (T1_L1_n100 0.50 vs rest 0.95; clean T2_L1_n50 batch0 0.20 vs rest ~0.35).
+   Plausible mechanisms, to be separated in the completion analysis: renderer/physics warm-up in
+   a fresh process (first episodes see unconverged RTX lighting), or the first reset after env
+   creation sampling off-snapshot states. NOT a scoring bug -- those episodes genuinely fail.
+
+**Consequences:**
+- The constraint-propagation correction anchored truth on batch-0 -> systematically UNDERSHOT.
+  stale_corrected_sr.csv is fully deprecated (bounds included -- their premise "recorded =
+  true OR prev-true" holds, but "batch-0 = representative truth" does not).
+- **L3 evals run every variant in a fresh process, so ALL 200 L3 episodes are batch-0-like.** If
+  batch-0 depression is process-warm-up, published L3 cells are biased LOW relative to flat
+  cells' batches 1-4 -- the opposite direction of the phantom bias. Finding 4 (object axis
+  dominates) is now double-contested. Completion analysis must compare: flat batch-0-only SR vs
+  L3 SR (same warm-up regime), and phase-2 L3 stage data (t_open distributions) for warm-up
+  signatures.
+- The old T2_L1 n50/n100 anomaly STANDS (old runs lower than clean across ALL batches, which
+  neither phenomenon explains) -- those two original runs remain untrustworthy.
+- Protocol implication for the paper: either discard batch 0 (report batches 1-4, n=80/cell,
+  and accept L3 needs a warm-up-matched re-protocol) or quantify the warm-up effect explicitly.
+  User's call; flagged for the completion report.
+
 ### 2026-08-21 -- Generator-filter contamination audit CLOSED for all 12 cells: no cell's SR is credibly inflated by the generator's selection filter
 
 The 2026-08-20 concern -- "demos exist only where generation succeeded, so measured SR partly
