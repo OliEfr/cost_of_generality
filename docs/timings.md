@@ -337,3 +337,23 @@ mutual slowdown, so treat 15 h as the optimistic end.
 
 Do not raise this to three concurrent evals: 3 x 7 + 1.6 = 22.6 GB of 24.5 leaves under 2 GB, and
 Isaac's allocation spikes during scene load.
+
+## Candidate B (multi_task_dit plugin) local smoke timings, RTX 4090 (2026-08-23)
+
+100-300-step trains on L1 (25 eps, pyav, 8 workers), plugin on lerobot 0.4.4, measured
+from lerobot_train's own updt_s/data_s lines:
+
+| batch | steps/s | updt_s / data_s | peak VRAM (nvidia-smi, process) | condition |
+|---|---|---|---|---|
+| 16 | **4.83** | 0.205 / 0.002 | 13.3 GiB | GPU otherwise idle (300-step run) |
+| 16 | 3.67 | 0.264 / 0.008 | 13.3 GiB | foreign 6.7 GiB process computing alongside |
+| 32 | OOM | -- | attempt peaked 16.2 GiB, needed +296 MiB | with 6.7 GiB foreign resident; would likely fit on an EMPTY 24 GiB card (needs ~16.5-17 GiB); retried with expandable_segments, same result |
+| 64 | OOM | -- | died in warm-up at 15.8 GiB needing +592 MiB | same contention; needs well over 20 GiB alone -> local no, A100-64GB yes |
+
+Notes: (a) the model is COMPUTE-bound here (data_s ~0.01 even on pyav at batch 16 --
+unlike the ResNet diffusion cells, which are dataloader-bound at ~1 steps/s on the
+cluster); VRAM scales with 4x batch CLIP-224 images per step (batch x n_obs 2 x 2 cams
+through one shared ViT-B/16 WITH grads). (b) 80k steps at local batch-16 rate ~ 4.6 h;
+cluster batch 64/128/192 gets measured in the B2 dbg smoke before the full run --
+train_lang_dit.sbatch has 24 h walltime + resume, so even a 1 steps/s outcome fits.
+(c) local 300-step smoke total wall ~75 s including 15 s startup.

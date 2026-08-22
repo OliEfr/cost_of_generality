@@ -4761,3 +4761,98 @@ Existing t1_L1_n100_s0 080000 checkpoint through the modified rollout_eval.py:
 Consequence for later comparisons: run-to-run SR jitter exists even at fixed seeds
 (here +-0.01 with 4 episode flips); A3/B3 verdicts use Wilson CI overlap, never
 point-equality.
+## 2026-08-22 -- Candidate B: multi_task_dit backported onto 0.4.4; B1 unit + dry-parse gates green
+
+Branch `lang/cand-b` (worktree lang-cand-b). The 0.5.2 checkout's multi_task_dit policy
+(project_repos/lerobot_AICchallange/lerobot @ fc6c94c, READ-ONLY) now runs on the PINNED
+lerobot 0.4.4 as the in-repo plugin `src/lerobot_policy_mtdit/`. Module names kept
+verbatim (`configuration_/modeling_/processor_multi_task_dit.py`) because 0.4.4's
+factory derives the modeling/processor module paths from
+`config_cls.__module__.replace("configuration_", ...)` (factory.py:531-590); the package
+name itself must not contain those prefixes. Activation:
+`PYTHONPATH=<repo>/src` + `--policy.discover_packages_path=lerobot_policy_mtdit`
+(the parser wrapper loads + strips the flag BEFORE config parsing, so it is legal — and
+required — on the config_path-only resume invocation too).
+
+**API deltas actually hit: exactly the 5 predicted, zero stragglers.**
+1. configuration: `lerobot.configs` has no package `__init__` at 0.4.4 →
+   `lerobot.configs.policies.PreTrainedConfig` + `lerobot.configs.types.NormalizationMode`.
+2. configuration: `lerobot.optim` re-exports gone → `.optimizers.AdamConfig` +
+   `.schedulers.DiffuserSchedulerConfig`.
+3. modeling: 0.4.4's import_utils lacks `_diffusers_available`/`require_package` → new
+   `_compat.py` (12 lines: flag via 0.4.4's own `is_package_available`; `require_package`
+   copied verbatim from the 0.5.2 checkout utils/import_utils.py:86-95).
+4. modeling: relative `..pretrained`/`..utils` → absolute `lerobot.policies.*`.
+5. processor: `policy_action_to_transition`/`transition_to_policy_action` not re-exported
+   by `lerobot.processor` at 0.4.4 → import from `lerobot.processor.converters`.
+Checked-identical across versions (so NOT deltas): `populate_queues`, `PreTrainedPolicy`'s
+five abstract methods, `TokenizerProcessorStep` kwargs, all `lerobot.utils.constants`
+names, all eight `lerobot.processor` step classes.
+
+**B1 gate 1 (unit smoke, scripts/dev/smoke_mtdit_unit.py): MTDIT_UNIT_OK.** Registration
+via plugin import; config with study features (state (9,), 2x128x128 cams, action (7,));
+crop-survival assert (validate_features silently sets image_crop_shape=None when
+crop > effective size — with resize [256,256] the [224,224] crop SURVIVES, guarding the
+CLIP fixed-224-pos-embed trap); policy builds: 249.0M params, 185.8M trainable (63.2M =
+frozen CLIP text tower); decisive conditioning assert
+`conditioning_dim == (9 + 768*2 + 512) * 2 = 4114` proves the 512-d text projection is in
+the conditioning vector; fwd+bwd on random batch with pre-tokenized language: loss 1.259
+finite, grad_norm 3.92, text-tower grads None, projection grads present.
+
+**B1 gate 2 (draccus dry parse + 2 real steps): MTDIT_DRYPARSE_EXIT=0.** Full
+COG_DIT_FLAGS set through `lerobot.scripts.lerobot_train` on local/L0 episodes [0,1],
+batch 2, pyav: parses, constructs, runs 2 steps (loss 0.993 → 0.943), writes checkpoint
+000002 with model.safetensors + config.json + policy_pre/postprocessor jsons. This also
+proves the tokenizer pulls the dataset's task string: `task` flows dataloader →
+`complementary_data` (converters.py:170) → TokenizerProcessorStep →
+observation.language.{tokens,attention_mask}; had it not, the conditioning vector would
+be 1024 short and the AdaLN linear errors at first forward. Overrides for smokes must
+come AFTER ${COG_DIT_FLAGS} (draccus last-wins), mirror image of the diffusion_base rule.
+
+New files: `configs/train/lang_dit_b.sh` (COG_DIT_FLAGS: resize 256/crop 224, horizon 20 /
+n_action_steps 16 / n_obs_steps 2 for 20 Hz, policy preset lr 2e-5 + vision tower 0.1x,
+ONE shared CLIP encoder for both cams — deliberate asymmetry vs D26, goes in the report;
+COG_DIT_BATCH default 64), `slurm/train_lang_dit.sbatch` (sibling of frozen train.sbatch;
+RUN_ID `*_s0_mtdit`; discover flag on BOTH branches; 24h walltime),
+`scripts/ops/assert_resume_config_mtdit.py` (COG_DIT_* resume guard — the diffusion one
+would refuse or vouch against the wrong flag set), `sync_up.sh hf` mode (stages
+models--openai--clip-vit-base-patch16 → $WORK/cog/hf_cache/hub/, no --delete).
+
+## 2026-08-23 -- Candidate B: B1 gates 3-5 (300-step train, DDIM reload, throughput probe)
+
+**Gate 3 (300-step train): SMOKE300_EXIT=0, loss falls 0.504 -> 0.132.** local/L1 eps
+0..24, batch 16, pyav, tmux `cog_smoke_mtdit_300` (finished in ~75 s, well under the
+10-min rule-10 threshold, so no watcher/cron were needed; launched with all-absolute
+paths per running_jobs.md anyway). Loss curve (log_freq 25): 0.504, 0.227, 0.203, 0.176,
+0.186, 0.152, 0.181, 0.162, 0.162, 0.140, 0.150, 0.132. Checkpoints 000150 + 000300 both
+complete: model.safetensors, config.json, train_config.json, policy_preprocessor.json +
+step_4_normalizer safetensors, policy_postprocessor.json + step_0_unnormalizer.
+**4.83 steps/s at batch 16** (updt_s 0.205, data_s 0.002 -- COMPUTE-bound; pyav keeps up,
+unlike the dataloader-bound ResNet diffusion cells).
+
+**Gate 4 (reload + inference): MTDIT_RELOAD_OK** (scripts/dev/smoke_mtdit_reload.py).
+Mirrors rollout_eval.py's exact pattern: `MultiTaskDiTPolicy.from_pretrained(ckpt,
+cli_overrides=["--noise_scheduler_type=DDIM","--num_inference_steps=10"])` (asserted:
+config flipped, objective.num_inference_steps=10, scheduler isinstance DDIMScheduler) +
+`make_pre_post_processors(cfg, pretrained_path=ckpt)` (5 pre / 2 post steps from the
+saved jsons). One `select_action` on a dummy 20-env batch -- state (20,9), two
+(20,3,128,128) cams, "task"=[canonical]*20 -- returns postprocessed action (20,7) finite,
+on cpu. Verified along the way: AddBatchDimensionProcessorStep is a NO-OP on batched
+inputs (only unsqueezes dim-1 states / dim-3 images / plain-str task), so the harness's
+batched-obs convention passes through the pipeline unchanged, and the tokenizer emits
+observation.language.tokens (20,77) from the task list.
+
+**Gate 5 (throughput probe, batch 16/32/64): only batch 16 measurable locally today.**
+A foreign process (PID 1526420, 6.7 GiB, untouchable per guardrail 2) occupied the card
+throughout: b16 4.83 steps/s uncontended (gate 3) vs 3.67 contended, peak 13.3 GiB;
+b32 OOM at 16.2 GiB needing +296 MiB (retried with PYTORCH_CUDA_ALLOC_CONF=
+expandable_segments, same) -- would likely fit alone (~16.5-17 GiB) but not beside 6.7
+GiB foreign; b64 OOM in warm-up, needs >20 GiB alone -> never local, fine on A100-64GB.
+Full numbers + notes in docs/timings.md. The B2 cluster dbg smoke (64/128/192 on A100)
+remains the batch-decider, unchanged.
+
+**B1 VERDICT: PASS.** All five B1 stages green (unit MTDIT_UNIT_OK, dry-parse
+MTDIT_DRYPARSE_EXIT=0, 300-step loss falling + checkpoint complete, MTDIT_RELOAD_OK,
+throughput recorded with the local-VRAM caveat). Deviations from plan: none in substance;
+b32/b64 local throughput unmeasurable under foreign GPU occupancy (recorded, cluster
+probe covers it).

@@ -2,6 +2,7 @@
 # Push code + datasets to Leonardo. Datasets go to $FAST (read-hot, NVMe); code to $WORK.
 #   scripts/ops/sync_up.sh code            # repo only (fast, safe to repeat)
 #   scripts/ops/sync_up.sh datasets T1 T2  # LeRobot datasets for the named tasks
+#   scripts/ops/sync_up.sh hf              # CLIP ViT-B/16 HF cache -> $WORK/cog/hf_cache/hub
 #
 # Requires a live certificate (48 h; renew from the laptop with ~/cineca_login.sh).
 set -euo pipefail
@@ -65,6 +66,17 @@ case "$what" in
           "${REMOTE}:${FAST_REMOTE}/${s}/"
       done
     done
+    ;;
+  hf)
+    # Stage the CLIP ViT-B/16 weights + tokenizer for candidate B (multi_task_dit):
+    # compute nodes are offline (HF_HUB_OFFLINE=1) and train_lang_dit.sbatch points
+    # HF_HOME at $WORK/cog/hf_cache, so the model must be pre-staged in hub/ layout.
+    # No --delete: the remote cache may hold other models we did not stage.
+    HF_MODEL_DIR="${COG_HF_CACHE:-$HOME/.cache/huggingface}/hub/models--openai--clip-vit-base-patch16"
+    [ -d "${HF_MODEL_DIR}" ] || { echo "[sync] MISSING ${HF_MODEL_DIR} (download CLIP locally first)" >&2; exit 3; }
+    echo "[sync] hf <- ${HF_MODEL_DIR}"
+    rsync -az --info=stats1 "${HF_MODEL_DIR}" \
+      "${REMOTE}:${WORK_REMOTE}/hf_cache/hub/"
     ;;
   *) echo "unknown target ${what}"; exit 2 ;;
 esac
