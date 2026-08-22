@@ -791,3 +791,50 @@ snapshot predating the regeneration) is removed, superseded by `curves_T1.csv`.
 **VERIFY:** any new reporting script must call `canonical()` rather than filtering levels itself. If a
 second corrected arm ever appears (an `L2b`, say), the only edit should be to `REPORT_AS` /
 `DEPRECATED_LEVELS` -- if it is not, the mapping has leaked out of that module again.
+
+## D30 -- 2026-08-22 (USER DIRECTIVE): language-conditioning INVESTIGATION -- two candidates, shared harness; not a study arm
+
+**Context.** A future full-study rerun will add a language-diversity disturbance
+dimension: 20 frozen synonym instructions per task, used identically in training and
+eval (paraphrase robustness, not instruction generalization). This session only
+investigates and validates the mechanism: build BOTH candidates, measure training
+time, smoke + one 80k verify train each + a multi-task probe; the user picks the
+setting later. Nothing here enters the surface: all results go to
+`results/diagnostics/`, registry rows carry `variant` per D29.
+
+**Decisions.**
+1. **No lerobot upgrade.** The pin is py-version-forced (PINS.md rows 9/20: lerobot
+   >=0.5 needs py>=3.12, Isaac Sim 5.1 forces py3.11, eval is in-process). Both
+   candidates run on pinned 0.4.4 unmodified.
+2. **Candidate A = language-as-env-state.** Frozen CLIP ViT-B/16 text embeddings
+   (512-d, unit-norm) written per frame as `observation.environment_state`; stock
+   DiffusionPolicy conditions on it via the native ENV path
+   (modeling_diffusion.py:246-282); ENV gets IDENTITY normalization by default, so
+   the embedding reaches global_cond unchanged and a future 1-instruction control
+   arm has no zero-variance hazard. This deliberately hijacks a channel meant for
+   privileged env state -- the study has never used it, and the converter comment +
+   manifest record the reuse. Zero new model code; cluster needs no transformers.
+3. **Candidate B = multi_task_dit backport.** The 0.5.2 policy (3 modules) is copied
+   into an in-repo plugin `src/lerobot_policy_mtdit/` (module names verbatim = the
+   0.4.4 factory contract), 5 import fixes + a ~12-line compat shim, activated via
+   PYTHONPATH + `--policy.discover_packages_path`. CLIP@224 vs our 128px frames is
+   handled config-side (resize 256 / crop 224 = the baseline's 0.875 crop ratio).
+4. **Instructions are a frozen benchmark** (`configs/instructions/`, rule-8
+   semantics): index 0 = the canonical string already in every dataset; changes mean
+   a new version file + new `*_i<n>` dataset roots, never mutation.
+5. **Assignment**: conversion = per-task episode counter % 20 over the interleaved
+   order (nested-N prefixes stay balanced; hard-fail on same-task multi-file merges
+   -- gcd(20,10) would make instruction predict L3 variant, D18 lesson); eval =
+   (batch+env) % 20 layered on the frozen protocol seeds (rotates env columns; poses
+   are drawn fresh per reset, so no instruction<->pose confound).
+6. **Probe** (proves conditioning is live, because single-task synonym embeddings are
+   near-duplicates a policy may legitimately ignore): one policy on merged T1+T3
+   (n=100/task), evaled match vs swapped instructions in both envs. PASS = matched
+   SR >= 0.50 AND (match - swap) >= 0.30 with non-overlapping Wilson95 CIs. Caveat
+   on record: a swap collapse proves causal influence, not semantic parsing. CLIP
+   cosine geometry note: cup_place x push_target instruction sets are close (mean
+   0.842) -- a conservative pairing; see journal 2026-08-22.
+
+**VERIFY (open).** H4 flag-off regression must reproduce t1_L1_n100_s0 SR=0.86
+exactly; A1 +1024 cond-encoder param assert; B throughput on A100 (the 2.2 GPU-h/cell
+rule will NOT hold for B); offline CLIP resolution on a compute node before B's 80k.

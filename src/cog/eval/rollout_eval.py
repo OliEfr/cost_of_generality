@@ -30,6 +30,25 @@ parser.add_argument(
     help="drawer_stow only: record per-episode stage latches (drawer opened, object "
     "lifted, object over open drawer) alongside the official success",
 )
+parser.add_argument(
+    "--instructions",
+    default=None,
+    help="frozen configs/instructions/instructions_vN.json: assign instruction "
+    "idx=(batch+env)%%K per episode, inject the string (batch['task']) and, iff the "
+    "checkpoint declares observation.environment_state, the frozen embedding. "
+    "Layered on top of the frozen protocol seeds; default off = today's behaviour",
+)
+parser.add_argument(
+    "--instruction_task",
+    default=None,
+    help="task key into the instructions file (default: derived from the gym prefix)",
+)
+parser.add_argument(
+    "--swap_instructions_from",
+    default=None,
+    help="probe mismatch condition: draw instructions from THIS task's set instead "
+    "of the env's own (e.g. push_target instructions in the cup_place env)",
+)
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 app_launcher = AppLauncher(args_cli)
@@ -66,8 +85,7 @@ else:
 
 from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 
-from lerobot.policies.diffusion.modeling_diffusion import DiffusionPolicy
-from lerobot.policies.factory import make_pre_post_processors
+from lerobot.policies.factory import get_policy_class, make_pre_post_processors
 
 
 def obs_to_batch(obs, device):
@@ -96,7 +114,14 @@ def main():
         import isaaclab.utils.math as math_utils
         from cog.tasks.drawer_stow.assets import DRAWER_CAVITY_HALF_X, DRAWER_CAVITY_HALF_Y
 
-    policy = DiffusionPolicy.from_pretrained(
+    # Generic policy loading: language-less diffusion checkpoints take the exact same
+    # path as before; a multi_task_dit checkpoint (candidate B) needs the in-repo
+    # plugin imported first so its @PreTrainedConfig.register_subclass runs.
+    with open(os.path.join(args_cli.checkpoint, "config.json")) as f:
+        policy_type = json.load(f)["type"]
+    if policy_type == "multi_task_dit":
+        import lerobot_policy_mtdit  # noqa: F401  (src/ is on PYTHONPATH alongside cog)
+    policy = get_policy_class(policy_type).from_pretrained(
         args_cli.checkpoint,
         cli_overrides=[
             "--noise_scheduler_type=DDIM",
@@ -106,6 +131,42 @@ def main():
     pre, post = make_pre_post_processors(policy.config, pretrained_path=args_cli.checkpoint)
     dev = next(policy.parameters()).device
 
+    # Language injection (default: none). The env_state channel is checkpoint-driven:
+    # a candidate-A checkpoint declares observation.environment_state and CANNOT run
+    # without embeddings; a language-less checkpoint must never receive the key.
+    use_env_state = policy.config.env_state_feature is not None
+    instr_strings = instr_embs = None
+    instr_meta = {}
+    if args_cli.instructions:
+        import hashlib
+        from pathlib import Path
+
+        import numpy as np
+
+        spec_path = Path(args_cli.instructions)
+        spec = json.loads(spec_path.read_text())
+        npz_path = spec_path.parent / spec["embeddings_file"]
+        npz = np.load(npz_path)
+        env_kind = _TASK_MODULES[_prefix].rsplit(".", 1)[-1] if _prefix else None
+        task_kind = args_cli.instruction_task or env_kind
+        lookup_kind = args_cli.swap_instructions_from or task_kind
+        instr_strings = spec["tasks"][lookup_kind]
+        instr_embs = torch.from_numpy(npz[lookup_kind]).float().to(dev)
+        instr_meta = {
+            "file": str(spec_path),
+            "sha256_json": hashlib.sha256(spec_path.read_bytes()).hexdigest(),
+            "sha256_npz": hashlib.sha256(npz_path.read_bytes()).hexdigest(),
+            "instruction_task": task_kind,
+            "swap_instructions_from": args_cli.swap_instructions_from,
+            "assignment": "(batch+env)%K",
+            "K": len(instr_strings),
+        }
+        print(f"[eval] instructions: {lookup_kind} x{len(instr_strings)} "
+              f"(env_state injection: {use_env_state})", flush=True)
+    elif use_env_state:
+        raise SystemExit("checkpoint declares observation.environment_state (language-"
+                         "conditioned candidate A) -- pass --instructions")
+
     env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=num_envs)
     env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
 
@@ -113,6 +174,15 @@ def main():
     for b in range(batches):
         obs, _ = env.reset(seed=base_seed + b)
         policy.reset()
+        idx_list = batch_tasks = batch_embs = None
+        if instr_strings:
+            # (b+i)%K rotates instructions across env columns batch-to-batch, so each
+            # instruction gets its 5 episodes in 5 different (batch, column) slots;
+            # poses are drawn fresh per reset -> no instruction<->pose confound (D18).
+            idx_list = [(b + i) % len(instr_strings) for i in range(num_envs)]
+            batch_tasks = [instr_strings[j] for j in idx_list]
+            if use_env_state:
+                batch_embs = instr_embs[idx_list]
         success = torch.zeros(num_envs, dtype=torch.bool, device=env.device)
         finished = torch.zeros(num_envs, dtype=torch.bool, device=env.device)
         if stages_on:
@@ -130,7 +200,12 @@ def main():
             )
         for t in range(args_cli.max_steps):
             with torch.inference_mode():
-                batch = pre(obs_to_batch(obs, dev))
+                raw = obs_to_batch(obs, dev)
+                if instr_strings:
+                    raw["task"] = batch_tasks
+                    if use_env_state:
+                        raw["observation.environment_state"] = batch_embs
+                batch = pre(raw)
                 action = post(policy.select_action(batch))
             obs, _, terminated, truncated, _ = env.step(action.to(env.device))
             succ_now = env.termination_manager.get_term("success")
@@ -188,12 +263,15 @@ def main():
                     "t_lift": int(t_lift[i]),
                     "t_over": int(t_over[i]),
                     "t_success": int(t_succ[i]),
+                    **({"instruction_index": idx_list[i]} if idx_list else {}),
                 }
                 for i in range(num_envs)
             )
         else:
             outcomes.extend(
-                {"batch": b, "env": i, "success": bool(success[i])} for i in range(num_envs)
+                {"batch": b, "env": i, "success": bool(success[i]),
+                 **({"instruction_index": idx_list[i]} if idx_list else {})}
+                for i in range(num_envs)
             )
         sr_so_far = sum(o["success"] for o in outcomes) / len(outcomes)
         print(f"[eval] batch {b+1}/{batches}  running SR={sr_so_far:.3f}", flush=True)
@@ -210,6 +288,16 @@ def main():
         "success_rate": k / n,
         "outcomes": outcomes,
     }
+    if instr_meta:
+        result["instructions"] = instr_meta
+        per: dict[int, list[int]] = {}
+        for o in outcomes:
+            s = per.setdefault(o["instruction_index"], [0, 0])
+            s[0] += o["success"]
+            s[1] += 1
+        result["per_instruction"] = {
+            str(j): {"successes": s[0], "episodes": s[1]} for j, s in sorted(per.items())
+        }
     if stages_on:
         result["stages"] = {
             key: sum(o[key] for o in outcomes) / n

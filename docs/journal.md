@@ -4705,3 +4705,29 @@ was fixed. Any future per-episode analysis of L3 evals must reindex batch = inde
 Negative results worth keeping: success_vs_pose's T2 L1 yaw-bin null replicates under MW/KS/logistic
 and extends to all dims and all cells; no cell shows the coverage signature (higher SR where demo
 density is high) at p<0.01 anywhere.
+
+# 2026-08-22 -- LANGUAGE-CONDITIONING INVESTIGATION (not a study arm): harness + two candidates
+
+Scope per user: investigate the best language-conditioned policy setting for a future
+full-study rerun with a 20-synonym-instructions-per-task disturbance dimension (train
+and eval share the instruction set; no held-out-instruction generalization). Build BOTH
+candidates, measure training time, verify by smoke + one 80k train each + a multi-task
+probe; user picks later. Full plan snapshot: docs/decisions.md D30 (this session).
+Everything here goes to results/diagnostics/, never the study surface.
+
+### 2026-08-22 -- H1: instruction sets frozen (gate INSTRUCTIONS_OK)
+
+- `configs/instructions/instructions_v1.json`: 3 tasks x 20 paraphrases, index 0 = the
+  canonical string already baked into every existing dataset. Frozen like eval sets:
+  changes require a new version file + new *_i<n> dataset roots, never mutation.
+- `embeddings_clip_vit_b16_v1.npz`: CLIP ViT-B/16 text embeddings
+  (openai/clip-vit-base-patch16 @ 57c216476eefef5ab752ec549e440a49ae4ae5f3), 512-d
+  float32, unit-L2-normalized. SHA256SUMS covers both files;
+  `scripts/dev/validate_instructions.py` is the offline integrity gate.
+- Cosine geometry (matters for the probe): within-task mean 0.89/0.94/0.91
+  (T1/T2/T3); cross-task cup_place x push_target is HIGH (mean 0.842, max 0.928 --
+  both sets name the "green target marker"), though below within-task means.
+  drawer_stow separates cleanly (~0.70 vs both). Consequence: the T1/T3 probe is the
+  conservative choice of task pair -- if language steers behavior even with 0.84-mean
+  cross-task cosine, the mechanism is robust; if the probe comes back LANGUAGE IGNORED,
+  re-check with a T2 pairing before concluding.

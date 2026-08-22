@@ -23,6 +23,7 @@ import random
 from pathlib import Path
 
 import h5py
+import hashlib
 import numpy as np
 
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
@@ -80,14 +81,30 @@ BASE_FEATURES = {
 }
 
 
-def features_for(task: str) -> dict:
+def features_for(task: str, emb_dim: int = 0, include_privileged: bool = True) -> dict:
     feats = dict(BASE_FEATURES)
-    for name, (_key, dim, names) in TASK_SPECS[task]["privileged"].items():
-        feats[name] = {"dtype": "float32", "shape": (dim,), "names": names}
+    if include_privileged:
+        for name, (_key, dim, names) in TASK_SPECS[task]["privileged"].items():
+            feats[name] = {"dtype": "float32", "shape": (dim,), "names": names}
+    if emb_dim:
+        # Language channel (candidate A): the exact key observation.environment_state
+        # is load-bearing -- lerobot types it FeatureType.ENV and DiffusionPolicy
+        # appends it to global_cond; any other observation.* float key is silently
+        # ignored (dataset_to_policy_features / robot_state_feature are name-exact).
+        # ENV features pass IDENTITY normalization (no "ENV" in normalization_mapping),
+        # so the unit-norm embedding reaches the policy unchanged.
+        feats["observation.environment_state"] = {
+            "dtype": "float32",
+            "shape": (emb_dim,),
+            "names": [f"clip{i:03d}" for i in range(emb_dim)],
+        }
     return feats
 
 
-def episode_frames(f: h5py.File, demo: str, task: str):
+def episode_frames(f: h5py.File, demo: str, task: str,
+                   instruction: str | None = None,
+                   embedding: np.ndarray | None = None,
+                   include_privileged: bool = True):
     spec = TASK_SPECS[task]
     g = f[f"data/{demo}"]
     obs = g["obs"]
@@ -102,11 +119,36 @@ def episode_frames(f: h5py.File, demo: str, task: str):
             "observation.images.table_cam": obs["table_cam"][t],
             "observation.images.wrist_cam": obs["wrist_cam"][t],
             "info.joint_pos": obs["joint_pos"][t].astype(np.float32),
-            "task": spec["task_str"],
+            # constant within the episode -- save_episode() requires a single task
+            "task": instruction if instruction is not None else spec["task_str"],
         }
-        for name, (key, _dim, _names) in spec["privileged"].items():
-            frame[name] = obs[key][t].astype(np.float32)
+        if embedding is not None:
+            frame["observation.environment_state"] = embedding
+        if include_privileged:
+            for name, (key, _dim, _names) in spec["privileged"].items():
+                frame[name] = obs[key][t].astype(np.float32)
         yield frame
+
+
+def load_instruction_set(path: str):
+    """Load + cross-check the frozen instruction artifacts. Returns (spec, strings, embs)."""
+    spec_path = Path(path)
+    spec = json.loads(spec_path.read_text())
+    npz = np.load(spec_path.parent / spec["embeddings_file"])
+    strings: dict[str, list[str]] = {}
+    embs: dict[str, np.ndarray] = {}
+    for task, ss in spec["tasks"].items():
+        e = npz[task]
+        stored = [str(s) for s in npz[f"{task}__instructions"]]
+        assert stored == ss, f"{task}: npz strings differ from JSON -- regenerate or fix version"
+        assert e.shape == (len(ss), spec["embedding"]["dim"]) and e.dtype == np.float32
+        assert np.allclose(np.linalg.norm(e, axis=1), 1.0, atol=1e-4), f"{task}: embeddings not unit-norm"
+        strings[task], embs[task] = ss, e
+    return spec, strings, embs
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def main():
@@ -114,8 +156,14 @@ def main():
     ap.add_argument("--input", nargs="+", required=True, help="source HDF5 file(s); >1 = variant merge")
     ap.add_argument("--root", required=True)
     ap.add_argument("--repo_id", required=True)
-    ap.add_argument("--task", choices=sorted(TASK_SPECS), default="cup_place",
-                    help="selects task string + privileged keys; default keeps T1 behaviour")
+    ap.add_argument("--task", nargs="+", choices=sorted(TASK_SPECS), default=["cup_place"],
+                    help="selects task string + privileged keys; default keeps T1 behaviour. "
+                         "Either 1 value (applies to every input) or exactly one per --input "
+                         "(multi-task probe mode; requires --instructions)")
+    ap.add_argument("--instructions", default=None,
+                    help="path to frozen configs/instructions/instructions_vN.json: assign one of "
+                         "the 20 synonyms per episode (task string + observation.environment_state "
+                         "embedding). Default off = today's constant-string behaviour")
     ap.add_argument("--fps", type=int, default=20)
     ap.add_argument("--shuffle_seed", type=int, default=0)
     ap.add_argument("--max_episodes", type=int, default=0, help="0 = all")
@@ -125,6 +173,28 @@ def main():
     bad = [p for p in args.input if "_failed" in Path(p).name]
     if bad and not args.allow_failed:
         raise SystemExit(f"refusing failed-demo inputs (use --allow_failed to override): {bad}")
+
+    if len(args.task) == 1:
+        tasks_per_file = [args.task[0]] * len(args.input)
+    elif len(args.task) == len(args.input):
+        tasks_per_file = list(args.task)
+    else:
+        raise SystemExit(f"--task must have 1 value or one per --input ({len(args.input)}), got {len(args.task)}")
+    multi_task = len(set(tasks_per_file)) > 1
+    if multi_task and not args.instructions:
+        raise SystemExit("multi-task conversion requires --instructions (task-discriminating strings)")
+
+    instr_spec = instr_strings = instr_embs = None
+    if args.instructions:
+        if not multi_task and len(args.input) > 1:
+            # 20 instructions round-robined over a k-variant interleave (k=10 for L3)
+            # would make instruction a perfect predictor of variant (gcd trap, D18
+            # lesson). An L3-lang assignment needs its own design -- refuse loudly.
+            raise SystemExit("--instructions with a same-task multi-file merge is not supported: "
+                             "instruction index would confound with the variant interleave")
+        instr_spec, instr_strings, instr_embs = load_instruction_set(args.instructions)
+        for t in set(tasks_per_file):
+            assert t in instr_strings, f"{t} missing from {args.instructions}"
 
     root = Path(args.root)
     if root.exists():
@@ -150,19 +220,38 @@ def main():
         if args.max_episodes:
             order = order[: args.max_episodes]
 
+        emb_dim = instr_spec["embedding"]["dim"] if instr_spec else 0
+        # Probe (multi-task) roots drop the per-task privileged info.* keys: feature
+        # dicts must be uniform across episodes, and info.* is never policy input (D5).
+        include_privileged = not multi_task
         ds = LeRobotDataset.create(
             repo_id=args.repo_id,
             fps=args.fps,
-            features=features_for(args.task),
+            features=features_for(tasks_per_file[0], emb_dim, include_privileged),
             root=str(root),
             robot_type="franka",
             use_videos=True,
             image_writer_threads=8,
             vcodec="h264",
         )
+        instr_records = []
         try:
+            # per-task counter % K over the interleaved order: every nested-N prefix
+            # stays instruction-balanced within each task (n100 -> exactly 5 each)
+            counters: dict[str, int] = {}
             for ep_idx, (fi, demo) in enumerate(order):
-                for frame in episode_frames(handles[fi], demo, args.task):
+                task = tasks_per_file[fi]
+                instruction = embedding = None
+                if instr_strings:
+                    k = counters.get(task, 0)
+                    counters[task] = k + 1
+                    instr_idx = k % len(instr_strings[task])
+                    instruction = instr_strings[task][instr_idx]
+                    embedding = instr_embs[task][instr_idx]
+                    instr_records.append({"episode_index": ep_idx, "task_name": task,
+                                          "instruction_index": instr_idx, "instruction": instruction})
+                for frame in episode_frames(handles[fi], demo, task,
+                                            instruction, embedding, include_privileged):
                     ds.add_frame(frame)
                 ds.save_episode()
                 if (ep_idx + 1) % 25 == 0:
@@ -171,12 +260,23 @@ def main():
             ds.finalize()
 
         manifest = {
-            "task": args.task,
+            "task": args.task[0] if len(args.task) == 1 else args.task,
             "inputs": args.input,
             "shuffle_seed": args.shuffle_seed,
             "episode_order": [{"episode_index": i, "file": args.input[fi], "demo": d}
                               for i, (fi, d) in enumerate(order)],
         }
+        if args.instructions:
+            spec_path = Path(args.instructions)
+            manifest["instructions"] = {
+                "file": str(spec_path),
+                "version": instr_spec["version"],
+                "model": instr_spec["model"],
+                "sha256_json": sha256_file(spec_path),
+                "sha256_npz": sha256_file(spec_path.parent / instr_spec["embeddings_file"]),
+                "privileged_dropped": multi_task,
+                "episodes": instr_records,
+            }
         (root / "conversion_manifest.json").write_text(json.dumps(manifest, indent=1))
         print(f"[convert] DONE {len(order)} episodes -> {root}", flush=True)
     finally:
