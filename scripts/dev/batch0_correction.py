@@ -16,8 +16,8 @@ from scipy.stats import binomtest
 R = Path("results")
 
 print("== validation on stage runs: batch0 vs stage-corrected ==")
-for fn in ["eval_T2_L1_n400_080000_stages.json", "eval_T2_xeval_L2n400_onL1_080000.json",
-           "eval_T2_xeval_L1n400_onL2_080000.json", "eval_T2_L2_n400_080000_stages.json",
+for fn in ["eval_T2_L1_n400_080000_stages.json", "diagnostics/eval_T2_xeval_L2n400_onL1_080000.json",
+           "diagnostics/eval_T2_xeval_L1n400_onL2_080000.json", "eval_T2_L2_n400_080000_stages.json",
            "eval_T2_L0_n400_080000_stages.json"]:
     out = json.load(open(R / fn))["outcomes"]
     b0 = [o for o in out if o["batch"] == 0]

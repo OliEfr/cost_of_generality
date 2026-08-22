@@ -13,8 +13,8 @@ from scipy.stats import binomtest
 R = Path("results")
 RUNS = {
     "L1pol_on_L1": "eval_T2_L1_n400_080000_stages.json",
-    "L2pol_on_L1": "eval_T2_xeval_L2n400_onL1_080000.json",
-    "L1pol_on_L2": "eval_T2_xeval_L1n400_onL2_080000.json",
+    "L2pol_on_L1": "diagnostics/eval_T2_xeval_L2n400_onL1_080000.json",
+    "L1pol_on_L2": "diagnostics/eval_T2_xeval_L1n400_onL2_080000.json",
     "L2pol_on_L2": "eval_T2_L2_n400_080000_stages.json",
     "L0pol_on_L0": "eval_T2_L0_n400_080000_stages.json",
 }

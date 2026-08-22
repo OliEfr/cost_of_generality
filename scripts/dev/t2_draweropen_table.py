@@ -18,8 +18,8 @@ RUNS = [
     ("L0 policy -> L0 set", "eval_T2_L0_n400_080000_stages.json"),
     ("L1 policy -> L1 set", "eval_T2_L1_n400_080000_stages.json"),
     ("L2 policy -> L2 set", "eval_T2_L2_n400_080000_stages.json"),
-    ("L2 policy -> L1 set", "eval_T2_xeval_L2n400_onL1_080000.json"),
-    ("L1 policy -> L2 set", "eval_T2_xeval_L1n400_onL2_080000.json"),
+    ("L2 policy -> L1 set", "diagnostics/eval_T2_xeval_L2n400_onL1_080000.json"),
+    ("L1 policy -> L2 set", "diagnostics/eval_T2_xeval_L1n400_onL2_080000.json"),
 ]
 for name, fn in RUNS:
     out = json.load(open(R / fn))["outcomes"]

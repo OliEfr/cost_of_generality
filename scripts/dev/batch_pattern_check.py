@@ -19,13 +19,13 @@ for fn in R.glob("eval_T2_*stages*.json"):
     out = json.load(open(fn))["outcomes"]
     nz = sorted(o["t_success"] for o in out if o["success"] and o["t_success"] > 0)
     print(f"{fn.name}: min nonzero t_success = {nz[0] if nz else None}")
-for fn in R.glob("eval_T2_xeval_*.json"):
+for fn in R.glob("diagnostics/eval_T2_xeval_*.json"):
     out = json.load(open(fn))["outcomes"]
     nz = sorted(o["t_success"] for o in out if o["success"] and o["t_success"] > 0)
     print(f"{fn.name}: min nonzero t_success = {nz[0] if nz else None}")
 
 print("\n== (3) carryover: stale zeros in batch b vs true successes in batch b-1 ==")
-for fn in list(R.glob("eval_T2_*stages*.json")) + list(R.glob("eval_T2_xeval_*.json")):
+for fn in list(R.glob("eval_T2_*stages*.json")) + list(R.glob("diagnostics/eval_T2_xeval_*.json")):
     out = json.load(open(fn))["outcomes"]
     for b in range(1, 5):
         prev_true = sum(o["success"] and o["object_over_drawer"] for o in out if o["batch"] == b - 1)

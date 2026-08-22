@@ -6,8 +6,8 @@ from scipy.stats import binomtest
 R = Path("results")
 d = {k: json.load(open(R / v))["outcomes"] for k, v in {
     "L1onL1": "eval_T2_L1_n400_080000_stages.json",
-    "L2onL1": "eval_T2_xeval_L2n400_onL1_080000.json",
-    "L1onL2": "eval_T2_xeval_L1n400_onL2_080000.json",
+    "L2onL1": "diagnostics/eval_T2_xeval_L2n400_onL1_080000.json",
+    "L1onL2": "diagnostics/eval_T2_xeval_L1n400_onL2_080000.json",
     "L2onL2": "eval_T2_L2_n400_080000_stages.json"}.items()}
 key = lambda o: (o["batch"], o["env"])
 S = {k: {key(o): o["success"] for o in v} for k, v in d.items()}

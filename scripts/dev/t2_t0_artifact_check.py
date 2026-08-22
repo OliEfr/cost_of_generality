@@ -13,8 +13,8 @@ from pathlib import Path
 R = Path("results")
 RUNS = {
     "L1onL1": "eval_T2_L1_n400_080000_stages.json",
-    "L2onL1": "eval_T2_xeval_L2n400_onL1_080000.json",
-    "L1onL2": "eval_T2_xeval_L1n400_onL2_080000.json",
+    "L2onL1": "diagnostics/eval_T2_xeval_L2n400_onL1_080000.json",
+    "L1onL2": "diagnostics/eval_T2_xeval_L1n400_onL2_080000.json",
     "L2onL2": "eval_T2_L2_n400_080000_stages.json",
     "L0onL0": "eval_T2_L0_n400_080000_stages.json",
 }
