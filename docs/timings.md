@@ -368,3 +368,7 @@ train_lang_dit.sbatch has 24 h walltime + resume, so even a 1 steps/s outcome fi
 - Slurm .out files stay nearly empty for lerobot_train runs (buffered srun stdout);
   live progress = the .wandb datastore method (this file, 240-242) via
   scripts/dev/read_wandb_run.py (now committed), or checkpoint-dir mtimes.
+- **B2 steady-state (real 80k run, batch 64, torchcodec, A100): 1.91 steps/s at step
+  5.8k -> ~11.6 h/80k projected (~11.6 GPU-h/cell)**. Candidate A same node class:
+  10.4 steps/s -> ~2.15 h (baseline diffusion cells: 11.2). Per-cell cost ratio B/A
+  ~ 5.4x. (sacct elapsed at completion is the final number.)
