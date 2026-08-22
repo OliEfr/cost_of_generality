@@ -357,3 +357,14 @@ through one shared ViT-B/16 WITH grads). (b) 80k steps at local batch-16 rate ~ 
 cluster batch 64/128/192 gets measured in the B2 dbg smoke before the full run --
 train_lang_dit.sbatch has 24 h walltime + resume, so even a 1 steps/s outcome fits.
 (c) local 300-step smoke total wall ~75 s including 15 s startup.
+
+## multi_task_dit (candidate B) on A100-64GB -- dbg smoke, 2026-08-23
+
+- batch 64: COMPLETED, 200 steps; job elapsed 5:30; high-VRAM window 128 s ->
+  **>= 1.56 steps/s floor (setup included); peak VRAM 41,512 MiB**. 80k projection
+  from the floor: <= 14.2 h; true steady-state measured on the B2 run itself.
+- batch 128: **OOM at 64,186 MiB** (A100-64) after 3:33 -> FAILED. batch 192 not
+  attempted (strictly worse). **B2 batch decision: 64.**
+- Slurm .out files stay nearly empty for lerobot_train runs (buffered srun stdout);
+  live progress = the .wandb datastore method (this file, 240-242) via
+  scripts/dev/read_wandb_run.py (now committed), or checkpoint-dir mtimes.

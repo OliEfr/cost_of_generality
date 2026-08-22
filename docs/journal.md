@@ -4887,3 +4887,15 @@ probe covers it).
 - Conversion wall times (3 parallel tmux sessions, single-core h264 each): L1_i20
   ~35 min, T3_L1_i20 ~55 min, probe ~75 min. A1 smoke eval also passed end-to-end
   (env_state injection live, 20/20 instruction indices in outcomes).
+
+### 2026-08-23 -- B dbg smokes decided batch=64; B2 + A4 probe submitted
+
+- dbg smoke b64: 200 steps COMPLETED on a compute node -- proves plugin discovery,
+  offline CLIP resolution, and torchcodec decode all work under slurm. Peak VRAM
+  41.5 GiB; >=1.56 steps/s floor (see timings.md). b128: OOM at 64.2 GiB -> FAILED;
+  b192 moot. **B2 runs at batch 64.**
+- Submitted: B2 = job 53640545 (t1_L1_i20_n100_s0_mtdit, 24 h wall), A4 probe =
+  job 53640552 (t1t3_probe_i20_n200_s0 via COG_RUN_ID/COG_DS_NAME overrides,
+  episodes 0..199 of probe_T1T3_L1_i20). Registry rows appended at submit time.
+- A2 (53636038) running, 33 min elapsed, wandb datastore live; first checkpoint due
+  at step 20k.
