@@ -4731,3 +4731,15 @@ Everything here goes to results/diagnostics/, never the study surface.
   conservative choice of task pair -- if language steers behavior even with 0.84-mean
   cross-task cosine, the mechanism is robust; if the probe comes back LANGUAGE IGNORED,
   re-check with a T2 pairing before concluding.
+
+### 2026-08-23 -- Cluster provisioning for candidate B: transformers + CLIP staged, offline load verified
+
+- `pip install transformers==4.57.6` into cog_lerobot (login node): OK, tokenizers
+  0.22.2 pulled, torch untouched. PINS.md row added.
+- `openai/clip-vit-base-patch16` rsynced into `$WORK/cog/hf_cache/hub/` (absolute
+  path -- rsync does NOT expand a remote `$WORK`, it mkdir-fails literally; use
+  /leonardo_work/EUHPC_B38_106/cog/...).
+- Dress rehearsal on the login node with `HF_HUB_OFFLINE=1 HF_HOME=$WORK/cog/hf_cache`:
+  AutoTokenizer + CLIPTextModelWithProjection + CLIPVisionModel all resolve from cache
+  (marker OFFLINE_CLIP_OK). This reproduces the compute-node path; remaining risk for
+  B's 80k run is throughput only (dbg-QOS smoke before commit).
