@@ -4856,3 +4856,23 @@ MTDIT_DRYPARSE_EXIT=0, 300-step loss falling + checkpoint complete, MTDIT_RELOAD
 throughput recorded with the local-VRAM caveat). Deviations from plan: none in substance;
 b32/b64 local throughput unmeasurable under foreign GPU occupancy (recorded, cluster
 probe covers it).
+
+### 2026-08-23 -- A1 smoke PASS; A2 submitted (job 53636038); B dbg smokes running
+
+- A1 (1k steps local, L1_i20 n100, pyav, frozen flags): loss 0.871@100 -> 0.101@1000,
+  checkpoint saved. **The decisive assert holds: saved config.json carries
+  observation.environment_state ENV[512], and the U-Net cond_encoder in_features grew
+  402 -> 1426 = exactly +1024 (512-d embedding x n_obs_steps 2)** -- language is wired
+  into conditioning, not silently dropped (the name-typo failure mode trains an
+  unconditioned policy with no error; this assert is the guard). Local steps/s ~3.1
+  (shared card, pyav).
+- A2 submitted: slurm/train_lang_a.sbatch T1 L1 100 -> job 53636038, registry row
+  t1_L1_i20_n100_s0 (variant lang_a_i20). Expect ~2.0-2.2 h if the dataloader-bound
+  regime holds (the +2 KB/frame env_state should be noise -- this run IS the
+  measurement).
+- Candidate B dbg smokes (batch 64 + 128) running as jobs 53636023/53636024; batch 192
+  submission blocked by QOSMaxSubmitJobPerUserLimit (dbg allows 2 queued/user) --
+  submit after one finishes.
+- L1_i20 conversion VALIDATE_OK incl. episode-order identity with baseline L1 (the
+  check that makes the A3-vs-0.86 comparison valid). T3_L1_i20 + probe conversions
+  still running.
