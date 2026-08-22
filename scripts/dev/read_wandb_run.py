@@ -40,29 +40,33 @@ def main():
         if rec.WhichOneof("record_type") == "history":
             row = {}
             for item in rec.history.item:
+                # newer wandb stores the key in nested_key (repeated), older in key
+                k = "/".join(item.nested_key) if item.nested_key else item.key
                 try:
-                    row[item.key] = float(item.value_json)
+                    row[k] = float(item.value_json)
                 except ValueError:
                     pass
-            if "_step" in row:
-                hist.append(row)
+            row["_n"] = rec.history.step.num  # record-level step counter fallback
+            hist.append(row)
 
     if not hist:
         print("NO_HISTORY_YET")
         return
     last = hist[-1]
-    step = last.get("_step")
+    step = last.get("_step", last.get("train/step", last["_n"]))
     ts = last.get("_timestamp")
     loss = last.get("loss", last.get("train/loss"))
-    line = f"step={step:.0f}"
+    line = f"records={len(hist)} step={step:.0f}"
     if loss is not None:
         line += f" loss={loss:.4f}"
     if len(hist) >= 2 and ts:
         prev = hist[max(0, len(hist) - 11)]
         dt = ts - prev.get("_timestamp", ts)
-        dstep = step - prev.get("_step", step)
+        dstep = step - prev.get("_step", prev.get("train/step", prev["_n"]))
         if dt > 0:
             line += f" steps_per_s={dstep / dt:.2f} (over last {dstep:.0f} steps)"
+    else:
+        line += " (no _timestamp key; use record count x log_freq for step estimate)"
     print(line)
 
 
