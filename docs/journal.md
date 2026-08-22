@@ -4876,3 +4876,14 @@ probe covers it).
 - L1_i20 conversion VALIDATE_OK incl. episode-order identity with baseline L1 (the
   check that makes the A3-vs-0.86 comparison valid). T3_L1_i20 + probe conversions
   still running.
+
+### 2026-08-23 -- H2/H3 complete: all three i20 datasets converted + validated
+
+- L1_i20 (400 eps, 75,366 frames), T3_L1_i20 (400 eps), probe_T1T3_L1_i20 (800 eps,
+  202,975 frames, 40 task strings, per-task privileged info.* dropped). All
+  VALIDATE_OK with instruction checks; **both single-task roots pass --match_order
+  episode-order identity with their baseline roots** (the assert that makes SR
+  comparisons against t1_L1_n100_s0 / t3_L1_n100_s0 valid).
+- Conversion wall times (3 parallel tmux sessions, single-core h264 each): L1_i20
+  ~35 min, T3_L1_i20 ~55 min, probe ~75 min. A1 smoke eval also passed end-to-end
+  (env_state injection live, 20/20 instruction indices in outcomes).
