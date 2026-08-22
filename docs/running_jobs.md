@@ -33,6 +33,13 @@ Three differences, each of which has broken a launch here:
 | it HAS a TTY | Kit blocks forever on `Do you accept the EULA? (Yes/No)`; session alive, no GPU use, no output (T3 wave, 2026-08-18) | `export OMNI_KIT_ACCEPT_EULA=YES` **and** `< /dev/null` on every launch |
 | clean environment | a missing redirect directory kills the session in <1 s (eval-set freeze, 2026-08-17) | `mkdir -p` the log directory first; use absolute paths |
 
+Fourth gotcha, tmux itself: **`tmux has-session -t NAME` does PREFIX matching.** A watcher or
+chain gate on `-t cog_resweep` also matches `cog_resweep_l3`, so it never fires / never
+unblocks — a chained phase-2 job deadlocked on its OWN session for 25 min (2026-08-22), and the
+phase-1 watcher never fired at all. Always use the exact-match form `-t =NAME`, and never name
+one session as a prefix of another. In zsh, QUOTE it (`-t '=NAME'`): an unquoted `=word` is
+zsh filename expansion ("command not found in path") and kills the watcher instantly.
+
 After launching, always confirm the job is REALLY running -- process present, GPU memory
 allocated, output file growing -- not merely that the tmux session exists.
 

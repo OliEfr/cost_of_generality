@@ -1,0 +1,516 @@
+{
+ "task": "Cog-CupPlace-L0-IK-Rel-Visuomotor-v0",
+ "checkpoint": "/home/admin_07/cost_of_generality/experiments/runs/t1_L0_n50_s0/checkpoints/080000/pretrained_model",
+ "num_inference_steps": 10,
+ "protocol": {
+  "num_envs": 20,
+  "batches": 5,
+  "base_seed": 5000,
+  "comment": "FROZEN eval protocol: 100 episodes/cell = 5 batches x 20 envs; batch b uses env.reset(seed=base_seed+b). 200-episode headline reruns: batches 0-9. L3 levels: variant v uses batch v (diagonal) -> 200 eps with 200 distinct poses; batch 0 on all variants would give only 20 distinct poses because variants share the pose RNG stream (D18). Cross-level headline comparisons must use each level's 200-episode set (L0-L2 batches 0-9; L3 diagonal), which have equal spatial coverage."
+ },
+ "episodes": 100,
+ "successes": 100,
+ "success_rate": 1.0,
+ "outcomes": [
+  {
+   "batch": 0,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": true
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 8,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 12,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 14,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 15,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 17,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 18,
+   "success": true
+  },
+  {
+   "batch": 1,
+   "env": 19,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 8,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 12,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 14,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 15,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 17,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 18,
+   "success": true
+  },
+  {
+   "batch": 2,
+   "env": 19,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 8,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 12,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 14,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 15,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 17,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 18,
+   "success": true
+  },
+  {
+   "batch": 3,
+   "env": 19,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 0,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 1,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 2,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 3,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 4,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 5,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 6,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 7,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 8,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 9,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 10,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 11,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 12,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 13,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 14,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 15,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 16,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 17,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 18,
+   "success": true
+  },
+  {
+   "batch": 4,
+   "env": 19,
+   "success": true
+  }
+ ]
+}

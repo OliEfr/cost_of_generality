@@ -30,7 +30,10 @@ def say(*a):
     print(f"[l3phase] {time.strftime('%FT%T')}", *a, flush=True)
 
 def sweep_running():
-    return subprocess.run(["tmux", "has-session", "-t", "cog_resweep"],
+    # "=name" forces EXACT session-name matching. Bare "-t cog_resweep" does PREFIX matching
+    # and matches this phase's own session (cog_resweep_l3), deadlocking the wait forever —
+    # cost 25 minutes on 2026-08-22 and was only recoverable by renaming the live session.
+    return subprocess.run(["tmux", "has-session", "-t", "=cog_resweep"],
                           capture_output=True).returncode == 0
 
 say("L3PHASE_ARMED waiting for cog_resweep to finish")
