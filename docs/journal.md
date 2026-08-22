@@ -4743,3 +4743,21 @@ Everything here goes to results/diagnostics/, never the study surface.
   AutoTokenizer + CLIPTextModelWithProjection + CLIPVisionModel all resolve from cache
   (marker OFFLINE_CLIP_OK). This reproduces the compute-node path; remaining risk for
   B's 80k run is throughput only (dbg-QOS smoke before commit).
+
+### 2026-08-23 -- H4 regression gate: PASS (modified eval harness does not perturb study evals)
+
+Existing t1_L1_n100_s0 080000 checkpoint through the modified rollout_eval.py:
+- **Flag off: SR=86/100=0.860 -- the baseline number exactly** (results/diagnostics/
+  eval_lang_regression_T1_L1_n100_080000_flagoff.json). Episode-level outcomes are NOT
+  bit-identical to eval_T1_L1_n100_080000_fixed.json: 4 flips of 100 (2 each way;
+  batch-0 went 10->12, consistent with the load-dependent warm-up effect). GPU
+  inference is not bit-deterministic across processes and never was -- G4 verified
+  deterministic INITIAL CONDITIONS, not trajectories. Aggregate SR identical; code
+  path logically unchanged when the flag is off. Not a regression.
+- **Flag on (--instructions, language-less ckpt): SR=0.870**, within the baseline
+  Wilson95 [0.779,0.915] -- task strings are inert through the diffusion
+  pre-processor pipeline, per_instruction block records all 20 indices, assignment
+  (batch+env)%20 as designed.
+Consequence for later comparisons: run-to-run SR jitter exists even at fixed seeds
+(here +-0.01 with 4 episode flips); A3/B3 verdicts use Wilson CI overlap, never
+point-equality.
