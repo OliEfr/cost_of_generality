@@ -20,7 +20,9 @@
 set -uo pipefail
 
 REPO="${COG_REPO:-/home/admin_07/cost_of_generality}"
-RUN_ID="${1:?usage: run_lang_eval.sh RUN_ID {t1|t2|t3} LEVEL OUT_BASENAME [STEP]}"
+# NB: no braces in the :? message -- a '}' inside ${1:?...} terminates the expansion
+# early and appends the rest of the message to the VALUE (cost: one failed eval launch).
+RUN_ID="${1:?usage: run_lang_eval.sh RUN_ID t1|t2|t3 LEVEL OUT_BASENAME [STEP]}"
 TAG="${2:?}"
 LEVEL="${3:?}"
 OUT_BASE="${4:?}"
