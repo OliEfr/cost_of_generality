@@ -4899,3 +4899,21 @@ probe covers it).
   episodes 0..199 of probe_T1T3_L1_i20). Registry rows appended at submit time.
 - A2 (53636038) running, 33 min elapsed, wandb datastore live; first checkpoint due
   at step 20k.
+
+### 2026-08-23 -- A2/A3 COMPLETE: candidate A verified end-to-end
+
+- **A2: COMPLETED in 2:12:21 = 2.21 GPU-h** -- indistinguishable from the 2.0-2.2 h
+  language-free planning rule. Steady 10.4 steps/s (baseline 11.2). The language
+  channel is free in training time, as predicted (dataloader-bound regime).
+- **A3: SR = 0.830 (83/100), Wilson95 [0.745,0.891] vs baseline 0.86 [0.779,0.915]
+  -- CIs overlap, PASS.** Per-instruction min/med/max 0.60/0.80/1.00 at n=5 each,
+  identical to the flag-on regression eval of the LANGUAGE-LESS checkpoint (pose
+  noise), so no instruction stands out. Result:
+  results/diagnostics/eval_lang_T1_L1_i20_n100_080000_candA.json.
+- Registry row updated (sr_80k 0.83, gpu_h 2.21, done).
+- Harness bug found+fixed on the way: a '}' inside a bash ${1:?usage...} message
+  terminates the expansion early and corrupts the variable value -- run_lang_eval.sh
+  usage string de-braced (cost: one failed eval launch, caught by the empty-session
+  watcher immediately).
+Remaining: probe train (53640552, ~35 min left), B2 (53640545, ETA ~12:40 CET), then
+probe evals x4 + B3 + report.
