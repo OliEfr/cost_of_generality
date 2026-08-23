@@ -4941,3 +4941,12 @@ Probe policy (one net, T1+T3 merged n=100/task, frozen recipe, 2:04:37 = 2.08 GP
   parsing; per-instruction matched spread (0.80-1.00 both tasks) shows no
   paraphrase is broken.
 Registry updated; probe cron deleted. Remaining: B2 (~7h left) -> B3 eval -> report.
+
+### 2026-08-23 -- B eval-dispatch smoke PASS (pre-empting B3 integration risk)
+
+The harness rollout_eval type dispatch (config.json "type" -> import
+lerobot_policy_mtdit -> factory.get_policy_class) ran the B1 300-step mtdit
+checkpoint in-process with Isaac on the reduced 1-batch protocol: loads, tokenizes
+the 20 instructions (env_state injection correctly OFF for B), rolls out, artifact
+written (SR 0.00 at 300 steps -- plumbing only). The only untested piece of B3 was
+this path; it is now green 7 h before the B2 checkpoint lands.
