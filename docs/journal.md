@@ -4917,3 +4917,27 @@ probe covers it).
   watcher immediately).
 Remaining: probe train (53640552, ~35 min left), B2 (53640545, ETA ~12:40 CET), then
 probe evals x4 + B3 + report.
+
+### 2026-08-23 -- A4/A5 PROBE: **PASS in both envs -- language causally steers candidate A**
+
+Probe policy (one net, T1+T3 merged n=100/task, frozen recipe, 2:04:37 = 2.08 GPU-h),
+4 evals x 100 episodes (frozen protocol seeds, (batch+env)%20 assignment):
+
+| env | instructions | SR | Wilson95 |
+|-----|--------------|-----|----------|
+| T1 (cup_place) | cup_place (match) | **0.930** | [0.863,0.966] |
+| T1 | push_target (swap) | 0.060 | [0.028,0.125] |
+| T3 (push_target) | push_target (match) | **0.980** | [0.930,0.994] |
+| T3 | cup_place (swap) | 0.040 | [0.016,0.098] |
+
+- Deltas +0.87 / +0.94 with CI gaps of ~0.74 / ~0.83 -- far beyond the >=0.30 PASS bar.
+- Matched SR meets or beats the single-task baselines (T1 0.86, T3 0.97): no
+  multi-task penalty at n=100/task, possibly mild positive transfer on T1.
+- This despite cup_place x push_target being the CLOSEST instruction pair in CLIP
+  space (mean cross cosine 0.842) -- the 512-d frozen embedding channel discriminates
+  fully. The "candidate A might silently ignore language" concern (D30 risk 2) is
+  resolved: the channel is live and behavior-controlling.
+- Caveat stays on record: swap collapse proves CAUSAL influence, not semantic
+  parsing; per-instruction matched spread (0.80-1.00 both tasks) shows no
+  paraphrase is broken.
+Registry updated; probe cron deleted. Remaining: B2 (~7h left) -> B3 eval -> report.
