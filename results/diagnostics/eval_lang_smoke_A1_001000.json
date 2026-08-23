@@ -1,0 +1,227 @@
+{
+ "task": "Cog-CupPlace-L1-IK-Rel-Visuomotor-v0",
+ "checkpoint": "/home/admin_07/cost_of_generality/experiments/runs/smoke_langA_L1_i20/checkpoints/001000/pretrained_model",
+ "num_inference_steps": 10,
+ "protocol": {
+  "num_envs": 20,
+  "batches": 1,
+  "base_seed": 5000,
+  "comment": "REDUCED smoke protocol for lang investigation plumbing checks only -- frozen eval sets untouched (G4 precedent)"
+ },
+ "episodes": 20,
+ "successes": 2,
+ "success_rate": 0.1,
+ "outcomes": [
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false,
+   "instruction_index": 0
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": false,
+   "instruction_index": 1
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false,
+   "instruction_index": 2
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false,
+   "instruction_index": 3
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": false,
+   "instruction_index": 4
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false,
+   "instruction_index": 5
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false,
+   "instruction_index": 6
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false,
+   "instruction_index": 7
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": true,
+   "instruction_index": 8
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": false,
+   "instruction_index": 9
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": false,
+   "instruction_index": 10
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": false,
+   "instruction_index": 11
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false,
+   "instruction_index": 12
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": false,
+   "instruction_index": 13
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": false,
+   "instruction_index": 14
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false,
+   "instruction_index": 15
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": false,
+   "instruction_index": 16
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": true,
+   "instruction_index": 17
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": false,
+   "instruction_index": 18
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": false,
+   "instruction_index": 19
+  }
+ ],
+ "instructions": {
+  "file": "/home/admin_07/cost_of_generality/configs/instructions/instructions_v1.json",
+  "sha256_json": "e47c688cc9cba985892efcaccdb7f05fe479a56139f7002e1150d943981ef9c6",
+  "sha256_npz": "9ba40167d5c2df95f613a1de933153de929707c689c5fa54a7b9315101f7bfe6",
+  "instruction_task": "cup_place",
+  "swap_instructions_from": null,
+  "assignment": "(batch+env)%K",
+  "K": 20
+ },
+ "per_instruction": {
+  "0": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "1": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "2": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "3": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "4": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "5": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "6": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "7": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "8": {
+   "successes": 1,
+   "episodes": 1
+  },
+  "9": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "10": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "11": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "12": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "13": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "14": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "15": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "16": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "17": {
+   "successes": 1,
+   "episodes": 1
+  },
+  "18": {
+   "successes": 0,
+   "episodes": 1
+  },
+  "19": {
+   "successes": 0,
+   "episodes": 1
+  }
+ }
+}

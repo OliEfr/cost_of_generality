@@ -4950,3 +4950,20 @@ checkpoint in-process with Isaac on the reduced 1-batch protocol: loads, tokeniz
 the 20 instructions (env_state injection correctly OFF for B), rolls out, artifact
 written (SR 0.00 at 300 steps -- plumbing only). The only untested piece of B3 was
 this path; it is now green 7 h before the B2 checkpoint lands.
+
+### 2026-08-23 -- B2/B3 COMPLETE; INVESTIGATION CLOSED -- recommendation: candidate A
+
+- **B2: COMPLETED in 11:42:35 = 11.71 GPU-h** (1.91 steps/s the whole run, batch 64)
+  -- 5.3x candidate A's 2.21 GPU-h.
+- **B3: SR = 0.700 (70/100), Wilson95 [0.604,0.781]**, per-instruction 0.40/0.70/1.00.
+  Below A's 0.830 [0.745,0.891]; barely touches the baseline CI [0.779,0.915].
+  Honest framing: B ran UNTUNED (batch 64 forced by the b128 OOM vs the policy's
+  recommended 192-320; policy-preset lr/horizon) -- a lower bound, not B's ceiling.
+  mtdit eval itself is fast (10.3 min/T1 cell, DDIM-10) -- inference is no blocker.
+- **Verdict (docs/lang_conditioning_report.md): candidate A is the setting for the
+  full-study rerun.** Free in training time (2.2 GPU-h/cell rule survives), frozen
+  architecture untouched (language is the ONLY delta vs the existing surface),
+  conditioning proven CAUSAL by the probe (+0.87/+0.94 match-swap deltas), zero
+  cluster dependencies. B stays fully provisioned as the escape hatch.
+- Total investigation cost: ~16.2 cluster GPU-h + ~4 h local GPU. All results in
+  results/diagnostics/; smoke datasets data/lerobot/smoke_* left in place (tiny).

@@ -12,3 +12,38 @@
 - 2026-08-18 08:07  Leonardo cert <0h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-18 08:35  Leonardo cert EXPIRED - cluster monitoring unavailable until renewed from laptop
 - 2026-08-19 15:07  G0 PASSED: Slurm association with euhpc_b38_106 is LIVE - cluster phases unblocked!
+- 2026-08-19 19:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-19 20:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-19 21:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-19 22:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-21 06:07  Leonardo cert <11h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 07:07  Leonardo cert <10h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 08:07  Leonardo cert <9h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 09:07  Leonardo cert <8h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 10:07  Leonardo cert <7h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 11:07  Leonardo cert <6h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 12:07  Leonardo cert <5h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 13:07  Leonardo cert <4h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 14:07  Leonardo cert <3h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 15:07  Leonardo cert <2h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-21 16:07  Leonardo cert <1h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 01:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 02:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 03:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 04:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 05:07  Leonardo cert <11h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 05:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 06:07  Leonardo cert <10h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 06:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 07:07  Leonardo cert <9h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 07:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 08:07  Leonardo cert <8h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 08:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 09:07  Leonardo cert <7h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 09:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 10:07  Leonardo cert <6h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 10:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 11:07  Leonardo cert <5h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 11:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 12:07  Leonardo cert <4h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 12:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt

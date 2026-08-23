@@ -372,3 +372,7 @@ train_lang_dit.sbatch has 24 h walltime + resume, so even a 1 steps/s outcome fi
   5.8k -> ~11.6 h/80k projected (~11.6 GPU-h/cell)**. Candidate A same node class:
   10.4 steps/s -> ~2.15 h (baseline diffusion cells: 11.2). Per-cell cost ratio B/A
   ~ 5.4x. (sacct elapsed at completion is the final number.)
+- **B2 final (sacct): 11:42:35 = 11.71 GPU-h for 80k @ batch 64** (1.91 steps/s
+  steady, cold to warm). Cost ratio vs candidate A's 2:12:21 (2.21 GPU-h): **5.3x**.
+- **B eval (mtdit, DDIM-10, T1, 100 eps, shared 4090): 10.3 min** -- comparable to
+  the diffusion policy's ~8 min; inference is NOT a blocker for B.

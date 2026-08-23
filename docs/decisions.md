@@ -838,3 +838,18 @@ setting later. Nothing here enters the surface: all results go to
 **VERIFY (open).** H4 flag-off regression must reproduce t1_L1_n100_s0 SR=0.86
 exactly; A1 +1024 cond-encoder param assert; B throughput on A100 (the 2.2 GPU-h/cell
 rule will NOT hold for B); offline CLIP resolution on a compute node before B's 80k.
+
+### D30 addendum -- 2026-08-23: VERIFY items discharged; verdict
+
+All four VERIFY items closed: H4 flag-off reproduced SR 0.860 exactly; A1 +1024
+cond-width assert held (402->1426); B throughput measured (1.91 steps/s, 11.71
+GPU-h/80k at batch 64 -- b128 OOMs the A100-64GB, so the 2.2 GPU-h/cell rule does NOT
+transfer to B); offline CLIP verified on a compute node before the 80k spend.
+Investigation verdict (details: docs/lang_conditioning_report.md): **candidate A
+(env-state embedding) is the recommended setting for the language-diversity rerun**
+-- SR 0.830 vs baseline 0.86 (CIs overlap), probe PASS (match 0.930/0.980 vs swap
+0.060/0.040), training cost indistinguishable from baseline. Candidate B validated
+end-to-end (SR 0.700 untuned at batch 64) and kept as escape hatch. Open item for
+the rerun, deliberately NOT decided here: an L3-lang instruction<->variant
+assignment design (converter hard-refuses the confounded case), and whether lang
+results enter curves.py's naming contract (D29-style decision needed then).

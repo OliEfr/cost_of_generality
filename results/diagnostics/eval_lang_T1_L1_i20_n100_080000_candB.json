@@ -1,0 +1,707 @@
+{
+ "task": "Cog-CupPlace-L1-IK-Rel-Visuomotor-v0",
+ "checkpoint": "/home/admin_07/cost_of_generality/experiments/runs/t1_L1_i20_n100_s0_mtdit/checkpoints/080000/pretrained_model",
+ "num_inference_steps": 10,
+ "protocol": {
+  "num_envs": 20,
+  "batches": 5,
+  "base_seed": 5000,
+  "comment": "FROZEN eval protocol: 100 episodes/cell = 5 batches x 20 envs; batch b uses env.reset(seed=base_seed+b). 200-episode headline reruns: batches 0-9. L3 levels: variant v uses batch v (diagonal) -> 200 eps with 200 distinct poses; batch 0 on all variants would give only 20 distinct poses because variants share the pose RNG stream (D18). Cross-level headline comparisons must use each level's 200-episode set (L0-L2 batches 0-9; L3 diagonal), which have equal spatial coverage."
+ },
+ "episodes": 100,
+ "successes": 70,
+ "success_rate": 0.7,
+ "outcomes": [
+  {
+   "batch": 0,
+   "env": 0,
+   "success": false,
+   "instruction_index": 0
+  },
+  {
+   "batch": 0,
+   "env": 1,
+   "success": true,
+   "instruction_index": 1
+  },
+  {
+   "batch": 0,
+   "env": 2,
+   "success": false,
+   "instruction_index": 2
+  },
+  {
+   "batch": 0,
+   "env": 3,
+   "success": false,
+   "instruction_index": 3
+  },
+  {
+   "batch": 0,
+   "env": 4,
+   "success": false,
+   "instruction_index": 4
+  },
+  {
+   "batch": 0,
+   "env": 5,
+   "success": false,
+   "instruction_index": 5
+  },
+  {
+   "batch": 0,
+   "env": 6,
+   "success": false,
+   "instruction_index": 6
+  },
+  {
+   "batch": 0,
+   "env": 7,
+   "success": false,
+   "instruction_index": 7
+  },
+  {
+   "batch": 0,
+   "env": 8,
+   "success": true,
+   "instruction_index": 8
+  },
+  {
+   "batch": 0,
+   "env": 9,
+   "success": false,
+   "instruction_index": 9
+  },
+  {
+   "batch": 0,
+   "env": 10,
+   "success": false,
+   "instruction_index": 10
+  },
+  {
+   "batch": 0,
+   "env": 11,
+   "success": false,
+   "instruction_index": 11
+  },
+  {
+   "batch": 0,
+   "env": 12,
+   "success": false,
+   "instruction_index": 12
+  },
+  {
+   "batch": 0,
+   "env": 13,
+   "success": true,
+   "instruction_index": 13
+  },
+  {
+   "batch": 0,
+   "env": 14,
+   "success": true,
+   "instruction_index": 14
+  },
+  {
+   "batch": 0,
+   "env": 15,
+   "success": false,
+   "instruction_index": 15
+  },
+  {
+   "batch": 0,
+   "env": 16,
+   "success": false,
+   "instruction_index": 16
+  },
+  {
+   "batch": 0,
+   "env": 17,
+   "success": false,
+   "instruction_index": 17
+  },
+  {
+   "batch": 0,
+   "env": 18,
+   "success": true,
+   "instruction_index": 18
+  },
+  {
+   "batch": 0,
+   "env": 19,
+   "success": true,
+   "instruction_index": 19
+  },
+  {
+   "batch": 1,
+   "env": 0,
+   "success": true,
+   "instruction_index": 1
+  },
+  {
+   "batch": 1,
+   "env": 1,
+   "success": true,
+   "instruction_index": 2
+  },
+  {
+   "batch": 1,
+   "env": 2,
+   "success": false,
+   "instruction_index": 3
+  },
+  {
+   "batch": 1,
+   "env": 3,
+   "success": true,
+   "instruction_index": 4
+  },
+  {
+   "batch": 1,
+   "env": 4,
+   "success": true,
+   "instruction_index": 5
+  },
+  {
+   "batch": 1,
+   "env": 5,
+   "success": true,
+   "instruction_index": 6
+  },
+  {
+   "batch": 1,
+   "env": 6,
+   "success": true,
+   "instruction_index": 7
+  },
+  {
+   "batch": 1,
+   "env": 7,
+   "success": true,
+   "instruction_index": 8
+  },
+  {
+   "batch": 1,
+   "env": 8,
+   "success": true,
+   "instruction_index": 9
+  },
+  {
+   "batch": 1,
+   "env": 9,
+   "success": false,
+   "instruction_index": 10
+  },
+  {
+   "batch": 1,
+   "env": 10,
+   "success": false,
+   "instruction_index": 11
+  },
+  {
+   "batch": 1,
+   "env": 11,
+   "success": true,
+   "instruction_index": 12
+  },
+  {
+   "batch": 1,
+   "env": 12,
+   "success": false,
+   "instruction_index": 13
+  },
+  {
+   "batch": 1,
+   "env": 13,
+   "success": true,
+   "instruction_index": 14
+  },
+  {
+   "batch": 1,
+   "env": 14,
+   "success": true,
+   "instruction_index": 15
+  },
+  {
+   "batch": 1,
+   "env": 15,
+   "success": true,
+   "instruction_index": 16
+  },
+  {
+   "batch": 1,
+   "env": 16,
+   "success": true,
+   "instruction_index": 17
+  },
+  {
+   "batch": 1,
+   "env": 17,
+   "success": false,
+   "instruction_index": 18
+  },
+  {
+   "batch": 1,
+   "env": 18,
+   "success": true,
+   "instruction_index": 19
+  },
+  {
+   "batch": 1,
+   "env": 19,
+   "success": true,
+   "instruction_index": 0
+  },
+  {
+   "batch": 2,
+   "env": 0,
+   "success": true,
+   "instruction_index": 2
+  },
+  {
+   "batch": 2,
+   "env": 1,
+   "success": true,
+   "instruction_index": 3
+  },
+  {
+   "batch": 2,
+   "env": 2,
+   "success": true,
+   "instruction_index": 4
+  },
+  {
+   "batch": 2,
+   "env": 3,
+   "success": true,
+   "instruction_index": 5
+  },
+  {
+   "batch": 2,
+   "env": 4,
+   "success": true,
+   "instruction_index": 6
+  },
+  {
+   "batch": 2,
+   "env": 5,
+   "success": true,
+   "instruction_index": 7
+  },
+  {
+   "batch": 2,
+   "env": 6,
+   "success": true,
+   "instruction_index": 8
+  },
+  {
+   "batch": 2,
+   "env": 7,
+   "success": true,
+   "instruction_index": 9
+  },
+  {
+   "batch": 2,
+   "env": 8,
+   "success": false,
+   "instruction_index": 10
+  },
+  {
+   "batch": 2,
+   "env": 9,
+   "success": false,
+   "instruction_index": 11
+  },
+  {
+   "batch": 2,
+   "env": 10,
+   "success": true,
+   "instruction_index": 12
+  },
+  {
+   "batch": 2,
+   "env": 11,
+   "success": true,
+   "instruction_index": 13
+  },
+  {
+   "batch": 2,
+   "env": 12,
+   "success": true,
+   "instruction_index": 14
+  },
+  {
+   "batch": 2,
+   "env": 13,
+   "success": true,
+   "instruction_index": 15
+  },
+  {
+   "batch": 2,
+   "env": 14,
+   "success": false,
+   "instruction_index": 16
+  },
+  {
+   "batch": 2,
+   "env": 15,
+   "success": true,
+   "instruction_index": 17
+  },
+  {
+   "batch": 2,
+   "env": 16,
+   "success": true,
+   "instruction_index": 18
+  },
+  {
+   "batch": 2,
+   "env": 17,
+   "success": true,
+   "instruction_index": 19
+  },
+  {
+   "batch": 2,
+   "env": 18,
+   "success": true,
+   "instruction_index": 0
+  },
+  {
+   "batch": 2,
+   "env": 19,
+   "success": true,
+   "instruction_index": 1
+  },
+  {
+   "batch": 3,
+   "env": 0,
+   "success": true,
+   "instruction_index": 3
+  },
+  {
+   "batch": 3,
+   "env": 1,
+   "success": false,
+   "instruction_index": 4
+  },
+  {
+   "batch": 3,
+   "env": 2,
+   "success": true,
+   "instruction_index": 5
+  },
+  {
+   "batch": 3,
+   "env": 3,
+   "success": false,
+   "instruction_index": 6
+  },
+  {
+   "batch": 3,
+   "env": 4,
+   "success": false,
+   "instruction_index": 7
+  },
+  {
+   "batch": 3,
+   "env": 5,
+   "success": true,
+   "instruction_index": 8
+  },
+  {
+   "batch": 3,
+   "env": 6,
+   "success": true,
+   "instruction_index": 9
+  },
+  {
+   "batch": 3,
+   "env": 7,
+   "success": true,
+   "instruction_index": 10
+  },
+  {
+   "batch": 3,
+   "env": 8,
+   "success": true,
+   "instruction_index": 11
+  },
+  {
+   "batch": 3,
+   "env": 9,
+   "success": false,
+   "instruction_index": 12
+  },
+  {
+   "batch": 3,
+   "env": 10,
+   "success": true,
+   "instruction_index": 13
+  },
+  {
+   "batch": 3,
+   "env": 11,
+   "success": true,
+   "instruction_index": 14
+  },
+  {
+   "batch": 3,
+   "env": 12,
+   "success": true,
+   "instruction_index": 15
+  },
+  {
+   "batch": 3,
+   "env": 13,
+   "success": true,
+   "instruction_index": 16
+  },
+  {
+   "batch": 3,
+   "env": 14,
+   "success": true,
+   "instruction_index": 17
+  },
+  {
+   "batch": 3,
+   "env": 15,
+   "success": true,
+   "instruction_index": 18
+  },
+  {
+   "batch": 3,
+   "env": 16,
+   "success": true,
+   "instruction_index": 19
+  },
+  {
+   "batch": 3,
+   "env": 17,
+   "success": true,
+   "instruction_index": 0
+  },
+  {
+   "batch": 3,
+   "env": 18,
+   "success": false,
+   "instruction_index": 1
+  },
+  {
+   "batch": 3,
+   "env": 19,
+   "success": true,
+   "instruction_index": 2
+  },
+  {
+   "batch": 4,
+   "env": 0,
+   "success": true,
+   "instruction_index": 4
+  },
+  {
+   "batch": 4,
+   "env": 1,
+   "success": false,
+   "instruction_index": 5
+  },
+  {
+   "batch": 4,
+   "env": 2,
+   "success": true,
+   "instruction_index": 6
+  },
+  {
+   "batch": 4,
+   "env": 3,
+   "success": true,
+   "instruction_index": 7
+  },
+  {
+   "batch": 4,
+   "env": 4,
+   "success": true,
+   "instruction_index": 8
+  },
+  {
+   "batch": 4,
+   "env": 5,
+   "success": true,
+   "instruction_index": 9
+  },
+  {
+   "batch": 4,
+   "env": 6,
+   "success": true,
+   "instruction_index": 10
+  },
+  {
+   "batch": 4,
+   "env": 7,
+   "success": true,
+   "instruction_index": 11
+  },
+  {
+   "batch": 4,
+   "env": 8,
+   "success": true,
+   "instruction_index": 12
+  },
+  {
+   "batch": 4,
+   "env": 9,
+   "success": true,
+   "instruction_index": 13
+  },
+  {
+   "batch": 4,
+   "env": 10,
+   "success": false,
+   "instruction_index": 14
+  },
+  {
+   "batch": 4,
+   "env": 11,
+   "success": true,
+   "instruction_index": 15
+  },
+  {
+   "batch": 4,
+   "env": 12,
+   "success": true,
+   "instruction_index": 16
+  },
+  {
+   "batch": 4,
+   "env": 13,
+   "success": false,
+   "instruction_index": 17
+  },
+  {
+   "batch": 4,
+   "env": 14,
+   "success": true,
+   "instruction_index": 18
+  },
+  {
+   "batch": 4,
+   "env": 15,
+   "success": true,
+   "instruction_index": 19
+  },
+  {
+   "batch": 4,
+   "env": 16,
+   "success": true,
+   "instruction_index": 0
+  },
+  {
+   "batch": 4,
+   "env": 17,
+   "success": true,
+   "instruction_index": 1
+  },
+  {
+   "batch": 4,
+   "env": 18,
+   "success": true,
+   "instruction_index": 2
+  },
+  {
+   "batch": 4,
+   "env": 19,
+   "success": true,
+   "instruction_index": 3
+  }
+ ],
+ "instructions": {
+  "file": "/home/admin_07/cost_of_generality/configs/instructions/instructions_v1.json",
+  "sha256_json": "e47c688cc9cba985892efcaccdb7f05fe479a56139f7002e1150d943981ef9c6",
+  "sha256_npz": "9ba40167d5c2df95f613a1de933153de929707c689c5fa54a7b9315101f7bfe6",
+  "instruction_task": "cup_place",
+  "swap_instructions_from": null,
+  "assignment": "(batch+env)%K",
+  "K": 20
+ },
+ "per_instruction": {
+  "0": {
+   "successes": 4,
+   "episodes": 5
+  },
+  "1": {
+   "successes": 4,
+   "episodes": 5
+  },
+  "2": {
+   "successes": 4,
+   "episodes": 5
+  },
+  "3": {
+   "successes": 3,
+   "episodes": 5
+  },
+  "4": {
+   "successes": 3,
+   "episodes": 5
+  },
+  "5": {
+   "successes": 3,
+   "episodes": 5
+  },
+  "6": {
+   "successes": 3,
+   "episodes": 5
+  },
+  "7": {
+   "successes": 3,
+   "episodes": 5
+  },
+  "8": {
+   "successes": 5,
+   "episodes": 5
+  },
+  "9": {
+   "successes": 4,
+   "episodes": 5
+  },
+  "10": {
+   "successes": 2,
+   "episodes": 5
+  },
+  "11": {
+   "successes": 2,
+   "episodes": 5
+  },
+  "12": {
+   "successes": 3,
+   "episodes": 5
+  },
+  "13": {
+   "successes": 4,
+   "episodes": 5
+  },
+  "14": {
+   "successes": 4,
+   "episodes": 5
+  },
+  "15": {
+   "successes": 4,
+   "episodes": 5
+  },
+  "16": {
+   "successes": 3,
+   "episodes": 5
+  },
+  "17": {
+   "successes": 3,
+   "episodes": 5
+  },
+  "18": {
+   "successes": 4,
+   "episodes": 5
+  },
+  "19": {
+   "successes": 5,
+   "episodes": 5
+  }
+ }
+}

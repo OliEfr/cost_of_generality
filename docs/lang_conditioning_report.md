@@ -14,12 +14,12 @@ Wilson95 [0.779, 0.915]).
 |---|---|---|
 | Mechanism | frozen CLIP ViT-B/16 text embedding (512-d, unit-norm) written per frame as `observation.environment_state`; stock pinned DiffusionPolicy conditions on it natively (FiLM/global-cond) | TRI-LBM-style DiT (lerobot 0.5.2 policy) run on pinned 0.4.4 as in-repo plugin `src/lerobot_policy_mtdit`; CLIP text+vision towers, tokenizes the dataset `task` string |
 | New model code | **zero** (dataset-driven; config = frozen flags verbatim) | 3 copied modules + 12-line shim + 5 import fixes |
-| **Train time / cell (80k, A100)** | **2:12:21 = 2.21 GPU-h** (10.4 steps/s; baseline 2.0–2.2 h — no measurable cost) | **~11.7 h projected** (1.91 steps/s steady, batch 64) — ~5.3× A; final sacct pending |
+| **Train time / cell (80k, A100)** | **2:12:21 = 2.21 GPU-h** (10.4 steps/s; baseline 2.0–2.2 h — no measurable cost) | **11:42:35 = 11.71 GPU-h** (1.91 steps/s, batch 64) — **5.3× A** |
 | VRAM (train) | ~13.5 GiB (baseline regime) | 41.5 GiB at batch 64; **batch 128 OOMs the A100-64GB** |
-| Verify-cell SR vs baseline 0.86 [0.779,0.915] | **0.830 [0.745, 0.891] — PASS** (CIs overlap) | PENDING (B3) |
+| Verify-cell SR vs baseline 0.86 [0.779,0.915] | **0.830 [0.745, 0.891] — PASS** (CIs overlap) | 0.700 [0.604, 0.781] — below A; CI barely touches baseline's. Untuned: batch 64 < the policy's recommended 192–320 (128 OOMs the A100-64), policy-default lr/horizon; treat as a lower bound, not B's ceiling |
 | Multi-task probe (language steers?) | **PASS decisively**: T1 match 0.930 / swap 0.060; T3 match 0.980 / swap 0.040 | not run (optional; A's pass covers the mechanism question for A) |
 | Cluster deps | none (embeddings baked into datasets; offline-safe by construction) | transformers 4.57.6 in `cog_lerobot` + CLIP staged in `$WORK/cog/hf_cache/hub` (done, offline load verified) |
-| Eval integration | one extra batch key, in-process | same in-process path (plugin import + factory dispatch), transformers already in `cog_isaac` |
+| Eval integration | one extra batch key, in-process (~8 min/T1 eval) | same in-process path (plugin import + factory dispatch); **10.3 min/T1 eval** — inference is not a blocker |
 | Hyperparams vs frozen study config | **identical** (rule-7 flags untouched) | policy's own preset (lr 2e-5, DiT 512/6/8, RoPE, resize 256/crop 224, horizon 20 / act 16 @20 Hz, ONE shared CLIP encoder per camera — deliberate asymmetry vs D26) |
 | Instruction-set semantics | needs re-conversion to change instructions (embeddings baked into dataset) | reads strings at train time (new instructions = same dataset, new tokenization) |
 
@@ -72,7 +72,7 @@ string every pre-i20 dataset carries. Cosine geometry: within-task means
 | B provisioning | transformers 4.57.6 on cluster (PINS row), CLIP staged, HF_HUB_OFFLINE dress rehearsal OFFLINE_CLIP_OK, dbg smoke on compute node (plugin + offline CLIP + torchcodec under slurm) |
 | A2/A3 verify | 2.21 GPU-h; SR 0.830 [0.745,0.891] vs 0.86 [0.779,0.915] — PASS |
 | A4/A5 probe | PASS both envs (see table); matched SR ≥ single-task baselines |
-| B2/B3 verify | B2 running (1.91 steps/s steady); B3 PENDING |
+| B2/B3 verify | B2 COMPLETED 11:42:35 (11.71 GPU-h); B3 SR 0.700 [0.604,0.781], per-instruction 0.40/0.70/1.00 |
 
 ## Probe detail (candidate A, one policy on T1+T3, n=100/task, 2.08 GPU-h)
 
@@ -119,6 +119,12 @@ penalty vs single-task baselines (possibly mild positive transfer on T1).
 - Registry rows: `lang_a_i20`, `probe_i20a`, `lang_b_mtdit` variants. Decision D30;
   journal 2026-08-22/23; PINS rows (CLIP, cluster transformers); timings sections.
 
-## PENDING (auto-updated when B2 lands)
+## Final numbers
 
-- B2 final sacct elapsed / GPU-h; B3 SR + per-instruction spread → verdict table row.
+- Investigation GPU-h spent: A2 2.21 + probe 2.08 + B2 11.71 + dbg smokes ~0.2 ≈
+  **16.2 GPU-h** (budget impact negligible).
+- B3 note: 0.700 with CIs [0.604, 0.781] means B as-configured is measurably behind
+  both A (0.830) and the baseline on this cell. The multi_task_dit docs themselves
+  recommend batch ≥192 and >30k–100k steps with tuning; batch 64 was forced by the
+  A100-64GB OOM at 128. A fair tuned-B comparison would need larger-memory GPUs or
+  gradient accumulation — out of scope here and unnecessary given A's result.
