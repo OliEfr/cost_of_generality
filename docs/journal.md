@@ -4997,8 +4997,10 @@ on record, because the branch looks deletable and mostly is:
   SHAs (39/39 matched, 0 missing) -- no work, doc or config lives only there.
 - It is the **sole ref** pinning those blobs: ~2.8 GB of the current 3.8 GB `.git`.
   Local-only, never pushed (`origin` has only `main` and `worktree-docs-dp-default-diff`).
-- The weights it protects exist twice more on disk: the live gitignored
-  `experiments/runs/g4_smoke_L0_n25/` and `data/_prepush_backup/g4_smoke_L0_n25/` (3.0 GB).
+- The weights it protects existed twice more on disk when this audit ran: the live
+  gitignored `experiments/runs/g4_smoke_L0_n25/` and `data/_prepush_backup/g4_smoke_L0_n25/`
+  (3.0 GB). **Superseded later the same day** -- the live copy's weights were deleted in the
+  checkpoint reclaim below, so the backup and these git blobs are now the only two copies.
   The run is not a study cell (registry.csv:2, "G4 pipeline validation only"), and
   journal.md:4296 already ruled main's copy the one to keep.
 - **GOTCHA for anyone who later trusts D15's "the backup is the fallback":** the backup
@@ -5013,3 +5015,58 @@ on record, because the branch looks deletable and mostly is:
 
 User decision: keep the branch as-is. The ~2.8 GB stays; every pre-rewrite hash keeps
 resolving in this checkout without a backup round-trip.
+
+### 2026-08-24 -- Checkpoint reclaim: 9.40 GiB of low-value weights deleted (user-approved)
+
+Disk audit at the user's request (repo 253 G, filesystem at 90 % with 190 G free). Findings
+were reported in three tiers; the user approved exactly one -- the 9.40 GiB of low-value
+checkpoints -- and said to leave the rest untouched. So nothing else went: the 67.6 GiB of
+`*_failed.hdf5`, the 78.5 GiB of success HDF5, the other 80 study checkpoints,
+`data/_prepush_backup/` and `.git` all stand.
+
+**Deleted (measured 9.40 GiB; `experiments/runs` 94 G -> 85 G, free 190 G -> 199 G, run dirs
+84 -> 82):**
+
+| path | size | why it was the safe pick |
+|---|---|---|
+| `experiments/runs/smoke_langA_L1_i20/` | 3.44 GiB | 1k-step candidate-A smoke; **no `registry.csv` row at all** |
+| `experiments/runs/g4_smoke_L0_n25/` (untracked weights only) | 2.98 GiB | registry.csv:2 "G4 pipeline validation only - NOT a study cell"; its SR 0.80 is recorded |
+| `experiments/runs/t1_L0_n25_s0_sharedenc/` | 2.98 GiB | `status=superseded` (D26, off-architecture for the study); all four SRs recorded (40k 0.97 / 60k 0.95 / 80k 0.98 / best 0.98) |
+
+**Reversibility differs per item -- this is the part worth knowing:**
+
+- `g4_smoke_L0_n25` is fully recoverable. The two files deleted are byte-identical to the two
+  blobs `main-prefilter` pins in `.git` (1,067,218,908 B and 2,134,444,016 B -- the exact pair
+  named in the D15 audit above), so `git checkout main-prefilter -- experiments/runs/g4_smoke_L0_n25`
+  restores them, and `data/_prepush_backup/g4_smoke_L0_n25/` is a third copy. Corollary: deleting
+  the live copy reclaimed **nothing** from `.git` -- that 2.8 GB is pinned by the branch, not by
+  the working tree.
+- `smoke_langA_L1_i20` and `t1_L0_n25_s0_sharedenc` are **not** in git. The registry claims a
+  `$WORK/cog/checkpoints/t1_L0_n25_s0_sharedenc` copy on Leonardo; that could NOT be verified from
+  this session (`ssh leonardo` -> `Permission denied (publickey)`, no ssh agent in a background
+  shell) and it expires with the grant on 2026-10-29 either way. Treat both as gone; their
+  recorded SRs are the surviving record, which is exactly why these were the ones picked.
+
+**GOTCHA -- `g4_smoke_L0_n25` holds 11 git-TRACKED skeleton files** (`config.json`,
+`train_config.json`, the two ~12 KB normalizer safetensors, `training_state/*.json`,
+`rng_state.safetensors`, and the `checkpoints/last` symlink), because the history rewrite
+stripped only the big blobs. A `rm -rf` of that directory would have deleted tracked content and
+dirtied the tree; only the two untracked `.safetensors` were removed. `git status` after the
+reclaim shows exactly the four pre-existing untracked `ops/tp_vram_*.samples` and nothing else.
+
+Both stray `optimizer_state.safetensors` (2.29 GiB in `smoke_langA`, 1.99 GiB in `g4_smoke`) were
+inside these deletions, so that whole category is now reclaimed -- every remaining run has
+`training_state` pruned to ~32 KB.
+
+**Still on the table, precondition already verified, for whoever needs space next:** the
+`data/hdf5/*_failed.hdf5` dumps whose attempt counts are recorded total **67.6 GiB** and satisfy
+D16's release condition -- checked file by file, 69 of 73 have successes/failures/attempts in
+`experiments/gen_stats.csv`; the 4 that do not are smokes totalling 0.1 GiB. Plus the two
+`.partial-killed` leftovers in `data/hdf5` (0.21 GiB). Beyond that it stops being free: the 80
+remaining study checkpoints (~80 GiB) have their SRs recorded but the only other copy is
+`$WORK/cog/checkpoints`, dead 2026-10-29, and the 78.5 GiB of success HDF5 costs datagen GPU-hours
+to rebuild.
+
+Method note: pre-flight earned its keep -- `lsof`/`ps`/`tmux ls` confirmed nothing held the paths
+open, a per-file manifest was written before the first `rm`, and `git ls-files` on each target is
+what caught the tracked-skeleton trap.
