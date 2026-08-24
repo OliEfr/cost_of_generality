@@ -1,5 +1,4 @@
      JOBID                 NAME    STATE       TIME  NODES NODELIST(REASON)
-  53640545      cog_train_mtdit  RUNNING   11:05:52      1 lrdn2867
 53273129                cog_train  COMPLETED   02:09:45 
 53273130                cog_train  COMPLETED   02:01:40 
 53273131                cog_train  COMPLETED   01:53:35 
@@ -9,5 +8,5 @@
 53636023          cog_smoke_mtdit  COMPLETED   00:05:30 
 53636024          cog_smoke_mtdit     FAILED   00:03:33 
 53636038               cog_lang_a  COMPLETED   02:12:21 
-53640545          cog_train_mtdit    RUNNING   11:05:52 
+53640545          cog_train_mtdit  COMPLETED   11:42:35 
 53640552               cog_lang_a  COMPLETED   02:04:37 

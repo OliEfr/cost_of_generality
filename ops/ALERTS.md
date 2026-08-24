@@ -47,3 +47,11 @@
 - 2026-08-23 11:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
 - 2026-08-23 12:07  Leonardo cert <4h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-23 12:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 13:07  Leonardo cert <3h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 13:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 14:07  Leonardo cert <2h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 14:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 15:07  Leonardo cert <1h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 15:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-08-23 16:07  Leonardo cert <0h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-08-23 16:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt

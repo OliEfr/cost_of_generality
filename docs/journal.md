@@ -4967,3 +4967,49 @@ this path; it is now green 7 h before the B2 checkpoint lands.
   cluster dependencies. B stays fully provisioned as the escape hatch.
 - Total investigation cost: ~16.2 cluster GPU-h + ~4 h local GPU. All results in
   results/diagnostics/; smoke datasets data/lerobot/smoke_* left in place (tiny).
+
+## 2026-08-24 -- Repo housekeeping: first post-investigation push, worktrees retired, D15 branch audited
+
+Pushed the 34 accumulated commits to `origin/main` (`993bd8e..d41a157`) -- a clean
+fast-forward, 0 behind. Payload checked before it left the machine: largest blobs are
+the results report (3.2 MB HTML / 2.25 MB PDF) and figures, no checkpoints, and a
+key/token/private-key scan over the added lines came back empty.
+
+**Worktrees removed** (both fully merged, tips verified as ancestors of the *pushed*
+`origin/main` before anything was touched): `.claude/worktrees/lang-harness`
+(`lang/harness` @ `0318c1e`) and `.claude/worktrees/lang-cand-b` (`lang/cand-b` @
+`942798f`). Branches deleted afterwards with `git branch -d`. `.claude/worktrees/` is
+now empty and the main checkout is the only worktree.
+
+`lang-cand-b` held four untracked raw nvidia-smi dumps (`ops/tp_vram_b{16,32,32_r2,64}.samples`)
+so removal needed `--force`. Copies moved to `ops/` first rather than destroyed, but
+they are disposable: their conclusions are already in the table at timings.md:346 and
+the peaks match it exactly -- 13344 MiB -> "13.3 GiB", 16182 -> "16.2 GiB" (the
+expandable_segments retry), 16186 -> "15.8 GiB". Raw ops samples are the same class of
+artifact as the gitignored `ops/*.log`.
+
+**`main-prefilter` audited and deliberately KEPT (D15 stands).** Findings worth having
+on record, because the branch looks deletable and mostly is:
+
+- It differs from its `main` counterpart `25c7a0e` by **exactly two blobs** and nothing
+  else: `model.safetensors` (1,067,218,908 B) and `optimizer_state.safetensors`
+  (2,134,444,016 B). All 39 of its commit subjects are present on `main` under rewritten
+  SHAs (39/39 matched, 0 missing) -- no work, doc or config lives only there.
+- It is the **sole ref** pinning those blobs: ~2.8 GB of the current 3.8 GB `.git`.
+  Local-only, never pushed (`origin` has only `main` and `worktree-docs-dp-default-diff`).
+- The weights it protects exist twice more on disk: the live gitignored
+  `experiments/runs/g4_smoke_L0_n25/` and `data/_prepush_backup/g4_smoke_L0_n25/` (3.0 GB).
+  The run is not a study cell (registry.csv:2, "G4 pipeline validation only"), and
+  journal.md:4296 already ruled main's copy the one to keep.
+- **GOTCHA for anyone who later trusts D15's "the backup is the fallback":** the backup
+  `data/_prepush_backup/git_before_filter_repo` is intact (60 commits, fsck clean) and
+  resolves the hashes the old journal entries cite (b091e9a, f57ee06, 87abc90, ec4dfbc)
+  -- but its HEAD is `ec4dfbc`, **one commit behind** the branch tip `0f8dfc3`, which is
+  absent from it. No content is at risk (`0f8dfc3` is the gitignore commit; its tree ==
+  main's `25c7a0e` apart from the two stripped blobs), but that single SHA exists ONLY on
+  `main-prefilter`. Deleting the branch would make it unresolvable anywhere.
+- Reclaiming the 2.8 GB would need more than `git branch -D`: 64 reflog entries still
+  mention the branch, so it takes `git reflog expire --expire-now --all && git gc --prune=now`.
+
+User decision: keep the branch as-is. The ~2.8 GB stays; every pre-rewrite hash keeps
+resolving in this checkout without a backup round-trip.

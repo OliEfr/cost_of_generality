@@ -191,6 +191,15 @@ pre-rewrite branch is retained locally as `main-prefilter`.
 not resolve on `main`. Messages are unchanged, so `git log --grep` still finds them.
 This is a one-time cost paid at the first push, when the repo had no other clones.
 
+**Addendum 2026-08-24 (audit, re-affirmed):** `main-prefilter` is the sole ref pinning
+the two stripped blobs (~2.8 GB of a 3.8 GB `.git`); it differs from `main`'s `25c7a0e`
+by exactly those two blobs, and all 39 of its commit subjects exist on `main`. The
+branch was reviewed for deletion and **deliberately kept**. One correction to "how it
+was made safe" above: the `data/_prepush_backup/git_before_filter_repo` fallback is one
+commit behind the branch tip -- its HEAD is `ec4dfbc`, and `0f8dfc3` is absent from it,
+so that SHA exists only on `main-prefilter`. No content is at risk (`0f8dfc3`'s tree
+equals `25c7a0e` apart from the stripped blobs). Details: journal 2026-08-24.
+
 ## D16 — Generation SR is computed from episode counts, never from logs (2026-08-17)
 
 **Decision:** report Mimic generation success rate as
