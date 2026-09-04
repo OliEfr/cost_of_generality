@@ -5070,3 +5070,19 @@ to rebuild.
 Method note: pre-flight earned its keep -- `lsof`/`ps`/`tmux ls` confirmed nothing held the paths
 open, a per-file manifest was written before the first `rm`, and `git ls-files` on each target is
 what caught the tracked-skeleton trap.
+
+### 2026-09-04 -- Citation guidance added to lang_conditioning_report; decision finalized as CANDIDATE A
+
+User ruled out candidate B on training cost (5.3x) and confirmed the lightweight
+candidate A as the rerun setting. Report updated with a prominent FINAL DECISION
+headline and a "How to cite the setting" section: A is cited as a composition
+(Diffusion Policy, Chi et al. RSS 2023 + frozen CLIP embedding, Radford et al. ICML
+2021, following Stepputtis et al. NeurIPS 2020 / MCIL RSS 2021 / BC-Z CoRL 2021 /
+RT-1 RSS 2023; FiLM = Perez et al. AAAI 2018 -- the 1426-d global cond vector
+FiLM-modulates all 14 U-Net blocks via per-block scale+bias projections, verified
+at modeling_diffusion.py:761-784). No single-paper citation exists for a policy
+this lightweight; named alternatives (RT-1, LIBERO baselines) are not in lerobot
+0.4.4 and would cost more engineering than the B backport did. B stays the directly
+citable escape hatch (TRI LBM Team / Barreiros et al., Science Robotics 2026,
+arXiv:2507.05331). Frozen-embedding caveat from the literature recorded, with the
+swap probe (0.93/0.98 vs 0.06/0.04) as empirical cover.

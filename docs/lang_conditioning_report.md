@@ -8,6 +8,20 @@ identical at train and eval). Not a study; every result lives in
 verified (80k steps, frozen 100-demo T1-L1 cell, baseline `t1_L1_n100_s0` SR 0.86
 Wilson95 [0.779, 0.915]).
 
+---
+
+# FINAL DECISION — Candidate A (user-confirmed 2026-09-04)
+
+**The full-study rerun uses candidate A: the lightweight env-state-embedding setting
+(frozen CLIP text embedding conditioning the unchanged, frozen Diffusion Policy).**
+Candidate B was ruled out on training cost (11.71 vs 2.21 GPU-h per cell — 5.3×).
+There is no single-paper citation for a policy this lightweight; A is cited as a
+composition of first-class references — see **"How to cite the setting"** below.
+B stays fully provisioned in-repo as the escape hatch (directly citable as
+Barreiros et al., Science Robotics 2026).
+
+---
+
 ## Verdict at a glance
 
 | | Candidate A — env-state embedding | Candidate B — multi_task_dit backport |
@@ -23,7 +37,7 @@ Wilson95 [0.779, 0.915]).
 | Hyperparams vs frozen study config | **identical** (rule-7 flags untouched) | policy's own preset (lr 2e-5, DiT 512/6/8, RoPE, resize 256/crop 224, horizon 20 / act 16 @20 Hz, ONE shared CLIP encoder per camera — deliberate asymmetry vs D26) |
 | Instruction-set semantics | needs re-conversion to change instructions (embeddings baked into dataset) | reads strings at train time (new instructions = same dataset, new tokenization) |
 
-## Recommendation
+## Recommendation (user-confirmed — see Final decision above)
 
 **Candidate A is the setting to use for the full-study rerun**, unless the rerun's
 scientific framing requires the policy to *read raw text at train time*:
@@ -49,6 +63,50 @@ CLIP's text-encoder geometry (unit-norm 512-d; within-task cosine 0.89–0.94). 
 the *disturbance* framing (same 20 instructions at train and eval) this is exactly
 sufficient; for held-out-instruction generalization claims, B (or a trainable text
 projection) would be the better instrument.
+
+## How to cite the setting
+
+**Candidate A (the chosen setting) has no single proposing paper — it is a standard
+composition, cited by its parts.** Quotable template for the paper:
+
+> We use a language-conditioned variant of Diffusion Policy (Chi et al., RSS 2023):
+> a frozen CLIP text embedding (Radford et al., ICML 2021) of the instruction is
+> appended to the policy's observation conditioning, following the
+> frozen-language-embedding paradigm of language-conditioned imitation learning
+> (Stepputtis et al., NeurIPS 2020; Lynch & Sermanet, RSS 2021; BC-Z, Jang et al.,
+> CoRL 2021) and RT-1's FiLM-based conditioning (Brohan et al., RSS 2023).
+
+Architecture sentence (mechanism verified in the installed lerobot 0.4.4 source,
+`modeling_diffusion.py:761-784`): the global conditioning vector — proprioception
+(9) + visual features (64/camera × 2 cameras) + frozen CLIP instruction embedding
+(512), over 2 observation steps, plus a 128-d diffusion-timestep embedding = 1426-d
+— **FiLM-modulates every one of the U-Net's 14 residual blocks**, each block owning
+its own `Linear(1426 → 2×channels)` scale-and-bias projection
+(`use_film_scale_modulation=true`). Cite FiLM as **Perez et al., AAAI 2018**.
+Composition precedent (diffusion × language-conditioning as a standard design
+point): X-IL, arXiv:2502.12330.
+
+**Candidate B (escape hatch) is directly citable as a named policy**: TRI LBM Team
+(Barreiros et al.), *A Careful Examination of Large Behavior Models for Multitask
+Dexterous Manipulation*, **Science Robotics 2026**, arXiv:2507.05331 — already in
+`docs/literature_review.md`; the LeRobot `multi_task_dit` implements that
+architecture. Transparency caveats if ever used: it is a community reimplementation
+(not TRI's code), and our config adapts it (20 Hz horizons, 128→224 px upscale,
+batch 64 forced by A100-64GB VRAM vs the recommended 192–320).
+
+Considered and rejected for citability-at-low-cost: **SmolVLA** (Shukor et al.,
+2025) ships in the pinned lerobot and is citable, but it is a *pretrained* VLA —
+fine-tuning it breaks the study's from-scratch fixed-budget protocol. RT-1 or the
+LIBERO baseline policies (Liu et al., NeurIPS 2023) are lightweight and named, but
+neither exists in lerobot 0.4.4 — adopting one means more new engineering than the
+B backport was, plus a policy-family change.
+
+Literature caveat worth one sentence in the paper: frozen language embeddings can
+underperform fine-tuned ones on LIBERO-style multi-task splits (wrong-task
+completions reported, e.g. X-IL). Our swap probe is the direct empirical cover:
+with frozen embeddings, matched instructions score 0.930/0.980 while swapped
+instructions collapse to 0.060/0.040 — the conditioning demonstrably selects the
+task in this setting.
 
 ## The frozen instruction benchmark
 
