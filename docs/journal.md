@@ -5086,3 +5086,14 @@ this lightweight; named alternatives (RT-1, LIBERO baselines) are not in lerobot
 citable escape hatch (TRI LBM Team / Barreiros et al., Science Robotics 2026,
 arXiv:2507.05331). Frozen-embedding caveat from the literature recorded, with the
 swap probe (0.93/0.98 vs 0.06/0.04) as empirical cover.
+
+### 2026-09-04 -- Cluster tree opened for project collaborators
+
+`chmod -R a+rX $WORK/cog/checkpoints $FAST/cog/datasets` run (user-executed; the
+safetensors files were 0600, unreadable to other project members). Verified: 0
+non-world-readable files remain under checkpoints. Access stays gated to
+EUHPC_B38_106 members at /leonardo_work/EUHPC_B38_106 (drwxrwx---). NOTE for future
+runs: lerobot/safetensors writes checkpoints 0600, so new training runs need the
+same chmod afterwards (or add a chmod line to the train sbatches if collaboration
+becomes routine). Share path for new members: /leonardo_work/EUHPC_B38_106/cog
+(+ datasets at /leonardo_scratch/fast/EUHPC_B38_106/cog/datasets).
