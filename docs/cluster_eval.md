@@ -4,8 +4,12 @@ How to run a rollout evaluation on the cluster, why each piece is needed, and wh
 Everything here was established on 2026-09-17 (journal entry of that date); the working
 reference job is `slurm/bench_eval_a100_dbg.sbatch`.
 
-**Status: works, but is not the default.** D25 keeps evaluation on the local 4090. This page
-exists so the cluster path can be picked up without re-deriving it.
+**Status 2026-09-18: this is now the production path for the reverse-ablation study (D31).** It
+also covers DATA GENERATION, which was never run on the cluster before. D25 (eval local) still
+holds for one-off checks, and section 7 says why.
+
+**The recipe itself lives in `slurm/lib_cog_container.sh`, not in this page.** Every Isaac sbatch
+sources it. Read this page for *why* each piece is there; read the library for what to run.
 
 ---
 
@@ -30,17 +34,31 @@ USD asset referenced from the Omniverse S3 stalls 300 s and then fails.
 
 ## 2. Prerequisites (one-time, already done)
 
-- **Assets staged.** `$WORK/cog/isaac_assets/Assets/Isaac/5.1` holds the four subtrees T1
-  references (Franka, SeattleLabTable, Mug, Grid; 118 MB). Re-run from a **login node** (compute
-  nodes are offline) with `scripts/dev/stage_isaac_assets.py`; pass extra S3 prefixes as argv to
-  add assets for other tasks. **T2/T3 have not been checked for additional assets** -- expect to
-  stage more before evaluating them.
+- **Assets staged.** `$WORK/cog/isaac_assets/Assets/Isaac/5.1` (113 MB) holds the four subtrees T1
+  references (Franka, SeattleLabTable, Mug, Grid) plus `Isaac/Props/Sektion_Cabinet/` for T2
+  (18 objects, 0.4 MB, added 2026-09-18). **T3 needs nothing further**: its pucks and target disk
+  are `sim_utils` primitives and its table is the already-staged SeattleLabTable. Re-run with
+  `scripts/dev/stage_isaac_assets.py`, passing extra S3 prefixes as argv -- from a **login node**,
+  or locally with `STAGE_DEST=` and then rsync (the permission classifier blocks running it over
+  ssh).
+- **Source demos + datasets on `$FAST`.** Generation reads
+  `$FAST/cog/hdf5/{,T2_,T3_}L2_source_annotated.hdf5` (14.2 MB, uploaded once) and writes its
+  output beside them; LeRobot datasets live in `$FAST/cog/datasets/`.
 - **Container.** `$WORK/cog/containers/cog-env-5.1.0.sif`.
 - **Writable Kit dirs.** `$WORK/cog/kit_rw/{logs,data,cache}`, seeded from the image on first use
   (the sbatch does this automatically). Kit writes into its own install tree, which is read-only
   inside a `.sif`.
 - **libgomp shim.** `$WORK/cog/extralibs` on `LD_LIBRARY_PATH`; the image lacks `libgomp1`, which
   alone caused 99 of 101 startup errors.
+- **Per-job Kit scratch.** Each job copies `kit_rw` and `isaac_home` to
+  `$FAST/cog/jobscratch/$SLURM_JOB_ID` and deletes it on exit (`cog_job_scratch`). The 2026-09-17
+  gate ran one job against the shared templates; a wave runs ~60 at once against the same shader
+  cache and the same `--home`. It goes on `$FAST`, not the node: Slurm here allocates
+  `gres/tmpfs:10g` per job by default and four GPU jobs share a node, while the copy is 1.4 GB.
+- **No DCGP.** `dcgp_usr_prod` rejects this account at submit time (`invalid account or expired
+  budget`) despite advertising `AllowAccounts=ALL`. GPU-less work -- the h264 conversion -- runs on
+  `boost_usr_prod` with no `--gres` instead, which bills only the allocated cores and leaves the
+  node's A100s schedulable.
 
 ---
 
@@ -138,7 +156,39 @@ Cost of the whole enabling investigation: **~0.7 GPU-h** across 7 dbg jobs.
 
 ## 7. When to use this
 
-Per cell the cluster is strictly slower, so it can only win through running many cells at once,
-against a queue that was badly congested when this was measured. Treat it as an option for a
-large rerun when eval wall-clock is binding and the queue is quiet -- not as the default. D25
-(eval local, zero grant GPU-h) stands.
+Per cell the cluster is strictly slower -- ~3.3x, because the A100 has no RT cores. It wins only by
+running many cells at once.
+
+- **A one-off eval or a quick check: stay local.** D25 stands; the 4090 finishes a T1 cell in 4-6
+  minutes against ~26 on an A100, and costs no grant hours.
+- **A wave: come here.** The reverse-ablation study (D31) is 60 datagen legs and 1,080 eval slices,
+  all independent. The workstation can run two evals at a time; the cluster runs as many as the
+  queue will start, and that reverses the arithmetic completely. D25 is superseded for waves of
+  this shape, not repealed.
+
+## 8. Data generation (new 2026-09-18)
+
+Generation needs the same full RTX path as eval -- `generate_dataset.py` requires
+`--enable_cameras` -- so every fix in section 1 applies unchanged. What is different:
+
+- **One job per variant, not one per arm.** `scripts/ops/gen_L3_wave.sh` batches ten variants into
+  one process because a camera-enabled Kit boot costs 3.5-4 min on the workstation. In this
+  container it is 13 s warm / 36 s cold, so that reason is gone: `slurm/datagen.sbatch` takes one
+  sub-level and one seed, which buys 10x parallelism, dbg-QOS eligibility for the short tasks, and
+  a blast radius of one leg.
+- **`--seed` is still load-bearing** (D27). The sbatch takes it as an argument and the generator
+  prints the effective value; `launch_wave.py` owns the per-arm seed blocks.
+- **The output is judged by demo count**, never by exit code: Kit exits 0 after fatal exceptions and
+  drops its final progress flush (D16). `GEN_OK` / `GEN_FAILED` / `GEN_REFUSE` / `GEN_SKIP` are the
+  markers, and a file that exists with the WRONG count aborts rather than being reused, because a
+  short variant folded into a merged dataset unbalances the nested subsets silently.
+- **Verify every new arm** with `COG_DATA_HDF5=$FAST/cog/hdf5 python -m cog.analysis.gen_bias
+  --levels <stem>`: unique initial poses must be ~= the demo count, with no redundancy flag.
+
+```bash
+sbatch slurm/datagen.sbatch T1 ACv03 ACv03 1303 40 8    # task, gym key, out stem, seed, demos, envs
+python scripts/ops/launch_wave.py --stage datagen --task T1 --arms AC BC   # the whole wave
+```
+
+Measured on an A100 (2026-09-18): T1 5 demos in **108 s** including a cold Kit boot, i.e. ~10 s per
+demo against ~3.9 s locally. Fuller numbers in `docs/timings.md` as the gates land.

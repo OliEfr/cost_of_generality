@@ -80,11 +80,13 @@ def main() -> int:
     hard: list[str] = []
     soft: list[str] = []
 
-    # 1. attempts -- one number that summarises every accept/reject decision the generator made.
+    # 1. total recorded timesteps. Verified against L3bv00: data.attrs["total"] == sum of every
+    # demo's num_samples (7511), NOT the attempt count -- the generator's accept/reject tally only
+    # reaches the log. One scalar that changes if any trajectory anywhere changed length.
     ta, tb = da.attrs.get("total"), db.attrs.get("total")
-    print(f"1. attempts        local={ta}  cluster={tb}")
+    print(f"1. total timesteps local={ta}  cluster={tb}")
     if ta != tb:
-        hard.append(f"attempt counts differ ({ta} vs {tb}): generation SR is not reproducing")
+        hard.append(f"total timesteps differ ({ta} vs {tb}): the trajectories are not reproducing")
 
     # 2. demo count and per-demo length -- the most sensitive scalars available.
     ka, kb = sorted(da.keys()), sorted(db.keys())
