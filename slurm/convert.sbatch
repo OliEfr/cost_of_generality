@@ -1,8 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=cog_convert
 #SBATCH --account=euhpc_b38_106
-#SBATCH --partition=dcgp_usr_prod
-#SBATCH --qos=normal
+#SBATCH --partition=boost_usr_prod
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
@@ -13,14 +12,15 @@
 #
 # HDF5 -> LeRobotDataset for ONE arm.  sbatch slurm/convert.sbatch TASK ARM
 #
-# NO GPU. hdf5_to_lerobot imports h5py/numpy/lerobot and encodes h264 through LeRobot's PyAV path
-# (lerobot/datasets/video_utils.py) -- no torch, no CUDA, no Kit, no Vulkan. So this runs on the CPU
-# partition and costs no boost GPU-h. The container is still required: the cluster's cog_lerobot
-# conda env has neither isaacsim nor h5py.
+# NO --gres. hdf5_to_lerobot imports h5py/numpy/lerobot and encodes h264 through LeRobot's PyAV path
+# (lerobot/datasets/video_utils.py) -- no torch, no CUDA, no Kit, no Vulkan. Requesting no GPU leaves
+# the node's four A100s schedulable for other jobs and bills only the allocated cores. The container
+# is still required: the cluster's cog_lerobot conda env has neither isaacsim nor h5py.
 #
-# If dcgp_usr_prod is not available to this allocation (probe it -- the account lists no dcgp_qos_*),
-# resubmit with:  sbatch -p boost_usr_prod -q normal ...   (no --gres, so the node's GPUs stay
-# schedulable for other jobs).
+# Why not the CPU partition: gate G0b (2026-09-18) submitted a one-minute probe to dcgp_usr_prod and
+# got "invalid account or expired budget" -- EUHPC_B38_106 carries no DCGP core-hours, whatever the
+# partition's AllowAccounts=ALL suggests. The same probe on boost_usr_prod with no --gres completed
+# in 8 s (job 58059445), so this is the supported path, not a fallback.
 #
 # Parallelism is one job per dataset. h264 encode is single-core, so splitting a dataset gains
 # nothing while running the arms concurrently gains everything (running_jobs.md rule 7).

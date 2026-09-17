@@ -5378,3 +5378,24 @@ diagonal ones. The D31 re-measurement puts all 108 cells on one code path.
 **Next:** Phase 1 gates (G0a-c plumbing, G1 does Mimic run in the container at all, G2 render
 parity, G2b the retraining control, G3 throughput, G4 concurrency, G5 T2 assets, G6 warm-up
 calibration), ~10 GPU-h. Nothing beyond G2b should start until the parity verdict is in.
+
+## 2026-09-18 -- Phase 1 gates G0a-G0c: plumbing, and DCGP is not ours
+
+- **G0a** `$FAST/cog/{hdf5,jobscratch}` and `$WORK/cog/{logs,results/_partials,results/_evalsets_raw}`
+  created; code synced; the three annotated L2 source demos uploaded to `$FAST/cog/hdf5/`
+  (14.2 MB -- the only upload the whole study needs, everything else is generated cluster-side).
+- **G0b: `dcgp_usr_prod` is NOT available to EUHPC_B38_106.** A one-minute probe was rejected at
+  submit time with `invalid account or expired budget`, despite the partition advertising
+  `AllowAccounts=ALL AllowQos=ALL`. So the CPU partition is not a free home for the h264 conversion
+  jobs. A CPU-only job on `boost_usr_prod` with **no `--gres`** works instead (job 58059445,
+  COMPLETED in 8 s on lrdn0558), leaving the node's four A100s schedulable for other jobs and
+  billing only the allocated cores. `slurm/convert.sbatch` now defaults to that rather than carrying
+  it as a fallback comment. Worth the sixty seconds: the partition's own metadata says yes and the
+  scheduler says no, which is not something to reason about from a config file.
+  The probe also printed `no gres/tmpfs specified, using default: gres/tmpfs:10g`, confirming the
+  per-job tmpfs container and its 10 GB cap -- which is why the per-job Kit scratch (1.4 GB, up to
+  four jobs per node) lives on `$FAST` and not on the node.
+- **G0c** T2's one missing USD prefix staged: `Assets/Isaac/5.1/Isaac/Props/Sektion_Cabinet/`,
+  18 objects, 0.4 MB. Staged locally and rsynced rather than run on a login node (the classifier
+  blocks running the staging script over ssh). `$WORK/cog/isaac_assets` is now 113 MB. T3 needs
+  nothing: its pucks and target disk are `sim_utils` primitives and its table was already staged.
