@@ -6,6 +6,11 @@ User-approved design (2026-08-16): 4 levels.
 L3 is realized as per-variant sub-environments (L3v00..) whose datasets and
 eval sets are merged; distribution semantics = uniform over variants x poses.
 
+Reverse ablation (D31, 2026-09-17): AC = L3 minus goal pose, BC = L3 minus cup
+pose -- the full set with exactly one dimension removed. Both are per-variant
+families (ACv00.., BCv00..) exactly like L3. There is no third arm because
+"L3 minus object variation" is L2, field for field.
+
 All coordinates are env-local (robot base at origin, table top at z=0).
 Eval sets sampled from these SAME distributions (in-distribution protocol).
 """
@@ -71,6 +76,14 @@ SUB_LEVELS["L1"] = _mk("L1", "L1", DEFAULT_CUP, CUP_RANGE, None)
 SUB_LEVELS["L2"] = _mk("L2", "L2", DEFAULT_CUP, CUP_RANGE, GOAL_RANGE)
 for _i, _v in enumerate(L3_VARIANTS):
     SUB_LEVELS[f"L3v{_i:02d}"] = _mk(f"L3v{_i:02d}", "L3", _v, CUP_RANGE, GOAL_RANGE)
+
+# Reverse-ablation arms (D31): the full disturbance set minus exactly ONE dimension.
+# L3 = {cup pose, goal pose, object variant}; AC drops goal pose, BC drops cup pose.
+# "L3 minus object variant" needs no new family -- it is L2, field for field. Same ten object variants and
+# the same annotated L2 sources as every other arm, so provenance control (D9) holds.
+for _i, _v in enumerate(L3_VARIANTS):
+    SUB_LEVELS[f"ACv{_i:02d}"] = _mk(f"ACv{_i:02d}", "AC", _v, CUP_RANGE, None)
+    SUB_LEVELS[f"BCv{_i:02d}"] = _mk(f"BCv{_i:02d}", "BC", _v, None, GOAL_RANGE)
 
 
 def level_members(level: str) -> list[SubLevelCfg]:

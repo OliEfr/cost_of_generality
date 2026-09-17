@@ -876,3 +876,158 @@ end-to-end (SR 0.700 untuned at batch 64) and kept as escape hatch. Open item fo
 the rerun, deliberately NOT decided here: an L3-lang instruction<->variant
 assignment design (converter hard-refuses the confounded case), and whether lang
 results enter curves.py's naming contract (D29-style decision needed then).
+
+## D31 -- 2026-09-17 (USER DIRECTIVE): reverse ablation -- two leave-one-out arms per task, on a uniform 200-episode slice protocol, generated and evaluated entirely on Leonardo
+
+**Directive.** "this repo run a study where disturbance dimensions were added to investigate how
+performance scales when adding disturbance dimensions. Now, I want the same study but the other way
+around: start from all disturbances added, and then always remove a single one to see which
+simplification gives the largest performance gain. plan to run everything on cluster (datagen,
+train, eval; parallelize where useful)." Scope settled in the same session: leave-one-out only (not
+the full 2^3 lattice), all three tasks, baselines re-measured, in-distribution eval only, T2's
+existing stage instrumentation recorded and none built for T1/T3.
+
+### The design
+
+The additive ladder walks one ordering of three dimensions; this measures the other end of each
+one's marginal. Writing a level as the SET of disturbances it switches on, with
+
+| | A | B | C |
+|---|---|---|---|
+| T1 cup_place | cup XY 30x40 cm + yaw +-90 deg | goal disk XY 20x20 cm | 10 object variants |
+| T2 drawer_stow | stow-object XY + yaw +-45 deg | cabinet XY +-5 cm + yaw +-7.5 deg | 10 box variants |
+| T3 push_target | puck XY 12x12 cm | target bearing +-25 deg | 10 puck variants |
+
+the existing ladder is L0={}, L1={A}, L2={A,B}, L3b={A,B,C}, and the new arms are
+
+| arm | set | = | sub-envs | demos |
+|---|---|---|---|---|
+| `AC` | {A,C} | L3b minus B | `ACv00..ACv09` | 10 x 40 |
+| `BC` | {B,C} | L3b minus A | `BCv00..BCv09` | 10 x 40 |
+
+**There is no third arm, because "L3b minus C" is L2 -- field for field, not approximately.**
+`_mk(key, level, variant, range_or_None, range_or_None)` in each `levels.py` was already a
+per-dimension toggle (`None` collapses an axis to its fixed point), so `SUB_LEVELS["L2"]` and a
+hypothetical L3-minus-C are the same object. One third of the leave-one-out grid per task was
+therefore already generated, trained and evaluated before this decision was written.
+
+**Vocabulary lives in one place.** `cog.analysis.curves` gains `DISTURBANCE_SETS` (the lattice),
+`LEVEL_LABEL` (reverse arms are displayed as what they REMOVE: `L3\B`, `L3\A`) and `LEVEL_TOKEN`
+(the regex alternation every level-name parser now imports rather than restating). D29's VERIFY
+required exactly this: the mapping must not leak out of that module again. Four parsers were
+silently dropping any level they could not name -- `update_registry_from_evals.py`,
+`gen_stats.py`, `gen_bias.py`, `merge_eval_sets.py` -- each failing as a no-match rather than an
+error. Patching `gen_stats.py` also fixes the D29 residue: `L3bv07` used to parse as
+level=`L3bv07`, variant=`-`, and now parses as level=`L3b`, variant=`v07`, which is what D29 said a
+future arm must do.
+
+**Seeds** extend the existing per-task blocks and stay disjoint from the eval seeds (5000-5009) and
+the new warm-up seeds (4900-4909), so training, eval and warm-up poses can never coincide:
+
+| | T1 | T2 | T3 |
+|---|---|---|---|
+| `ACv00..09` | 1300-1309 | 2300-2309 | 3300-3309 |
+| `BCv00..09` | 1400-1409 | 2400-2409 | 3400-3409 |
+
+Provenance control (D9) is unchanged: the same annotated L2 source demos, the same generator
+settings, the same `--num_envs 8`.
+
+### The eval protocol changes, and why that is not optional
+
+The old protocol scores a flat cell as 5 batches in ONE process and a variant cell as one batch per
+process. Batch 0 is genuinely depressed -- `t1_L1_n100_s0` scores [0.50, 0.90, 0.95, 0.95, 1.00]
+across its five batches **with the t==0 phantom guard active**, so it is a process warm-up effect,
+not a scoring bug (journal 2026-08-22). That asymmetry is exactly the confound that put Finding 4
+("the axes are not additive and the object axis dominates") in doubt, and a leave-one-out study
+whose arms all carry dimension C would inherit it in full.
+
+**New protocol: every cell is ten slices. Slice s is its own process, runs one unscored warm-up
+batch (`reset(seed=4900+w)`), then scores batch s (`reset(seed=5000+s)`, 20 envs). 200 scored
+episodes per cell.** For a variant arm slice s also selects sub-env `<ARM>v0s`, which is D18's
+diagonal -- so D18 is preserved, not overturned. For a flat arm every slice uses the same env.
+
+- **Rule 8 is respected.** The frozen `configs/eval_sets/*.json` already contain batches 0-9 for
+  every level. Nothing is regenerated; what changes is which committed rows are read and how they
+  are grouped into processes -- the same kind of change D18 itself was. `merge_eval_sets.py` now
+  *enforces* rule 8 rather than relying on it: it refuses to overwrite an existing frozen set.
+- **Consequences, stated plainly.** Reported episodes for L0-L2 go 100 -> 200. Absolute success
+  rates will shift relative to `experiments/clean_surface.csv`, which this sweep supersedes for
+  every cell it covers. The re-measured surface is written with the protocol suffix **`_u200`**
+  (`eval_T1_L2_n100_080000_u200.json`), beside the originals rather than over them -- the same
+  convention as `_fixed` / `_sharedenc` / `_poseredundant`. `curves.load()` and
+  `update_registry_from_evals.py` take a `--suffix`, default `""`, so every existing caller reads
+  exactly what it read before.
+- **The warm-up LENGTH is measured, not chosen.** Gate G6 evaluates one cell at warm-up in
+  {0 batches, 20 steps, 100 steps, 1 full batch} and takes the shortest at which the scored SR stops
+  rising; a full batch is the conservative default and roughly doubles the eval bill, so this gate
+  pays for itself. Every result records its warm-up block, and `pool_variant_eval.py` refuses to
+  pool slices that disagree on it.
+
+### Baselines are re-measured on the cluster, not carried over
+
+All 72 baseline cells (L0/L1/L2/**L3b**, 6 N, 3 tasks) are re-evaluated under the new protocol on
+the A100s, alongside the 36 new cells. Two confounds go away at once: the batch-0 asymmetry above,
+and the machine. The audit that prompted the second: **no L3b cell in any task has a `_fixed`
+artifact** -- all 18 are from the original pre-guard sweep, while every L0/L1/L2 cell was re-swept.
+That is probably harmless (one batch per process means there is no batch b-1 to carry over from),
+but it is unverified, and the published surface therefore mixes guarded flat cells with unguarded
+diagonal ones. One code path for all 108 cells removes the question instead of arguing it.
+
+### Everything runs on Leonardo, which inverts D25
+
+D25 kept evaluation local, most recently on throughput grounds: an A100 is ~3.3x slower per
+rendered episode than the 4090 (no RT cores). That argument was about a serial sweep. This study is
+1,080 eval slices and 60 datagen legs, all independent, and the cluster's parallelism beats a
+workstation that can run two evals at a time. **D25 is superseded for this study's waves**; local
+eval remains correct for one-off checks.
+
+New infrastructure, all copied from `slurm/bench_eval_a100_dbg.sbatch` (the only verified container
+recipe): `slurm/lib_cog_container.sh` holds the recipe ONCE -- FoldSpace apptainer, stock host
+Vulkan ICD, `verifyDriverVersion=false`, the cu12-over-cu13 cuDNN bind, no inner `srun` -- because a
+drifted second copy fails by rendering on the CPU or dying in a conv, and both look like something
+else. On top of it: `slurm/datagen.sbatch` (one job per variant, not one per arm: a camera-enabled
+Kit boot is 13 s warm in this container against 3.5-4 min on the workstation, so the batching
+rationale behind `gen_L3_wave.sh` is gone), `slurm/convert.sbatch` (no GPU at all -- the converter
+imports h5py/numpy/lerobot and encodes through PyAV), `slurm/freeze_eval_sets.sbatch` (state env, no
+cameras, but still a GPU because the poses come off the CUDA generator), and a rewritten
+`slurm/eval.sbatch` (one job per slice). The pre-FoldSpace eval script is kept as
+`slurm/eval_legacy_singularity.sbatch` and must not be copied from: it uses plain `singularity` and
+an inner `srun` that silently drops the GPU. Each job gets its own Kit scratch under
+`$FAST/cog/jobscratch/$SLURM_JOB_ID`, seeded warm from `$WORK`; ~60 concurrent Isaac jobs against
+one shared shader cache and one shared `--home` is a contention mode the single-job 2026-09-17 gate
+never exercised.
+
+### Stage instrumentation: T2 only, as it stands
+
+`--stages` is passed on every T2 eval in this study -- both new arms and re-measured baselines, all
+six N -- and **no stage instrumentation is built for T1 or T3** (user directive). It matters on T2
+because its success rates sit at 0.04-0.43 and are non-monotone in N, so a binary SR cannot resolve
+a leave-one-out delta there, while the existing funnel already pins every T2 SR to the mid-rollout
+grasp. `pool_variant_eval.py` pools the `stages` block across slices by recounting episodes, which
+is new: the three existing `_stages.json` files are flat single-process cells.
+
+### The principal risk, and the gate that settles it
+
+The new arms are generated on A100s but compared against L2 and L3b, whose demos came from the
+4090. A renderer difference would confound "which disturbance was removed" with "which GPU rendered
+the training images" -- structurally the same class of artefact as D27. `scripts/dev/parity_check.py`
+(gate G2) regenerates an existing leg on the cluster with its original seed and compares
+attempt count, per-demo `num_samples`, initial states, actions, states and pixels, in that order,
+with the first three as hard stops. Pixels are not expected to be bit-identical; the verdict bands
+are MAE <= 1 and p99 <= 8 (AGREE, freely mixable), MAE <= 3 with no channel-mean shift > 2
+(TOLERABLE, usable because each arm is generated entirely on one machine, but record it), and
+anything beyond (DIVERGENT). Unless G2 lands in AGREE, gate G2b retrains a control cell on
+cluster-generated data and requires it inside the existing cell's binomial CI: ~4.4 GPU-h total to
+de-risk ~350.
+
+**If G2b fails**, the recovery is targeted rather than total: regenerate only L2 and L3b on the
+cluster (~20 GPU-h of datagen plus 36 retrained cells, ~79 GPU-h), since those are the two arms the
+leave-one-out deltas are actually taken against. Budget: the whole study is ~300-400 GPU-h against
+~2,000 remaining of the approved 2,200 ceiling; the binding constraint is the grant calendar
+(2026-10-29), not GPU-hours.
+
+**VERIFY:** (a) G2's pixel verdict, journalled whatever it says. (b) `gen_bias` reports ~400 unique
+initial poses per new arm at <=1.1x redundancy -- the D27 check, which must run on every new arm.
+(c) a re-measured `t1_L1_n100_s0` reproduces its published 0.86 within binomial noise; if not, G6's
+warm-up choice is wrong and must be settled before the sweep rather than discovered in the surface.
+(d) `curves.canonical()` maps `AC`/`BC` with no caller filtering levels itself.

@@ -33,8 +33,38 @@ import re
 # and the corrected object palette (D27/D28). Parsing keeps it a SEPARATE key from the original "L3"
 # -- the two differ in pose diversity, which is the whole point -- and the reporting rename happens
 # later, in canonical(), so the file layer never loses which dataset a number came from.
+# The disturbance lattice (D31): THE one place the study's level vocabulary is written down.
+# A level is the SET of disturbance dimensions it switches on --
+#   A = manipulandum pose, B = goal/fixture pose, C = object variant
+# -- with the per-task meaning of each letter given in docs/decisions.md D31. The additive
+# ladder walks {} -> {A} -> {A,B} -> {A,B,C}; the reverse-ablation arms remove exactly one
+# dimension from the full set. There is no third reverse arm because "L3 minus C" IS L2.
+DISTURBANCE_SETS = {
+    "L0": (),
+    "L1": ("A",),
+    "L2": ("A", "B"),
+    "L3b": ("A", "B", "C"),
+    "AC": ("A", "C"),
+    "BC": ("B", "C"),
+    "L3": ("A", "B", "C"),  # deprecated arm: same set, ~9x redundant pose sampling (D27)
+}
+
+# Display labels. A reverse-ablation arm is named for what it REMOVES, because the removal is
+# what it measures; "AC"/"BC" stay the on-disk identity (D29's two-layer naming).
+LEVEL_LABEL = {"L0": "L0", "L1": "L1", "L2": "L2", "L3": "L3", "AC": r"L3\B", "BC": r"L3\A"}
+
+# Every level token that may appear in a result filename or an HDF5/dataset stem. Callers that
+# parse level names import this rather than re-writing the alternation -- the D29 lesson.
+LEVEL_TOKEN = r"L\d[a-z]?|AC|BC"
+
+# A trailing token after the step is the PROTOCOL/architecture the number was measured under,
+# never part of the cell identity: "_fixed" (t==0 phantom guard), "_sharedenc" (pre-D26
+# architecture), "_poseredundant" (D27), "_u200" (the uniform 10-slice 200-episode protocol of
+# D31). Two suffixes are two different measurements of the same cell, so load() takes exactly one
+# at a time -- mixing them in one surface is the mistake D29 was written about.
 FNAME = re.compile(
-    r"eval_(?:(?P<task>T\d)_)?(?P<level>L\d[a-z]?)_n(?P<n>\d+)_(?P<step>\d+)\.json$")
+    rf"eval_(?:(?P<task>T\d)_)?(?P<level>{LEVEL_TOKEN})_n(?P<n>\d+)_(?P<step>\d+)"
+    rf"(?:_(?P<suffix>[a-z][a-z0-9]*))?\.json$")
 TARGETS = (0.50, 0.80, 0.90)
 
 # Reporting names (D29, 2026-08-21). "L3b" is the L3 arm regenerated with per-variant seeds and the
@@ -79,14 +109,21 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return max(0.0, centre - half), min(1.0, centre + half)
 
 
-def load(results_dir: pathlib.Path) -> list[dict]:
+def load(results_dir: pathlib.Path, suffix: str | None = None) -> list[dict]:
     """One record per eval file; level/N/step come from the FILENAME, and the episode
-    counts from the file contents."""
+    counts from the file contents.
+
+    `suffix` selects ONE protocol: None (the default) takes only the bare
+    `..._<step>.json` files, matching every caller written before D31; "u200" takes only the
+    uniform-slice re-measurement. A surface must never mix the two.
+    """
     out = []
     for path in sorted(results_dir.glob("eval_*.json")):
         m = FNAME.search(path.name)
         if not m:
             print(f"  skip unparseable name: {path.name}")
+            continue
+        if m.group("suffix") != suffix:
             continue
         d = json.loads(path.read_text())
         out.append({
@@ -98,6 +135,7 @@ def load(results_dir: pathlib.Path) -> list[dict]:
             "successes": int(d["successes"]),
             "success_rate": float(d["success_rate"]),
             "task": d.get("task", ""),
+            "protocol_suffix": m.group("suffix") or "",
             "file": path.name,
         })
     return out
@@ -232,13 +270,16 @@ def main() -> None:
                     help="which task's cells to analyse (T1/T2/T3). Tasks are NEVER pooled: each "
                          "has its own levels and its own L0 baseline, so a shared table would "
                          "compute cost ratios across unrelated tasks.")
+    ap.add_argument("--suffix", default=None,
+                    help="protocol suffix to read, e.g. u200 for the D31 uniform-slice "
+                         "re-measurement. Default None = the bare eval_*_<step>.json files")
     ap.add_argument("--include-deprecated", action="store_true",
                     help="ablation view: keep the deprecated pose-redundant L3 as its own row under "
                          "its raw name, instead of reporting L3b as L3 (see DEPRECATED_LEVELS).")
     args = ap.parse_args()
     out_path = args.out or f"experiments/curves_{args.task}.csv"
 
-    records = canonical([r for r in load(pathlib.Path(args.results))
+    records = canonical([r for r in load(pathlib.Path(args.results), suffix=args.suffix)
                          if r["task_id"] == args.task],
                         keep_deprecated=args.include_deprecated)
     if not records:

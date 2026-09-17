@@ -8,6 +8,10 @@ only the puck's POSITION (L1) and the target's BEARING around the puck (L2) vary
 A useful side effect: because the target is DERIVED from the puck at a fixed radius,
 the puck can never spawn inside the target region, so no rejection sampling is needed
 and no subtask signal can be true at t=0 (which crashes Mimic's pool loader).
+
+Reverse ablation (D31, 2026-09-17): AC = L3 minus target bearing, BC = L3 minus
+puck pose. Per-variant families like L3; "L3 minus puck variants" is L2. Bearing
+is switched off with a degenerate (BEARING_FIXED, BEARING_FIXED) range, not None.
 """
 
 from __future__ import annotations
@@ -70,6 +74,14 @@ SUB_LEVELS["L1"] = _mk("L1", "L1", DEFAULT_PUCK, PUCK_RANGE, (BEARING_FIXED, BEA
 SUB_LEVELS["L2"] = _mk("L2", "L2", DEFAULT_PUCK, PUCK_RANGE, BEARING_RANGE)
 for _i, _v in enumerate(L3_VARIANTS):
     SUB_LEVELS[f"L3v{_i:02d}"] = _mk(f"L3v{_i:02d}", "L3", _v, PUCK_RANGE, BEARING_RANGE)
+
+# Reverse-ablation arms (D31): the full disturbance set minus exactly ONE dimension.
+# L3 = {puck pose, target bearing, object variant}; AC drops target bearing, BC drops puck pose.
+# "L3 minus object variant" needs no new family -- it is L2, field for field. Same ten object variants and
+# the same annotated L2 sources as every other arm, so provenance control (D9) holds.
+for _i, _v in enumerate(L3_VARIANTS):
+    SUB_LEVELS[f"ACv{_i:02d}"] = _mk(f"ACv{_i:02d}", "AC", _v, PUCK_RANGE, (BEARING_FIXED, BEARING_FIXED))
+    SUB_LEVELS[f"BCv{_i:02d}"] = _mk(f"BCv{_i:02d}", "BC", _v, None, BEARING_RANGE)
 
 assert len(L3_VARIANTS) == 10, "downstream tooling hardcodes ten L3 variants"
 

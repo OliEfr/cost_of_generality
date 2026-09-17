@@ -8,6 +8,11 @@ Success = the env's `success` termination fired at least once (latched);
 failure = timeout first. DDIM num_inference_steps set explicitly at load
 (post-load gotcha: DiffusionModel copies config at init).
 
+--warmup_batches runs unscored batches first, in the same process (D31). The first batch
+in a process is genuinely depressed, so under the uniform-slice protocol -- one scored
+batch per process for every arm, flat or per-variant -- a warm-up is what makes cells
+comparable. Default 0 reproduces the pre-2026-09-17 behaviour exactly.
+
 Run: ./isaaclab.sh -p src/cog/eval/rollout_eval.py --task Cog-CupPlace-L0-IK-Rel-Visuomotor-v0 \
         --checkpoint <...>/checkpoints/080000/pretrained_model --out results/eval_L0_n100_080000.json \
         --headless --enable_cameras
@@ -29,6 +34,28 @@ parser.add_argument(
     action="store_true",
     help="drawer_stow only: record per-episode stage latches (drawer opened, object "
     "lifted, object over open drawer) alongside the official success",
+)
+parser.add_argument(
+    "--warmup_batches",
+    type=int,
+    default=0,
+    help="unscored batches to run before the scored ones, in the SAME process. The first "
+    "batch in a process is genuinely depressed (D31); under the uniform-slice protocol "
+    "every scored batch is first-in-process unless this is set",
+)
+parser.add_argument(
+    "--warmup_seed",
+    type=int,
+    default=4900,
+    help="warm-up batch w resets with warmup_seed+w. Default 4900 keeps warm-up poses "
+    "clear of the eval block (5000-5009) and of every generation seed block",
+)
+parser.add_argument(
+    "--warmup_max_steps",
+    type=int,
+    default=0,
+    help="step cap for a warm-up batch; 0 = same as --max_steps. A shorter cap is cheaper "
+    "and may suffice -- calibrate before relying on it (gate G6)",
 )
 parser.add_argument(
     "--instructions",
@@ -104,6 +131,16 @@ def obs_to_batch(obs, device):
 def main():
     proto = json.load(open(args_cli.protocol))
     num_envs, batches, base_seed = proto["num_envs"], proto["batches"], proto["base_seed"]
+    warmup_max_steps = args_cli.warmup_max_steps or args_cli.max_steps
+    # Echo the warm-up into the RESULT's protocol block (never into protocol.json, which is
+    # frozen): two results with different warm-up are not comparable, so a reader must be
+    # able to tell them apart without consulting the job script.
+    proto_out = dict(proto)
+    proto_out["warmup"] = {
+        "batches": args_cli.warmup_batches,
+        "seed": args_cli.warmup_seed,
+        "max_steps": warmup_max_steps if args_cli.warmup_batches else 0,
+    }
 
     # Stage instrumentation reads sim state the policy never sees; it cannot alter the
     # rollout. Thresholds mirror the success termination (min_drawer_open=0.15) and the
@@ -170,6 +207,41 @@ def main():
 
     env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=num_envs)
     env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
+
+    # Warm-up (D31), unscored. The first batch in a process is genuinely depressed --
+    # t1_L1_n100_s0 scores [0.50, 0.90, 0.95, 0.95, 1.00] across its five batches WITH the
+    # t==0 phantom guard active, so this is not a scoring artefact (journal 2026-08-22).
+    # The uniform-slice protocol runs one scored batch per process, which would leave every
+    # episode first-in-process; these batches put the scored one in the same warm state in
+    # every cell, flat and per-variant alike. Nothing here is recorded.
+    for w in range(args_cli.warmup_batches):
+        t_warm = time.time()
+        obs, _ = env.reset(seed=args_cli.warmup_seed + w)
+        policy.reset()
+        warm_tasks = warm_embs = None
+        if instr_strings:
+            widx = [(w + i) % len(instr_strings) for i in range(num_envs)]
+            warm_tasks = [instr_strings[j] for j in widx]
+            if use_env_state:
+                warm_embs = instr_embs[widx]
+        warm_done = torch.zeros(num_envs, dtype=torch.bool, device=env.device)
+        for t in range(warmup_max_steps):
+            with torch.inference_mode():
+                raw = obs_to_batch(obs, dev)
+                if warm_tasks is not None:
+                    raw["task"] = warm_tasks
+                    if warm_embs is not None:
+                        raw["observation.environment_state"] = warm_embs
+                action = post(policy.select_action(pre(raw)))
+            obs, _, terminated, truncated, _ = env.step(action.to(env.device))
+            warm_done |= terminated | truncated
+            if bool(warm_done.all()):
+                break
+        print(
+            f"[eval] warmup {w+1}/{args_cli.warmup_batches} (unscored, seed "
+            f"{args_cli.warmup_seed + w})  {time.time()-t_warm:.1f}s",
+            flush=True,
+        )
 
     outcomes = []
     t_start = time.time()
@@ -289,7 +361,7 @@ def main():
         "task": args_cli.task,
         "checkpoint": args_cli.checkpoint,
         "num_inference_steps": args_cli.num_inference_steps,
-        "protocol": proto,
+        "protocol": proto_out,
         "episodes": n,
         "successes": k,
         "success_rate": k / n,

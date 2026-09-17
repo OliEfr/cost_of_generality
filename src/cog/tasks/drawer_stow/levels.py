@@ -3,6 +3,9 @@
 Ladder (D12): T2-L0 all fixed | T2-L1 +object pose | T2-L2 +cabinet pose |
 T2-L3 +object variants (2 box sizes x 5 colors as sub-envs).
 
+Reverse ablation (D31, 2026-09-17): AC = L3 minus cabinet pose, BC = L3 minus
+object pose. Per-variant families like L3; "L3 minus object variants" is L2.
+
 Coordinates are env-local (robot base at origin, ground z=0). The object zone
 sits on the plinth top and is capped at x<=0.26 so the vertical grasp corridor
 stays clear of the opened drawer (front face >= 0.325 at 0.2 m pull with the
@@ -69,6 +72,14 @@ SUB_LEVELS["L1"] = _mk("L1", "L1", DEFAULT_BOX, OBJ_RANGE, None)
 SUB_LEVELS["L2"] = _mk("L2", "L2", DEFAULT_BOX, OBJ_RANGE, CABINET_RANGE)
 for _i, _v in enumerate(L3_VARIANTS):
     SUB_LEVELS[f"L3v{_i:02d}"] = _mk(f"L3v{_i:02d}", "L3", _v, OBJ_RANGE, CABINET_RANGE)
+
+# Reverse-ablation arms (D31): the full disturbance set minus exactly ONE dimension.
+# L3 = {object pose, cabinet pose, object variant}; AC drops cabinet pose, BC drops object pose.
+# "L3 minus object variant" needs no new family -- it is L2, field for field. Same ten object variants and
+# the same annotated L2 sources as every other arm, so provenance control (D9) holds.
+for _i, _v in enumerate(L3_VARIANTS):
+    SUB_LEVELS[f"ACv{_i:02d}"] = _mk(f"ACv{_i:02d}", "AC", _v, OBJ_RANGE, None)
+    SUB_LEVELS[f"BCv{_i:02d}"] = _mk(f"BCv{_i:02d}", "BC", _v, None, CABINET_RANGE)
 
 
 def level_members(level: str) -> list[SubLevelCfg]:

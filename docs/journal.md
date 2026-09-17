@@ -5306,3 +5306,75 @@ lacks, and all of this session's scripts are tracked. Two gaps found and closed/
 
 `scripts/dev/stage_isaac_assets.py` also pushed to the cluster repo, since
 `docs/cluster_eval.md` says to run it from a login node.
+
+## 2026-09-17 (evening) -- Reverse ablation: Phase 0 code landed (no cluster time spent)
+
+New study leg (D31): start from the full disturbance set and remove ONE dimension at a time. Two
+new arms per task -- `AC` = L3b minus the goal/fixture pose, `BC` = L3b minus the manipulandum
+pose -- because **"L3b minus object variation" is L2, field for field**, so a third of the
+leave-one-out grid was already generated, trained and evaluated. All three tasks, everything on
+Leonardo. User decisions this session: leave-one-out only (not the full 2^3 lattice), all three
+tasks, baselines re-measured under one protocol, in-distribution eval only, corrected artifacts
+everywhere, T2's existing stage instrumentation recorded and none built for T1/T3.
+
+**What landed (code only, nothing submitted):**
+
+- `src/cog/tasks/*/levels.py`: `ACv00..09` / `BCv00..09` in all three tasks, four lines each.
+  `_mk(..., range_or_None, ...)` was already a per-dimension toggle, so no env plumbing was needed
+  and registration is automatic -- every `__init__.py` and every `MIMIC_*_CFGS` dict already
+  comprehends over `SUB_LEVELS`. Verified: 33 sub-levels and 132 gym ids per task, arms `['AC','BC']`,
+  and each arm's removed dimension is actually degenerate while its kept one is not.
+- `scripts/dev/check_levels.py` (new): the above as an assertion, including that no key contains a
+  `-` (six call sites recover the sub-level as `task.split("-")[2]`). It needs a Kit boot, because
+  `assets.py` imports `isaaclab.sim` which imports `carb`; a state-only app boots in ~3 s.
+  **It writes its verdict to a file as well as stdout** -- the first run printed nothing at all,
+  because Kit's fastShutdown discards buffered stdout. Same reason `render_smoke_offline.py` writes
+  `rtx_smoke.txt`; it cost ten minutes to rediscover.
+- `src/cog/eval/rollout_eval.py`: `--warmup_batches` / `--warmup_seed` (4900) / `--warmup_max_steps`,
+  running unscored batches in the same process before the scored ones and echoing the settings into
+  the result's `protocol` block. Default 0 reproduces the old behaviour exactly.
+- Five level-name parsers patched. `cog.analysis.curves` now owns `DISTURBANCE_SETS`, `LEVEL_LABEL`
+  and `LEVEL_TOKEN`; `update_registry_from_evals.py`, `gen_stats.py` and `gen_bias.py` import the
+  token instead of restating the alternation (D29's standing VERIFY). Each was failing as a silent
+  **no-match**, never an error. Two things fell out:
+  - `gen_stats.py` parsed `L3bv07` as level=`L3bv07`, variant=`-`. It now yields level=`L3b`,
+    variant=`v07` -- the D29 residue, fixed. The next `gen_stats.py` run will therefore rewrite the
+    existing L3b rows of `experiments/gen_stats.csv`; `figures.fig_gen_sr` already strips `v\d\d`
+    before mapping, so it stays compatible.
+  - `merge_eval_sets.py` gained `--flat` / `--variant-arm` and now **enforces rule 8 in code**: it
+    refuses to overwrite an existing frozen eval set (verified -- exits 2 and leaves the file alone).
+- Four new sbatch files plus `slurm/lib_cog_container.sh`, which holds the verified container recipe
+  ONCE. `slurm/eval.sbatch` was rewritten from `bench_eval_a100_dbg.sbatch`; the pre-FoldSpace
+  version is preserved as `slurm/eval_legacy_singularity.sbatch` and must not be copied from (plain
+  `singularity`, inner `srun` that drops the GPU).
+- `scripts/ops/launch_wave.py`, `scripts/ops/pool_variant_eval.py`, `scripts/dev/parity_check.py`.
+
+**Regression checks, all green.** `cog.analysis.curves --task T1` reproduces `curves_T1.csv`
+byte-identically; `cog.analysis.summary` reproduces its CSV byte-identically;
+`update_registry_from_evals.py` reports "0 field(s) changed" and its rows are field-identical to
+HEAD (it rewrites some quoting, which is pre-existing behaviour, so the file was restored).
+
+**Decisions taken while implementing, beyond the plan:**
+
+1. **A protocol suffix, `_u200`.** Re-measuring the baselines would have overwritten
+   `results/eval_T1_L2_n100_080000.json` and destroyed the provenance of the published surface. The
+   new protocol writes beside the originals, following the existing `_fixed` / `_sharedenc` /
+   `_poseredundant` convention, and `curves.load()` / `update_registry_from_evals.py` grew a
+   `--suffix` that defaults to the old files. `FNAME` now captures the suffix, so a record always
+   says how it was measured, and one surface can never mix two protocols.
+2. **Per-job Kit scratch on `$FAST`, not on the node's `/tmp`.** Node-local scratch is ~10 GB and
+   four GPU jobs share a node; the kit_rw + isaac_home copy is 1.4 GB, so four of them would leave
+   nothing. `$FAST` has 925 GB free and is NVMe.
+3. **`run_local_eval_l3.py` is NOT refactored onto the shared pooler**, against the plan. The two
+   pool different protocols (old diagonal vs D31 slices), and making their outputs identical would
+   defeat the `MIXED_PROTOCOL` check that the new pooler exists to enforce. Noted in the file.
+
+**Audit finding worth its own line:** no `L3b` cell in any task has a `_fixed` artifact. All 18 are
+from the original pre-guard sweep, while every L0/L1/L2 cell was re-swept on 2026-08-22. Probably
+harmless -- the diagonal runs one batch per process, so there is no batch b-1 to carry a phantom
+from -- but unverified, and it means the published surface mixes guarded flat cells with unguarded
+diagonal ones. The D31 re-measurement puts all 108 cells on one code path.
+
+**Next:** Phase 1 gates (G0a-c plumbing, G1 does Mimic run in the container at all, G2 render
+parity, G2b the retraining control, G3 throughput, G4 concurrency, G5 T2 assets, G6 warm-up
+calibration), ~10 GPU-h. Nothing beyond G2b should start until the parity verdict is in.

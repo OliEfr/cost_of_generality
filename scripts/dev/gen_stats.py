@@ -25,6 +25,8 @@ import re
 
 import h5py
 
+from cog.analysis.curves import LEVEL_TOKEN
+
 REPO = pathlib.Path(__file__).resolve().parents[2]
 # data/ is gitignored and lives ONLY in the main checkout, shared across worktrees, so it cannot be
 # resolved relative to REPO: run from a worktree that way, the glob matches nothing and this script
@@ -46,13 +48,17 @@ TASK_PREFIXES = {"T2_": "drawer_stow", "T3_": "push_target"}
 
 
 def parse_name(stem: str) -> tuple[str, str, str]:
-    """`T2_L3v07` -> (drawer_stow, L3, v07); `L1` -> (cup_place, L1, -)."""
+    """`T2_L3v07` -> (drawer_stow, L3, v07); `L1` -> (cup_place, L1, -); `ACv03` -> (.., AC, v03)."""
     task, rest = "cup_place", stem
     for prefix, name in TASK_PREFIXES.items():
         if stem.startswith(prefix):
             task, rest = name, stem[len(prefix):]
             break
-    m = re.match(r"^(L\d)(v\d+)?$", rest)
+    # The level token must cover L3b and the D31 reverse arms, and the variant must land in the
+    # VARIANT group. Before this, "L3bv07" fell through to level="L3bv07", variant="-" -- the
+    # "an identifier that is sometimes a level and sometimes level+variant is not a key" bug that
+    # D29 found in the generation-SR figure. Vocabulary from cog.analysis.curves (single source).
+    m = re.match(rf"^({LEVEL_TOKEN})(v\d+)?$", rest)
     if not m:
         return task, rest, "-"
     return task, m.group(1), m.group(2) or "-"

@@ -28,8 +28,12 @@ REGISTRY = REPO / "experiments" / "registry.csv"
 RESULTS = REPO / "results"
 
 # L3b = the L3 arm regenerated with per-variant seeds + corrected palette (D27/D28); it is a
-# separate cell from L3, not a replacement for its row.
-RUN_RE = re.compile(r"^t(?P<t>[123])_(?P<lvl>L\d[a-z]?)_n(?P<n>\d+)_s0$")
+# separate cell from L3, not a replacement for its row. AC/BC are the reverse-ablation arms
+# (D31). The level vocabulary itself lives in cog.analysis.curves.LEVEL_TOKEN -- importing it
+# rather than restating the alternation is the D29 lesson about a key with two definitions.
+from cog.analysis.curves import LEVEL_TOKEN  # noqa: E402
+
+RUN_RE = re.compile(rf"^t(?P<t>[123])_(?P<lvl>{LEVEL_TOKEN})_n(?P<n>\d+)_s0$")
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -43,13 +47,20 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return ((c - m) / d, (c + m) / d)
 
 
-def load_results() -> dict[str, dict]:
-    """run_id -> parsed eval JSON for the 080000 checkpoint."""
+def load_results(suffix: str = "") -> dict[str, dict]:
+    """run_id -> parsed eval JSON for the 080000 checkpoint.
+
+    `suffix` selects which protocol's measurement to read: "" is the bare
+    eval_*_080000.json (every result before 2026-09-17), "u200" the D31 uniform-slice
+    re-measurement. One protocol per registry pass -- two measurements of the same cell are
+    not interchangeable, and silently preferring one would make the ledger untraceable.
+    """
     out = {}
-    for f in sorted(RESULTS.glob("eval_T*_L*_n*_080000.json")):
+    tail = f"_{suffix}" if suffix else ""
+    for f in sorted(RESULTS.glob(f"eval_T*_n*_080000{tail}.json")):
         if "sharedenc" in f.name:          # superseded architecture; never mix into the matrix
             continue
-        m = re.match(r"eval_(T[123])_(L\d[a-z]?)_n(\d+)_080000\.json$", f.name)
+        m = re.match(rf"eval_(T[123])_({LEVEL_TOKEN})_n(\d+)_080000{tail}\.json$", f.name)
         if not m:
             continue
         try:
@@ -98,9 +109,12 @@ def fetch_gpu_h() -> dict[str, float]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gpu-h", action="store_true", help="also fill gpu_h from sacct over ssh")
+    ap.add_argument("--suffix", default="",
+                    help="protocol suffix of the results to read, e.g. u200 (D31). "
+                         "Default '' = the bare eval_*_080000.json files")
     args = ap.parse_args()
 
-    results = load_results()
+    results = load_results(args.suffix)
     print(f"found {len(results)} new-architecture eval results")
     gpu_h = fetch_gpu_h() if args.gpu_h else {}
     if args.gpu_h:

@@ -40,6 +40,8 @@ import re
 import h5py
 import numpy as np
 
+from cog.analysis.curves import LEVEL_TOKEN
+
 HDF5_DIR = pathlib.Path("/home/admin_07/cost_of_generality/data/hdf5")
 
 # The object-pose key differs by task: cup_place records cup_pos/cup_quat, the other two
@@ -274,7 +276,9 @@ def main() -> None:
     if args.levels:
         levels = args.levels
     else:
-        pat = re.compile(r"^((?:T[23]_)?L[0-3](?:v\d\d)?)\.hdf5$")
+        # Auto-discovery must see L3b and the D31 reverse arms too; a level it cannot name is a
+        # level whose pose redundancy nobody checks (D27).
+        pat = re.compile(rf"^((?:T[23]_)?(?:{LEVEL_TOKEN})(?:v\d\d)?)\.hdf5$")
         levels = sorted(m.group(1) for p in HDF5_DIR.glob("*.hdf5")
                         if (m := pat.match(p.name)))
     rows = [r for lv in levels if (r := analyse(lv))]

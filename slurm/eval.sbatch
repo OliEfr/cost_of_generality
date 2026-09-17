@@ -3,97 +3,101 @@
 #SBATCH --account=euhpc_b38_106
 #SBATCH --partition=boost_usr_prod
 #SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --time=04:00:00
+#SBATCH --time=02:00:00
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.out
 #
-# Evaluate a cell's checkpoint(s) on the FROZEN eval set. Default = the LAST checkpoint only
-# (80k), per the 2026-08-19 user directive; pass explicit step names for the one-time
-# multi-checkpoint comparison. See D24.
-#   sbatch slurm/eval.sbatch T1 L0 100
+# ONE SLICE of one eval cell, under the D31 uniform-slice protocol.
 #
-# ONLY valid if gate G5b passed (Isaac renders on A100). If it failed, run the same loop
-# locally on the 4090 instead -- the sbatch header is the only cluster-specific part.
+#   sbatch slurm/eval.sbatch TASK ARM NDEMOS SLICE [STEP]
+#   sbatch slurm/eval.sbatch T1 L2 100 3          # flat arm, batch 3
+#   sbatch slurm/eval.sbatch T1 BC 100 3          # variant arm: env BCv03 on batch 3 (D18 diagonal)
 #
-# UNVERIFIED until G0 clears and G5b passes.
+# A cell is TEN slices: slice s runs in its own process, executes one unscored warm-up batch, then
+# scores batch s (reset seed 5000+s, 20 envs). Ten slices = 200 scored episodes. Flat and variant
+# arms differ only in whether the env id carries v0<SLICE>, which is why this is one code path.
+#
+# Why slices at all: the first batch in a process is genuinely depressed (t1_L1_n100_s0 scores
+# [0.50, 0.90, 0.95, 0.95, 1.00] across its five batches WITH the t==0 phantom guard active, journal
+# 2026-08-22). The old protocol ran flat cells as 5 batches in one process but variant cells as one
+# batch per process, so only the variant arms paid that cost in full -- which is the confound that
+# broke Finding 4. Here every scored batch sits in the same position of an identically warmed
+# process, in every arm.
+#
+# Rule 8 is untouched: the frozen snapshots already contain batches 0-9 for every level. What
+# changes is which committed rows are read and how they are grouped into processes -- the same kind
+# of change D18 itself was.
+#
+# This file was rewritten from slurm/bench_eval_a100_dbg.sbatch (the only verified container
+# recipe). The pre-FoldSpace version is kept as slurm/eval_legacy_singularity.sbatch; it uses plain
+# singularity and an inner srun that silently drops the GPU, so do not copy from it.
 set -uo pipefail
 
-TASK="${1:?usage: eval.sbatch TASK LEVEL NDEMOS [STEP...]}"
-LEVEL="${2:?}"
-NDEMOS="${3:?}"
-shift 3 || true
-# User directive 2026-08-19: full-scale cells evaluate the LAST checkpoint only; the
-# 40k/60k/80k comparison is run ONCE, on one cell, to check that 80k is not systematically
-# worse than an earlier checkpoint (D24). So the default is 080000 and the comparison is
-# requested explicitly:
-#   sbatch slurm/eval.sbatch T1 L0 100                        # full-scale: 80k only
-#   sbatch slurm/eval.sbatch T1 L0 25 040000 060000 080000    # the one-time comparison
-STEPS_TO_EVAL=("$@")
-if [ ${#STEPS_TO_EVAL[@]} -eq 0 ]; then STEPS_TO_EVAL=(080000); fi
-echo "[eval] checkpoints to evaluate: ${STEPS_TO_EVAL[*]}"
+TASK="${1:?usage: eval.sbatch TASK ARM NDEMOS SLICE [STEP]}"
+ARM="${2:?missing ARM}"
+NDEMOS="${3:?missing NDEMOS}"
+SLICE="${4:?missing SLICE (0-9)}"
+STEP="${5:-080000}"
+[ "${SLICE}" -ge 0 ] && [ "${SLICE}" -le 9 ] || { echo "EVAL_FAILED: SLICE must be 0-9"; exit 2; }
 
-WORK="${COG_WORK:-$WORK/cog}"
-RUN_ID="${TASK,,}_${LEVEL}_n${NDEMOS}_s0"
-CKPT_DIR="${WORK}/checkpoints/${RUN_ID}/checkpoints"
-RESULTS="${WORK}/results"
-case "$TASK" in
-  T1) ENV_FAMILY="Cog-CupPlace";   EVAL_KEY="${LEVEL}" ;;
-  T2) ENV_FAMILY="Cog-DrawerStow"; EVAL_KEY="T2_${LEVEL}" ;;
-  T3) ENV_FAMILY="Cog-PushTarget"; EVAL_KEY="T3_${LEVEL}" ;;
-  *) echo "unknown TASK ${TASK}"; exit 2 ;;
+source "${WORK:-/leonardo_work/EUHPC_B38_106}/cog/repo/slurm/lib_cog_container.sh"
+cog_task_spec "${TASK}" || exit 2
+
+# Warm-up knobs. One full batch is the conservative default; gate G6 calibrates whether a shorter
+# cap suffices, and whatever it decides is passed in by the launcher so the whole sweep shares one
+# setting. Every result records what it ran with, so two protocols can never be pooled by accident.
+WARMUP_BATCHES="${COG_WARMUP_BATCHES:-1}"
+WARMUP_MAX_STEPS="${COG_WARMUP_MAX_STEPS:-0}"
+SUFFIX="${COG_EVAL_SUFFIX:-u200}"
+
+RUN_ID="${TASK,,}_${ARM}_n${NDEMOS}_s0"
+CKPT="${COG}/checkpoints/${RUN_ID}/checkpoints/${STEP}/pretrained_model"
+PART="${RESULTS_DIR}/_partials"
+mkdir -p "${PART}"
+
+case "${ARM}" in
+  AC|BC|L3|L3b) VKEY=$(printf "%sv%02d" "${ARM}" "${SLICE}") ;;
+  *)            VKEY="${ARM}" ;;
 esac
+ENVID="${GYM}-${VKEY}-IK-Rel-Visuomotor-v0"
+OUT="${PART}/eval_${TASK}_${ARM}_n${NDEMOS}_${STEP}_${SUFFIX}_s${SLICE}.json"
 
-export OMNI_KIT_ACCEPT_EULA=YES     # Kit blocks forever on its EULA prompt under a TTY
-export HF_HUB_OFFLINE=1
-export HF_HOME="${WORK}/hf_cache"
-mkdir -p "${RESULTS}"
+if [ -s "${OUT}" ]; then echo "EVAL_SKIP $(basename "${OUT}")"; exit 0; fi
+cog_require "${SIF}" "${CKPT}" "${ASSET_ROOT}" || { echo "EVAL_FAILED ${RUN_ID} s${SLICE}: missing prerequisite"; exit 1; }
 
-# Two execution modes, one script.
-#
-# CLUSTER: run inside the Singularity image (COG_SIF). A conda env cannot work here -- RHEL 8.8 has
-# glibc 2.28 and Isaac Sim 5.1 needs >= 2.35, which is the entire reason the image exists. The image
-# carries the `cog_isaac` env at its ORIGINAL absolute path, so `python` on its PATH is already the
-# right interpreter and the editable isaaclab/cog installs resolve unchanged.
-# LOCAL (4090): activate the conda env directly, exactly as before.
-#
-#   COG_SIF=$WORK/cog/containers/cog-env-5.1.0.sif sbatch slurm/eval.sbatch T1 L0 100
-#
-# HOME is redirected because Kit writes several GB of shader/compute cache into it and $HOME on
-# Leonardo has a 50 GB quota -- filling it breaks login, not just this job.
-SIF="${COG_SIF:-}"
-if [ -n "${SIF}" ]; then
-  if [ ! -f "${SIF}" ]; then echo "[eval] COG_SIF set but missing: ${SIF}" >&2; exit 3; fi
-  ISAAC_HOME="${WORK}/isaac_home"; mkdir -p "${ISAAC_HOME}"
-  RUNNER=(singularity exec --nv
-          -B "${WORK}:${WORK}" -B /leonardo_work:/leonardo_work
-          -B "${FAST}:${FAST}"
-          --env HOME="${ISAAC_HOME}" --env OMNI_KIT_ACCEPT_EULA=YES
-          "${SIF}" python)
-  echo "[eval] mode=container sif=${SIF}"
+cog_job_scratch || exit 1
+export COG_TIMEOUT=$(cog_timeout_s)
+
+# One scored batch, seeded 5000+SLICE. Written per job rather than shared, so two concurrent slices
+# can never read a half-written protocol file.
+PROTO="${COG_SCRATCH}/proto_seed$(( 5000 + SLICE )).json"
+cat > "${PROTO}" <<JSON
+{"num_envs": 20, "batches": 1, "base_seed": $(( 5000 + SLICE )),
+ "comment": "D31 uniform slice ${SLICE}/9 of ${ARM}: env ${VKEY} scored on batch ${SLICE} only. For a variant arm this is D18's diagonal (variant v <- batch v); for a flat arm it is the same batch read from the same frozen snapshot. Ten slices pool to 200 episodes."}
+JSON
+
+echo "=== node $(hostname)  job ${SLURM_JOB_ID} ==="
+nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
+echo "[eval] ${RUN_ID} step=${STEP} slice=${SLICE} env=${ENVID} warmup=${WARMUP_BATCHES}"
+
+T0=$(date +%s)
+cog_gpu_exec python -u -m cog.eval.rollout_eval \
+    --task "${ENVID}" --checkpoint "${CKPT}" --protocol "${PROTO}" \
+    --num_inference_steps 10 --max_steps "${MAX_STEPS}" ${STAGES} \
+    --warmup_batches "${WARMUP_BATCHES}" --warmup_max_steps "${WARMUP_MAX_STEPS}" \
+    --out "${OUT}" --headless --enable_cameras \
+    "--kit_args=\"${COG_KIT_ARGS}\""
+RC=$?
+echo "EVAL_WALL_SECONDS=$(( $(date +%s) - T0 )) rc=${RC}"
+
+# The artifact is the verdict (Kit exits 0 after fatal errors and usually hangs on shutdown).
+if [ -s "${OUT}" ]; then
+  echo "EVAL_OK $(basename "${OUT}")"
 else
-  source "${WORK}/miniforge3/etc/profile.d/conda.sh"
-  conda activate "${COG_EVAL_ENV:-cog_isaac}"
-  RUNNER=(python)
-  echo "[eval] mode=conda env=${COG_EVAL_ENV:-cog_isaac}"
+  echo "EVAL_FAILED ${RUN_ID} s${SLICE} rc=${RC}"
+  exit 1
 fi
-
-for step in "${STEPS_TO_EVAL[@]}"; do
-  CKPT="${CKPT_DIR}/${step}/pretrained_model"
-  if [ ! -d "${CKPT}" ]; then echo "[eval] missing ${CKPT}, skipping"; continue; fi
-  OUT="${RESULTS}/eval_${EVAL_KEY}_n${NDEMOS}_${step}.json"
-  if [ -s "${OUT}" ]; then echo "[eval] ${OUT} exists, skipping"; continue; fi
-  echo "[eval] ${RUN_ID} step ${step}"
-  srun "${RUNNER[@]}" -m cog.eval.rollout_eval \
-    --task "${ENV_FAMILY}-${LEVEL}-IK-Rel-Visuomotor-v0" \
-    --checkpoint "${CKPT}" \
-    --num_inference_steps 10 \
-    --out "${OUT}" \
-    --headless --enable_cameras < /dev/null
-  # Kit can exit 0 after a fatal exception, so the artifact is the signal, not $?.
-  if [ -s "${OUT}" ]; then echo "EVAL_OK ${EVAL_KEY} n${NDEMOS} ${step}"
-  else echo "EVAL_FAILED ${EVAL_KEY} n${NDEMOS} ${step} (no result file)"; fi
-done
-echo "[eval] DONE ${RUN_ID}"
