@@ -1,0 +1,21 @@
+submitted_at,stage,task,arm,key,stem,n_demos,slice,seed,trials,sbatch,walltime,slurm_jobid,notes
+2026-09-18T00:09:49,eval,T1,L1,L1,,100,0,,,slurm/eval.sbatch,01:00:00,58060314,launch_wave.py | suffix=g6w0 warmup_batches=0 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:09:51,eval,T1,L1,L1,,100,1,,,slurm/eval.sbatch,01:00:00,58060323,launch_wave.py | suffix=g6w0 warmup_batches=0 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:09:55,eval,T1,L1,L1,,100,2,,,slurm/eval.sbatch,01:00:00,58060329,launch_wave.py | suffix=g6w0 warmup_batches=0 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:10:00,eval,T1,L1,L1,,100,3,,,slurm/eval.sbatch,01:00:00,58060334,launch_wave.py | suffix=g6w0 warmup_batches=0 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:10:05,eval,T1,L1,L1,,100,4,,,slurm/eval.sbatch,01:00:00,58060345,launch_wave.py | suffix=g6w0 warmup_batches=0 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:10:09,eval,T1,L1,L1,,100,0,,,slurm/eval.sbatch,01:00:00,58060350,launch_wave.py | suffix=g6w20 warmup_batches=1 warmup_max_steps=20 slices=5 | gate G6
+2026-09-18T00:10:10,eval,T1,L1,L1,,100,1,,,slurm/eval.sbatch,01:00:00,58060351,launch_wave.py | suffix=g6w20 warmup_batches=1 warmup_max_steps=20 slices=5 | gate G6
+2026-09-18T00:10:13,eval,T1,L1,L1,,100,2,,,slurm/eval.sbatch,01:00:00,58060353,launch_wave.py | suffix=g6w20 warmup_batches=1 warmup_max_steps=20 slices=5 | gate G6
+2026-09-18T00:10:14,eval,T1,L1,L1,,100,3,,,slurm/eval.sbatch,01:00:00,58060354,launch_wave.py | suffix=g6w20 warmup_batches=1 warmup_max_steps=20 slices=5 | gate G6
+2026-09-18T00:10:17,eval,T1,L1,L1,,100,4,,,slurm/eval.sbatch,01:00:00,58060358,launch_wave.py | suffix=g6w20 warmup_batches=1 warmup_max_steps=20 slices=5 | gate G6
+2026-09-18T00:10:23,eval,T1,L1,L1,,100,0,,,slurm/eval.sbatch,01:00:00,58060360,launch_wave.py | suffix=g6w100 warmup_batches=1 warmup_max_steps=100 slices=5 | gate G6
+2026-09-18T00:10:24,eval,T1,L1,L1,,100,1,,,slurm/eval.sbatch,01:00:00,58060361,launch_wave.py | suffix=g6w100 warmup_batches=1 warmup_max_steps=100 slices=5 | gate G6
+2026-09-18T00:10:27,eval,T1,L1,L1,,100,2,,,slurm/eval.sbatch,01:00:00,58060363,launch_wave.py | suffix=g6w100 warmup_batches=1 warmup_max_steps=100 slices=5 | gate G6
+2026-09-18T00:10:31,eval,T1,L1,L1,,100,3,,,slurm/eval.sbatch,01:00:00,58060369,launch_wave.py | suffix=g6w100 warmup_batches=1 warmup_max_steps=100 slices=5 | gate G6
+2026-09-18T00:10:41,eval,T1,L1,L1,,100,4,,,slurm/eval.sbatch,01:00:00,58060402,launch_wave.py | suffix=g6w100 warmup_batches=1 warmup_max_steps=100 slices=5 | gate G6
+2026-09-18T00:10:47,eval,T1,L1,L1,,100,0,,,slurm/eval.sbatch,01:00:00,58060406,launch_wave.py | suffix=g6wfull warmup_batches=1 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:10:51,eval,T1,L1,L1,,100,1,,,slurm/eval.sbatch,01:00:00,58060416,launch_wave.py | suffix=g6wfull warmup_batches=1 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:10:59,eval,T1,L1,L1,,100,2,,,slurm/eval.sbatch,01:00:00,58060428,launch_wave.py | suffix=g6wfull warmup_batches=1 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:11:03,eval,T1,L1,L1,,100,3,,,slurm/eval.sbatch,01:00:00,58060429,launch_wave.py | suffix=g6wfull warmup_batches=1 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T00:11:07,eval,T1,L1,L1,,100,4,,,slurm/eval.sbatch,01:00:00,58060431,launch_wave.py | suffix=g6wfull warmup_batches=1 warmup_max_steps=0 slices=5 | gate G6

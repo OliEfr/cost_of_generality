@@ -144,6 +144,13 @@ def main() -> None:
     if args.partition:
         extra += f"-p {args.partition} "
 
+    # The notes column has to distinguish two eval submissions of the SAME cell that differ only in
+    # protocol -- which is exactly what gate G6 is: four warm-up settings on one cell.
+    note = "launch_wave.py"
+    if args.stage == "eval":
+        note += (f" | suffix={args.suffix} warmup_batches={args.warmup_batches} "
+                 f"warmup_max_steps={args.warmup_max_steps} slices={args.slices}")
+
     rows = []
     for j in jobs:
         argstr = " ".join(str(a) for a in j["args"])
@@ -164,7 +171,7 @@ def main() -> None:
             "stage": args.stage, "task": args.task, "arm": j["arm"], "key": j.get("key", ""),
             "stem": j.get("stem", ""), "n_demos": j.get("n_demos", ""), "slice": j.get("slice", ""),
             "seed": j.get("seed", ""), "trials": j.get("trials", ""), "sbatch": j["sbatch"],
-            "walltime": j["walltime"], "slurm_jobid": jobid, "notes": "launch_wave.py",
+            "walltime": j["walltime"], "slurm_jobid": jobid, "notes": note,
         })
 
     if rows:
