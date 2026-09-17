@@ -5399,3 +5399,91 @@ calibration), ~10 GPU-h. Nothing beyond G2b should start until the parity verdic
   18 objects, 0.4 MB. Staged locally and rsynced rather than run on a login node (the classifier
   blocks running the staging script over ssh). `$WORK/cog/isaac_assets` is now 113 MB. T3 needs
   nothing: its pucks and target disk are `sim_utils` primitives and its table was already staged.
+
+## 2026-09-18 -- Gates G1-G5: generation works on the A100, and what "parity" actually means
+
+**G1 PASS.** Isaac Lab Mimic generation runs in `cog-env-5.1.0.sif` on an A100 under the FoldSpace
+recipe: T1, 5 demos, 0 failures, **108 s** including a cold Kit boot (job 58059562). Kit's own banner
+reads `Driver Version: 535.18.02 | Graphics API: Vulkan` -- the misparsed driver string that
+`verifyDriverVersion=false` lets through, and Vulkan rather than a CPU fallback.
+
+**G5 PASS** (folded into the G3 job). The T2 env built and generated with the newly staged
+`Sektion_Cabinet` prefix, no 300 s asset stall: 8 demos, 6 failures, **441 s** (job 58060001).
+
+**G3 throughput, measured, replacing the 3.3x guess.** From the T1 5-demo and 40-demo legs
+(108 s and 346 s) the fit is ~74 s of Kit boot plus **6.8 s/demo** for T1; T2 comes out at
+**~46 s/demo**. Against the workstation (T1 ~1.6 s/demo, T2 ~32 s/demo net of boot) that is
+**~4.3x slower for T1 but only ~1.4x for T2** -- T2's episodes are ~680 steps and its cost is
+simulation, not rendering, so it barely feels the missing RT cores. The single 3.3x factor is
+wrong in both directions and is replaced by per-task numbers in `docs/timings.md`.
+
+**G4 PASS, and it caught a bug.** Four concurrent legs all generated (the per-job `$FAST` Kit
+scratch holds up; G2 and G3 also shared node lrdn1040). But `g4_3` returned **6 demos for 5
+requested** and the sbatch called that GEN_FAILED. The generator stops once it REACHES the target
+while envs already in flight still finish, so a leg can overshoot -- **this is the origin of the
+rejected `L3b_401ep_unbalanced` dataset**. Chasing exact counts at generation time is the wrong fix;
+`datagen.sbatch` now accepts `>= target` and prints `GEN_OVERSHOOT`, and `convert.sbatch` passes
+`--max_episodes 400`. The merge is round-robin across the ten variant files, so the cap takes
+exactly 40 from each and is balanced by construction.
+
+### G2: the parity gate, and the two things it got wrong before it got it right
+
+**First run said PARITY_FAILED. It was the gate that was broken.** `parity_check.py` compared
+demo_k to demo_k, found 17 of 40 "divergent", and declared a failure. But the generator runs 8 envs
+asynchronously and writes demos in **completion order**, which is a race -- demo_12 on one machine is
+simply not demo_12 on the other. Matching on the initial state instead:
+
+| | cluster vs local | **local vs local, same seed** |
+|---|---|---|
+| episodes matched by initial pose | 37/40 (21 in the same slot) | **40/40 (all in the same slot)** |
+| matched episodes with identical length | 37/37 | 40/40 |
+| `actions` max abs delta | 6.95e-03 | **0** |
+| `states` max abs delta | 1.60e+01 | **0** |
+| `table_cam` MAE / p99 | 0.334 / 4 | 0.215 / 2 |
+| `wrist_cam` MAE / p99 | 0.646 / 10 | 0.337 / 4 |
+| failed demos | 6 | 6 |
+
+The second column is the control that makes the first readable, and it says two separate things:
+
+1. **PhysX is bit-deterministic on one GPU and not across architectures.** A local rerun with the
+   same seed reproduces every trajectory exactly; the A100 does not. That is GPU reduction order,
+   and it is why 3 of 40 episodes differ at all -- a marginal attempt that succeeds on one machine
+   and fails on the other makes the generator draw one more pose to fill its quota. Both runs had
+   exactly 6 failures, so there is no sign of one machine rejecting systematically harder cases.
+2. **The RTX renderer is nondeterministic even run-to-run on the same machine.** Local-vs-local
+   pixels are NOT identical (MAE 0.215). So "identical pixels" was never the available standard, and
+   the right yardstick is the renderer's own noise -- against which the cluster's MAE 0.334/0.646 is
+   the same order, with channel-mean shifts of 0.13/0.19 against 0.06/0.08. No exposure or hue shift.
+
+**Where the cross-machine delta actually lands, by channel.** Broken down on matched episodes:
+
+| what the policy sees (D5: proprio + pixels) | max abs delta |
+|---|---|
+| `eef_pos` | 2.9 mm |
+| `eef_quat` | 3.5e-03 |
+| `gripper_pos` | 0.8 mm |
+| `actions` (IK-Rel deltas) | 7.0e-03 |
+
+| privileged, recorded to `info.*`, never policy input | max abs delta |
+|---|---|
+| `cup/root_velocity` | 16.0 (a contact-instant spike) |
+| `cup/root_pose` | 0.224 |
+| `joint_velocity` | 0.38 |
+| `joint_position` | 4.7e-03 |
+
+The end effector agrees to 3 mm against a 5 cm success threshold, and the large numbers are all
+velocities at contact, which are chaotic by nature and are not policy inputs.
+
+**Verdict: PARITY_TOLERABLE.** Pixels are within the renderer's own noise; trajectories are
+identical where the episode is the same one, and 7.5% of the set is resampled from the same seeded
+distribution -- a perturbation of about the size of changing a shuffle seed. That is an argument, not
+a measurement, so **G2b runs anyway**: a T1 L1 control generated on the cluster (job 58062975),
+trained at N=100 and evaluated against the re-measured `t1_L1_n100_s0`. ~4.2 GPU-h to settle whether
+the generating machine moves a success rate at all.
+
+**Method note worth keeping:** two of the three things this gate established came from running the
+*same* job a second time as a control -- once on the same machine to separate physics
+nondeterminism from architecture, once at a different demo count to separate Kit boot from
+per-demo cost. The same move cracked the cuDNN diagnosis on 2026-09-17. A second run is nearly free
+and it converts "these numbers differ" into "these numbers differ by more/less than they differ from
+themselves".
