@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import pathlib
 import re
 
@@ -42,7 +43,11 @@ import numpy as np
 
 from cog.analysis.curves import LEVEL_TOKEN
 
-HDF5_DIR = pathlib.Path("/home/admin_07/cost_of_generality/data/hdf5")
+# Same override as scripts/dev/gen_stats.py, and for the same reason: the reverse-ablation
+# arms are generated on the cluster and their HDF5 never come home ($FAST/cog/hdf5). The
+# D27 pose-redundancy check has to run where the data is, or it does not run at all.
+HDF5_DIR = pathlib.Path(os.environ.get(
+    "COG_DATA_HDF5", "/home/admin_07/cost_of_generality/data/hdf5"))
 
 # The object-pose key differs by task: cup_place records cup_pos/cup_quat, the other two
 # object_pos/object_quat. Note NEITHER cup_place nor drawer_stow records the GOAL pose, so goal
