@@ -168,6 +168,34 @@ startup.
 nothing ahead finished early and no backfill happened", which on a machine full of short jobs
 bears no relation to reality. Never plan from it; submit a 2-second probe instead.
 
+### Data generation on an A100 -- measured 2026-09-18 (gates G1/G3)
+
+Isaac Lab Mimic generation inside `cog-env-5.1.0.sif` under the FoldSpace recipe, `--num_envs 8`,
+visuomotor (128 px dual-cam), one sub-level per job.
+
+| leg | demos | wall | notes |
+|---|---|---|---|
+| T1, 5 demos (job 58059562) | 5 | **108 s** | cold Kit boot included |
+| T1, 40 demos (job 58059998) | 40 | **346 s** | same boot |
+| T2, 8 demos (job 58060001) | 8 | **441 s** | same boot; cabinet assets staged |
+
+Solving the two T1 points for boot and marginal cost: **~74 s Kit boot + 6.8 s/demo (T1)**, and
+**~46 s/demo (T2)** on the same boot.
+
+| | A100 s/demo | 4090 s/demo (net of boot) | ratio |
+|---|---|---|---|
+| T1 cup_place | 6.8 | ~1.6 | **~4.3x** |
+| T2 drawer_stow | ~46 | ~32 | **~1.4x** |
+
+**Planning rule: use the per-task ratio, not one number.** The old "A100 is 3.3x slower" figure came
+from T1 eval and is render-bound; T2's episodes run ~680 steps and its cost is simulation, so it
+barely feels the missing RT cores. A 10-variant T1 arm is ~20 GPU-min of generation, a T2 arm
+~2.2 GPU-h -- and because the legs are independent jobs, both are ~10 min of WALL time at ten-way
+parallelism.
+
+One eval slice (20 episodes, T1, `max_steps` 600, no warm-up) measured **315-317 s**, i.e.
+15.8 s/episode -- reproducing the 2026-09-17 figure of 15.9 s/episode exactly.
+
 ### Training (diffusion policy, batch 64, 2x128x128 cams, L0/N=25)
 
 | Configuration | data_s | updt_s | steps/s | 80k steps |
