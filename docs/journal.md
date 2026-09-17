@@ -5198,3 +5198,33 @@ Omniverse S3 and compute nodes are offline -- the Franka asset wait killed frame
 local (`/persistent/isaac/asset_root/*`). (2) The D25 decision itself: eval sets,
 protocols and the results pipeline all live locally; moving Tasks-2/3-scale eval to
 the cluster is a deliberate change, not a config flip. Neither blocker is Vulkan.
+
+## 2026-09-17 -- Local storage inventory (disk at 96%; report only, nothing deleted)
+
+Project footprint 240 GB + ~64 GB docker build artifacts. data/hdf5 = 146.2 GiB
+(67.7 failed-attempt files -- gen_bias.csv source, derived numbers committed; 47.8
+active L0-L2+sources; 15.4 L3b; 15.3 deprecated old-L3/D27). experiments/runs =
+85 GB over 82 runs; all but the local-only g4_smoke_L0_n25 verified present in full
+on $WORK/cog/checkpoints (1.1 TB). data/lerobot 3.2 GB, mirrored on $FAST.
+**$WORK/cog/datasets_backup is EMPTY -- the raw HDF5 exists ONLY on this
+workstation.** data/_prepush_backup 5.8 GB (D15 safety copy). Cluster $WORK also
+holds 39 GB of redundant .tar image intermediates next to the .sifs. Deletion
+candidates and archive-first options reported to user; no action taken (rule 1).
+
+## 2026-09-17 -- Local storage cleanup executed (user-approved items 1,3,4,5); ~167 GB reclaimed
+
+Disk 96% -> 87% (84 GB -> 251 GB free). Repo 240 -> 135 GB.
+- **Item 4:** 30 deprecated old-L3 hdf5 (`{,,T2_,T3_}L3v0*.hdf5`, D27 seeding bug,
+  superseded by L3b/D29) removed. L3b and _failed files untouched.
+- **Item 5:** `data/_prepush_backup` (5.8 GB, D15 safety copy) removed.
+- **Item 3:** 81 of 82 local checkpoint runs removed after per-run verification
+  against a fresh `$WORK/cog/checkpoints` listing (1.1 TB, all present).
+  `g4_smoke_L0_n25` KEPT -- it is local-only (never on cluster). Cluster is the
+  single copy now; grant retention to ~2027-04. If CoRL extras need local eval,
+  re-sync the specific runs from $WORK.
+- **Item 1:** docker `cog-env:5.1.0` (23.8 GB) + `isaac-sim:5.1.0` (15.1 GB) images
+  and 49 GB build cache pruned (rebuildable from committed Dockerfiles + $WORK sifs).
+  Foreign `aic_eval:latest` image left intact.
+NOT touched (per report): 67.7 GiB failed-attempt hdf5 (gen_bias source) and the
+63 GiB active hdf5 (L0-L2 sources + L3b) -- the latter still exists ONLY on this
+workstation ($WORK/cog/datasets_backup empty); archive before any future deletion.
