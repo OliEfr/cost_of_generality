@@ -57,8 +57,10 @@ cog_require "${SIF}" "${SRC}" "${ASSET_ROOT}" || { echo "GEN_FAILED ${STEM}: mis
 # unbalance the nested subsets, and nothing downstream would notice.
 if [ -s "${OUT}" ]; then
   ND=$(cog_count_demos "${OUT}")
-  if [ "${ND}" = "${TRIALS}" ]; then echo "GEN_SKIP ${STEM} (already ${TRIALS} demos)"; exit 0; fi
-  echo "GEN_REFUSE ${STEM}: exists with ${ND} demos, expected ${TRIALS} or absent -- move it aside" >&2
+  if [ "${ND}" -ge "${TRIALS}" ] 2>/dev/null; then
+    echo "GEN_SKIP ${STEM} (already ${ND} demos, target ${TRIALS})"; exit 0
+  fi
+  echo "GEN_REFUSE ${STEM}: exists with ${ND} demos, short of ${TRIALS} -- move it aside" >&2
   echo "GEN_REFUSE ${STEM}"
   exit 1
 fi
@@ -83,9 +85,15 @@ T1=$(date +%s)
 ND=$(cog_count_demos "${OUT}")
 NF=$(cog_count_demos "${HDF5_DIR}/${STEM}_failed.hdf5")
 echo "GEN_WALL_SECONDS=$(( T1 - T0 )) rc=${RC}"
-if [ "${ND}" = "${TRIALS}" ]; then
-  echo "GEN_OK ${STEM} demos=${ND} failed=${NF} seed=${SEED} seconds=$(( T1 - T0 ))"
+# >= , not == : with --num_envs 8 the generator stops once it REACHES the target, but envs already
+# in flight can still finish, so a leg can overshoot by one or two (gate G4_3 asked for 5 and got 6).
+# That is the origin of the rejected `L3b_401ep_unbalanced` dataset. An overshoot is harmless here
+# and is trimmed at conversion time by --max_episodes, which takes the round-robin interleave's
+# first N and therefore stays exactly variant-balanced. A SHORT leg is the real failure.
+if [ "${ND}" -ge "${TRIALS}" ] 2>/dev/null; then
+  echo "GEN_OK ${STEM} demos=${ND} target=${TRIALS} failed=${NF} seed=${SEED} seconds=$(( T1 - T0 ))"
+  [ "${ND}" -gt "${TRIALS}" ] && echo "GEN_OVERSHOOT ${STEM} ${ND} > ${TRIALS} (trimmed at conversion)"
 else
-  echo "GEN_FAILED ${STEM} demos=${ND} expected=${TRIALS} failed=${NF} rc=${RC}"
+  echo "GEN_FAILED ${STEM} demos=${ND} target=${TRIALS} failed=${NF} rc=${RC}"
   exit 1
 fi

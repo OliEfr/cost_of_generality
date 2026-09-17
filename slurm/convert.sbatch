@@ -43,12 +43,17 @@ ROOT="${DS_DIR}/${KEY}"
 # <name>.hdf5, and a glob once produced a 455-episode dataset that looked fine (running_jobs.md
 # rule 6). The variant list is also what guarantees the merge stays variant-balanced, so a missing
 # file must abort rather than silently produce a 9-variant dataset.
+# --max_episodes is NOT cosmetic. The generator can overshoot its target (8 async envs; gate G4_3
+# asked for 5 and got 6), and an unbalanced merge is how `L3b_401ep_unbalanced` happened. The merge
+# is round-robin across the input files, so capping at 10 x 40 takes exactly 40 from each variant.
 INPUTS=()
 case "${ARM}" in
   AC|BC|L3|L3b)
-    for i in $(seq -w 0 9); do INPUTS+=("${HDF5_DIR}/${KEY}v${i}.hdf5"); done ;;
+    for i in $(seq -w 0 9); do INPUTS+=("${HDF5_DIR}/${KEY}v${i}.hdf5"); done
+    MAX_EPISODES=400 ;;
   *)
-    INPUTS+=("${HDF5_DIR}/${KEY}.hdf5") ;;
+    INPUTS+=("${HDF5_DIR}/${KEY}.hdf5")
+    MAX_EPISODES=400 ;;
 esac
 cog_require "${SIF}" "${INPUTS[@]}" || { echo "CONVERT_FAILED ${KEY}: missing input"; exit 3; }
 
@@ -62,7 +67,7 @@ echo "[convert] ${KEY} <- ${#INPUTS[@]} hdf5 file(s) -> ${ROOT}"
 T0=$(date +%s)
 cog_cpu_exec python -u -m cog.convert.hdf5_to_lerobot \
     --task "${TASK_KIND}" --input "${INPUTS[@]}" \
-    --root "${ROOT}" --repo_id "local/${KEY}" --fps 20
+    --root "${ROOT}" --repo_id "local/${KEY}" --fps 20 --max_episodes "${MAX_EPISODES}"
 CONVERT_RC=$?
 echo "CONVERT_${KEY}_EXIT=${CONVERT_RC}"
 
