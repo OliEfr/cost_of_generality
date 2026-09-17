@@ -5097,3 +5097,104 @@ runs: lerobot/safetensors writes checkpoints 0600, so new training runs need the
 same chmod afterwards (or add a chmod line to the train sbatches if collaboration
 becomes routine). Share path for new members: /leonardo_work/EUHPC_B38_106/cog
 (+ datasets at /leonardo_scratch/fast/EUHPC_B38_106/cog/datasets).
+
+## 2026-09-17 -- CINECA replied to the Vulkan ticket; the D25 blocker is SOLVED at loader level (two-factor cause)
+
+**The reply.** CINECA support (Orlenys) answered the D25 ticket: try **FoldSpace**
+(`pip install foldspace` 1.0.0, by CINECA HPC staff -- verified on PyPI: authors
+f.pitari/l.rodriguezmunoz/a.memmolo @cineca.it, repo gitlab.hpc.cineca.it), an
+OnDemand-style launcher whose VNC tool a colleague used to run "a vulkan sample
+successfully" on a boost node. Wheel vetted before use (code read: it only shells
+out to system ssh + sbatches a server-side toolbox at
+/leonardo/prod/opt/tools/foldspace/1.0/); the local pip install was blocked by the
+permission classifier, but the client turned out unnecessary: the substance is the
+toolbox's own **Apptainer 1.5.3** and its `vnc.sif`, both directly usable via
+sbatch. Cert had expired (13 days); user renewed via the laptop tunnel.
+
+**Probe design** (`slurm/probe_foldspace_vulkan{,2}.sbatch` + `scripts/dev/vk_probe.py`,
+a ctypes client that calls the exact failing `vkCreateInstance` and enumerates
+devices -- August's tests were all Kit-level; this decouples loader/driver from Kit).
+Jobs 58035749 + 58035864, boost_qos_dbg.
+
+**Results.**
+
+| leg | image | runtime | NVIDIA ICD in loader path | vkCreateInstance | device |
+|---|---|---|---|---|---|
+| A | vnc.sif | apptainer 1.5.3 | no (image has Mesa ICDs only) | OK | **llvmpipe (CPU!)** |
+| H | none (bare host) | -- | yes (host icd.d) | OK | **A100** |
+| B/C | cog-env-5.1.0.sif | both runtimes | no | -9 | -- |
+| B1 | cog-env-5.1.0.sif | SingularityPRO 4.3.1 | bound to /etc/vulkan/icd.d | **-9** | -- |
+| B2 | cog-env-5.1.0.sif | **apptainer 1.5.3** | **bound to /etc/vulkan/icd.d** | **OK** | **A100** |
+| A2 | vnc.sif | apptainer 1.5.3 | bound | OK | A100 + llvmpipe |
+
+**The cause was two-factor, which is why August's one-variable-at-a-time sweep
+missed it:** (1) the NVIDIA ICD JSON must be visible at a standard loader path
+inside the container (neither runtime's `--nv` injects it; our image has no
+/usr/share/vulkan/icd.d, but its empty /etc/vulkan/icd.d is a clean bind target),
+AND (2) the runtime must be Apptainer 1.5.3 -- under SingularityPRO 4.3.1 the same
+bind still yields ERROR_INCOMPATIBLE_DRIVER (leg B1 = August's hypothesis-1/4
+retest, now at loader level, still failing). August only ever tried the ICD bind
+under SingularityPRO. Host itself passes, so the "host is fully Vulkan-capable"
+inference from 2026-08-19 (drawn from modules/libs, never from an actual create
+call) is now measured fact.
+
+**Caveat passed back to support:** FoldSpace's stock vnc.sif exposes only Mesa
+ICDs, so a "vulkan sample" in their VNC runs on **llvmpipe (CPU)** unless the
+NVIDIA ICD is bound in -- their colleague's successful test very likely never
+touched the GPU. With the bind (leg A2) the A100 enumerates fine.
+
+**Recipe for cluster-side Isaac rendering** (revisit-D25 candidate, pending the
+Kit-level A/B): `/leonardo/prod/opt/tools/foldspace/1.0/apptainer/bin/apptainer
+exec --nv -B /usr/share/vulkan/icd.d:/etc/vulkan/icd.d <sif> ...`
+
+**Kit-level A/B (job 58035752, `slurm/foldspace_kit_ab.sbatch`).** Same image and
+payload as August's debug_a100_kit.sbatch (NVIDIA's own camera.py example in
+isaac-sim-5.1.0.sif), runtime swapped to toolbox Apptainer: **zero Vulkan errors**
+(August: ERROR_INCOMPATIBLE_DRIVER + "Failed to create any GPU devices"), Kit's GPU
+foundation enumerates the physical A100 (`| 0 | NVIDIA A100-SXM-64GB | Yes: 0 |`,
+ECC warning from gpu.foundation = the Vulkan side), app ready in 36 s. The pixel
+gate still reported FS_KIT_FAILED, but for an unrelated, expected reason: the
+example downloads its ground-plane USD from omniverse-content-production S3 and
+compute nodes have no internet. Not a renderer failure; our own envs use pre-staged
+assets. Definitive test = frames_qa.py on our T1 L0 env in cog-env-5.1.0.sif under
+the new runtime: `slurm/foldspace_render_g5b.sbatch` (job 58036158, in flight; a
+duplicate 58036251 from a timed-out-but-successful submit was scancel'd).
+
+**G5b RETEST PASSED (job 58038261, `slurm/foldspace_render_g5b.sbatch` +
+`scripts/dev/render_smoke_offline.py`).** The A100 renders real RTX pixels inside our
+own cog-env-5.1.0.sif: 256x256 frame, std 12.3, 176 unique colours, pixel gate 1/1
+(five coloured cubes + dome light, verified visually). Kit boots to app-ready in
+13 s warm / 36 s cold. Three more single-variable failures were burned through to
+get there, each now encoded in the script comments:
+1. **Inner `srun` drops the GPU** -- a step inside the allocation does not inherit
+   `--gres` here; torch sees no CUDA device (58036158). Run the container directly.
+2. **August's rewritten absolute-path ICD is poison under apptainer** -- the loader
+   dlopens it but `vk_icdGetInstanceProcAddr` lookup fails ("Found no drivers",
+   58036581). The STOCK host icd.d bound at /etc/vulkan/icd.d works. Also:
+   `--env HOME=` is rejected by apptainer ("not permitted"); use `--home`.
+   VK_LOADER_DEBUG *does* work under apptainer -- first time the loader ever spoke.
+3. **Kit misparses driver 535.274.02 as "535.18"** and rejects it as < 535.129
+   (58037701, Kit's own gpu.foundation error). This is the NVIDIA-documented
+   535.255+ misreport; `--/rtx/verifyDriverVersion/enabled=false` fixes it. August's
+   hypothesis 2 tested exactly this flag and saw "no effect" -- because under
+   SingularityPRO vkCreateInstance failed *underneath* it; the flag was right, the
+   runtime was wrong. Post-fix the renderer starts (only benign NGX/DLSS warnings,
+   expected on A100). A 4th non-failure: Kit's fastShutdown swallows buffered
+   stdout, so the smoke writes its verdict to a file (D6 doctrine).
+
+**The working recipe** (total ~0.7 GPU-h of dbg jobs):
+```
+/leonardo/prod/opt/tools/foldspace/1.0/apptainer/bin/apptainer exec --nv \
+  -B /usr/share/vulkan/icd.d:/etc/vulkan/icd.d \
+  -B $WORK/cog:$WORK/cog -B /leonardo_work:/leonardo_work \
+  -B kit logs/data/cache rw-binds + extralibs (libgomp) as in the sbatch \
+  --home $WORK/cog/isaac_home --env OMNI_KIT_ACCEPT_EULA=YES \
+  cog-env-5.1.0.sif python -u <script with --/rtx/verifyDriverVersion/enabled=false>
+```
+
+**What still blocks actual cluster EVAL** (in order): (1) USD assets resolve to the
+Omniverse S3 and compute nodes are offline -- the Franka asset wait killed frames_qa
+(58036943, 300 s timeout). Assets must be pre-staged and the asset root pointed
+local (`/persistent/isaac/asset_root/*`). (2) The D25 decision itself: eval sets,
+protocols and the results pipeline all live locally; moving Tasks-2/3-scale eval to
+the cluster is a deliberate change, not a config flip. Neither blocker is Vulkan.

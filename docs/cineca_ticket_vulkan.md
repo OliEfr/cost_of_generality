@@ -1,8 +1,55 @@
-# CINECA support ticket — Vulkan in Singularity on boost_usr_prod (DRAFT, not sent)
+# CINECA support ticket — Vulkan in Singularity on boost_usr_prod (SENT; reply 2026-09-17)
 
 Context: D25 defers cluster-side eval pending this answer. Local eval is unblocked and is what the
 study uses, so this ticket is not on the critical path — it decides whether Tasks 2-3 evals can run
 on the cluster instead of serialising on the workstation 4090.
+
+**Status update 2026-09-17.** The ticket was sent (by the user) and CINECA support (Orlenys)
+replied: they suggest testing Vulkan via **FoldSpace** (`pip install foldspace`, v1.0.0, PyPI,
+authored by CINECA HPC staff — f.pitari/l.rodriguezmunoz/a.memmolo @cineca.it,
+gitlab.hpc.cineca.it/interactive_computing/foldspace), an Open-OnDemand-style client that
+sbatches tools from a server-side toolbox at `/leonardo/prod/opt/tools/foldspace/1.0/` and
+tunnels them to a local browser. Their VNC tool runs a `vnc.sif` (TurboVNC + noVNC, EGL GPU
+access without Xorg) under the **toolbox's own Apptainer 1.5.3** — not the system
+SingularityPRO 4.3.1 our G5b test used, which makes the container runtime the prime suspect.
+Support offered to help build a container for our simulations if the test passes.
+Test jobs + results: see journal 2026-09-17 (`slurm/probe_foldspace_vulkan.sbatch` A/B/C probe,
+`slurm/foldspace_kit_ab.sbatch` Kit render A/B).
+
+**Outcome 2026-09-17 (jobs 58035749–58038261): SOLVED — full RTX rendering on A100 verified**
+(gate `FS_G5B_PASSED`, journal 2026-09-17 for the two-factor cause and recipe). Reply draft below.
+
+## Reply draft to support (not sent)
+
+Dear Orlenys,
+
+thank you — the FoldSpace hint solved our problem, with one twist worth reporting back.
+
+We tested on boost_usr_prod (A100, driver 535.274.02) with a minimal Vulkan client
+(ctypes vkCreateInstance + device enumeration) and with Isaac Sim 5.1 itself:
+
+1. **The toolbox's Apptainer 1.5.3 was the missing ingredient.** Inside our container,
+   vkCreateInstance succeeds and enumerates the A100 under
+   `/leonardo/prod/opt/tools/foldspace/1.0/apptainer/bin/apptainer exec --nv` with the host's
+   `/usr/share/vulkan/icd.d` bound to `/etc/vulkan/icd.d`. Under the system SingularityPRO 4.3.1
+   the identical configuration always returns VK_ERROR_INCOMPATIBLE_DRIVER — so it was the
+   container runtime, not the driver or libraries.
+2. **A caveat for your VNC tool:** the stock `vnc.sif` exposes only Mesa ICDs, so a Vulkan
+   sample inside it runs on **llvmpipe (CPU)**, not the GPU — it reports success while never
+   touching the A100. With the host NVIDIA ICD bound in, the A100 enumerates alongside llvmpipe.
+   Your colleague's successful Vulkan test may want re-checking with `vulkaninfo --summary`.
+3. For Isaac Sim/Omniverse specifically we additionally needed
+   `--/rtx/verifyDriverVersion/enabled=false` (Kit misparses 535.274.02 as "535.18" and refuses
+   the RTX renderer — NVIDIA's documented misreport for 535.255+). With that, Isaac Sim renders
+   correctly on the A100 inside our own image; verified on rendered pixels.
+
+So no container help needed — but two questions: (a) is the toolbox Apptainer 1.5.3 (or a system
+apptainer) going to remain available / become the supported runtime on boost nodes? (b) is there a
+recommended pattern for making `--nv` also expose the NVIDIA Vulkan ICD, so the
+`/etc/vulkan/icd.d` bind isn't needed per-job?
+
+Best regards,
+Oliver Hausdörfer
 
 **To:** superc@cineca.it
 **Subject:** EUHPC_B38_106 — Vulkan (VK_ERROR_INCOMPATIBLE_DRIVER) inside Singularity on boost_usr_prod

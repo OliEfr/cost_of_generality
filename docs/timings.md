@@ -376,3 +376,12 @@ train_lang_dit.sbatch has 24 h walltime + resume, so even a 1 steps/s outcome fi
   steady, cold to warm). Cost ratio vs candidate A's 2:12:21 (2.21 GPU-h): **5.3x**.
 - **B eval (mtdit, DDIM-10, T1, 100 eps, shared 4090): 10.3 min** -- comparable to
   the diffusion policy's ~8 min; inference is NOT a blocker for B.
+
+## 2026-09-17 -- FoldSpace/Vulkan gate (A100, boost_qos_dbg)
+| operation | measured |
+|---|---|
+| Kit app-ready inside cog-env sif on A100 (apptainer 1.5.3, warm kit_rw cache) | 13 s |
+| Kit app-ready, cold cache | 36 s |
+| render_smoke_offline.py end-to-end (boot + 60 steps + PNG) | ~40 s |
+| loader-level vk_probe (3 container legs + host) | < 2 min/job |
+| whole investigation, 7 dbg jobs | ~0.7 GPU-h |

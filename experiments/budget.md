@@ -112,3 +112,7 @@ plateau plus 4x-low training loss are what exposed the bug.
 L0-L2 evals plus 18 L3b diagonal evals (200 episodes each) on one shared 4090. Eval also has to
 interleave with L3b datagen on the same card. This is the case for pursuing the CINECA Vulkan
 question (`docs/cineca_ticket_vulkan.md`, drafted, unsent): it buys wall-clock, not GPU-hours.
+
+**2026-09-17 FoldSpace/Vulkan gate:** 7 boost_qos_dbg jobs (58035749..58038261), ~0.7 GPU-h total.
+Outcome: the D25 Vulkan blocker is resolved (journal 2026-09-17); cluster eval remains off pending
+asset staging, so this buys a wall-clock option, not a change in the ledger.

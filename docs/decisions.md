@@ -563,6 +563,20 @@ not from another round of container guesses.
 **VERIFY:** none outstanding. The local path is proven end-to-end -- three checkpoints evaluated,
 SR 0.97/0.95/0.98, D24 discharged.
 
+**Addendum 2026-09-17 -- the Vulkan blocker is RESOLVED; the decision itself stays until asked.**
+CINECA answered the ticket (FoldSpace toolbox); the resulting investigation (journal 2026-09-17)
+found the failure was two-factor -- SingularityPRO 4.3.1 itself AND the missing NVIDIA ICD in the
+loader path -- plus Kit's documented misparse of driver 535.274.02 ("535.18" < 535.129). Under the
+FoldSpace toolbox Apptainer 1.5.3 with the stock host ICD bound to /etc/vulkan/icd.d and
+`--/rtx/verifyDriverVersion/enabled=false`, our cog-env-5.1.0.sif renders real RTX pixels on an
+A100 (gate FS_G5B_PASSED, job 58038261, `slurm/foldspace_render_g5b.sbatch`). The August
+hypotheses were each individually right and individually insufficient, which one-variable testing
+could not see. Cluster-side eval remains OFF (this decision unchanged): USD assets still resolve
+to the Omniverse S3 (offline nodes -> 300 s timeout, job 58036943) and would need pre-staging +
+a local asset root, and the eval pipeline lives locally. Revisit condition from above is now met;
+switching is a deliberate follow-up (asset staging ~1 day of ops), worthwhile only if eval
+wall-clock becomes binding again (e.g. a language-arm full-study rerun).
+
 ---
 
 ## D26 -- Separate RGB encoder per camera (2026-08-19)
