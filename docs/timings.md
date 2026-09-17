@@ -409,3 +409,38 @@ what is unreliable right now -- boost_usr_prod had 3402 running / 11524 pending 
 3 h-walltime benchmark job never started at all while 30 min dbg-QOS jobs started in ~2 min.
 So the local 4090 remains the right place for evaluation on throughput grounds, independent
 of the (now solved) Vulkan question.
+
+### Full eval suite extrapolated: local vs cluster
+
+Suite = the canonical surface, 3 tasks x 4 levels x 6 N = **72 cells** (the 18 L3 rows are
+200-episode diagonals with 10 Isaac boots each). Per-cell local costs are the measured
+planning rule above (T1 10 min, T2 45, T3 20; L3 diagonal x2). Cluster = those x the
+**2.6-3.2x** A100 slowdown measured in job 58049698 (25.6 min for a T1 cell that costs
+8-10 min locally). Sanity check on the model: it predicts 18.8 h for the local 2-way sweep,
+and the real 62-eval sweep took ~18 h.
+
+| scenario | wall-clock | grant GPU-h |
+|---|---|---|
+| **local, serial** | 37.5 h | 0 |
+| **local, 2-way (what we actually do)** | **~19 h** | **0** |
+| cluster, serial | 96-120 h | 96-120 |
+| cluster, 4 concurrent GPUs (1 node) | 24-30 h | 96-120 |
+| cluster, 8 concurrent | 12-15 h | 96-120 |
+| cluster, 16 concurrent | 6.0-7.5 h | 96-120 |
+| cluster, all 72 in parallel | **3.8-4.8 h** (critical path = one T2-L3 diagonal) | 96-120 |
+
+**Reading:** the cluster only beats the local 19 h if it can hold **>=8 evals concurrently**,
+and its floor is ~4 h no matter how wide it goes, because one T2-L3 diagonal cell is itself
+~4-5 h there. Two practical constraints bite before that:
+
+1. **QOS.** The 4-5 h critical-path cell cannot use `boost_qos_dbg` (30 min, 2 jobs). It needs
+   normal QOS -- the queue where our 3 h benchmark job never started at all (3402 running /
+   11524 pending on 2026-09-17). dbg fits only T1 flat cells, and only marginally (25.6 min
+   against a 30 min wall).
+2. **Cost.** Cluster eval spends 96-120 GPU-h of grant (~5% of what remains); local eval
+   spends zero.
+
+So the honest summary is that cluster eval is a **wall-clock gamble against the queue** -- a
+best case of ~4-8 h versus a reliable ~19 h locally, paid for in GPU-hours. It is worth
+reaching for only if a full rerun's eval must land faster than a day AND the queue is quiet;
+otherwise D25 (eval local) remains the better default.
