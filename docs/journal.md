@@ -5287,3 +5287,22 @@ bind), asset staging, the exact invocation, the gotchas that cost time (no inner
 and the measured timings. `scripts/dev/stage_isaac_assets.py` and
 `scripts/dev/cudnn_probe.py` are now committed (the staging script had existed only in
 job scratch). README points at the new page.
+
+### 2026-09-17 (later) -- Script audit: repo vs cluster
+
+Checked whether anything lives only outside git. Cluster repo has **nothing** the local repo
+lacks, and all of this session's scripts are tracked. Two gaps found and closed/recorded:
+
+- **`loss_trace.py` was cluster-only** (`$WORK/cog/loss_trace.py`) despite being the tool that
+  produced the convergence evidence quoted in `paper/limitations.md` section 6 (final-20k loss
+  drift per cell). Now committed as `scripts/dev/loss_trace.py` -- rule 6: a finding whose tool
+  is not in the repo is one workstation away from being unreproducible.
+- **`$WORK/cog/read_wandb_run.py` is a NAME COLLISION, not a stale copy.** It is an older ad-hoc
+  variant that prints the frozen policy-config keys plus the latest step (written during the
+  candidate-B throughput work, before any checkpoint existed). The repo's
+  `scripts/dev/read_wandb_run.py` is the maintained live-progress tool. Left in place, not
+  committed: its config-key job is covered by `scripts/ops/assert_resume_config_mtdit.py`.
+  Do not `scp` one over the other.
+
+`scripts/dev/stage_isaac_assets.py` also pushed to the cluster repo, since
+`docs/cluster_eval.md` says to run it from a login node.
