@@ -55,6 +55,7 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import json
+import time
 import os
 
 import gymnasium as gym
@@ -171,7 +172,9 @@ def main():
     env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
 
     outcomes = []
+    t_start = time.time()
     for b in range(batches):
+        t_batch = time.time()
         obs, _ = env.reset(seed=base_seed + b)
         policy.reset()
         idx_list = batch_tasks = batch_embs = None
@@ -274,7 +277,11 @@ def main():
                 for i in range(num_envs)
             )
         sr_so_far = sum(o["success"] for o in outcomes) / len(outcomes)
-        print(f"[eval] batch {b+1}/{batches}  running SR={sr_so_far:.3f}", flush=True)
+        print(
+            f"[eval] batch {b+1}/{batches}  running SR={sr_so_far:.3f}  "
+            f"batch {time.time()-t_batch:.1f}s  total {time.time()-t_start:.1f}s",
+            flush=True,
+        )
 
     n = len(outcomes)
     k = sum(o["success"] for o in outcomes)

@@ -385,3 +385,27 @@ train_lang_dit.sbatch has 24 h walltime + resume, so even a 1 steps/s outcome fi
 | render_smoke_offline.py end-to-end (boot + 60 steps + PNG) | ~40 s |
 | loader-level vk_probe (3 container legs + host) | < 2 min/job |
 | whole investigation, 7 dbg jobs | ~0.7 GPU-h |
+
+## 2026-09-17 -- Isaac eval: local 4090 vs cluster A100 (first cluster-side eval ever run)
+
+Measured on one standard cell (T1 `t1_L1_n100_s0` @80k, frozen protocol, 5x20 episodes,
+DDIM-10, max_steps 600). Cluster = job 58049698, `slurm/bench_eval_a100_dbg.sbatch`.
+
+| where | GPU | per batch (20 eps) | per episode | per 100-ep cell |
+|---|---|---|---|---|
+| local | RTX 4090, shared with foreign job | -- | ~4.8 s | **~8 min** |
+| local | RTX 4090, card empty | -- | ~2.4-3.6 s | **4-6 min** |
+| cluster | A100-SXM-64GB | 319 s steady (262 s cold first batch) | **15.9 s** | **~25.6 min** (4/5 batches measured, 5th extrapolated) |
+
+**The A100 is 3.2x slower than the shared 4090 and ~5x slower than an empty one.** This is
+the expected consequence of A100 having no RT cores: Isaac's RTX renderer, not policy
+inference, is the bottleneck (the same checkpoint's inference is milliseconds either side).
+Cold-start extras on the cluster: Kit boot ~13 s warm / ~36 s cold, scene creation 0.6-1.7 s
+with assets staged locally (vs a 300 s S3 timeout without).
+
+**Consequence for D25:** moving eval to the cluster does NOT buy per-cell speed, it costs
+3-5x. It could only pay through parallelism (4 GPUs/node x many nodes), and that is exactly
+what is unreliable right now -- boost_usr_prod had 3402 running / 11524 pending jobs, and the
+3 h-walltime benchmark job never started at all while 30 min dbg-QOS jobs started in ~2 min.
+So the local 4090 remains the right place for evaluation on throughput grounds, independent
+of the (now solved) Vulkan question.

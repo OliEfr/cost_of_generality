@@ -5228,3 +5228,47 @@ Disk 96% -> 87% (84 GB -> 251 GB free). Repo 240 -> 135 GB.
 NOT touched (per report): 67.7 GiB failed-attempt hdf5 (gen_bias source) and the
 63 GiB active hdf5 (L0-L2 sources + L3b) -- the latter still exists ONLY on this
 workstation ($WORK/cog/datasets_backup empty); archive before any future deletion.
+
+## 2026-09-17 -- First cluster-side Isaac eval: A100 is 3-5x SLOWER than the local 4090; cuDNN root cause found
+
+Benchmark requested: local vs cluster eval time. Answer in `docs/timings.md` --
+**A100 ~25.6 min per 100-episode T1 cell (15.9 s/episode) vs ~8 min shared / 4-6 min
+empty on the 4090, i.e. 3.2-5x slower.** No RT cores on A100; the RTX renderer is the
+bottleneck, not policy inference. Job 58049698 (4/5 batches measured, running SR 0.812
+after 80 eps, consistent with the recorded local 0.86 for this cell -- so the cluster
+path also produces the RIGHT numbers, not just numbers).
+
+**Getting there needed three blockers cleared, two of them new:**
+
+1. **USD assets (fixed).** Compute nodes are offline; `frames_qa` died waiting 300 s on
+   the Omniverse S3 for the Franka asset. Staged the four referenced subtrees (118 MB,
+   `stage_isaac_assets.py` via the login node) to `$WORK/cog/isaac_assets` and pointed
+   `--/persistent/isaac/asset_root/{default,cloud}` at them. Scene creation 300 s -> 0.6 s.
+
+2. **cuDNN (fixed; ROOT CAUSE worth remembering).** Every conv2d in the policy died with
+   `CUDNN_STATUS_NOT_INITIALIZED`, with or without Kit. Cause: the local `cog_isaac` env
+   -- the env this image was built from -- has BOTH `nvidia_cudnn_cu12 9.7.1.26` and
+   `nvidia_cudnn_cu13 9.20.0.48` installed. They share `site-packages/nvidia/cudnn/lib`,
+   so the **CUDA-13 build shadows the CUDA-12 one** (`torch.backends.cudnn.version()`
+   == 92000 == 9.20.0, not 9.2.0 -- that encoding cost a detour). It works on this
+   workstation's driver 580 (CUDA 13 capable) and cannot initialise on Leonardo's driver
+   535 (CUDA 12 only). The cluster TRAINING env has only the cu12 build, which is why
+   training convs always worked on the same A100s. Fixed without rebuilding the 10 GB
+   image by binding the training env's cuDNN dir over the container's.
+   **Diagnostic that cracked it: running the identical probe LOCALLY as a control.** The
+   by-soname dlopen failures looked like the cause until local showed the same failures
+   WITH a working conv -- proving the libs were a red herring and the version was not.
+   **LATENT HAZARD on this workstation:** local eval works only thanks to the newer
+   driver. A driver change or env reinstall breaks it the same way. Not touched (live
+   env); `pip uninstall nvidia-cudnn-cu13` in cog_isaac is the cleanup if wanted.
+
+3. **Queue (worked around).** boost_usr_prod: 3402 running / 11524 pending. The 3 h
+   benchmark job (58040298) never started; 30-min `boost_qos_dbg` jobs start in ~2 min.
+   All cluster-eval measurements used dbg QOS. NB Kit sometimes fails to shut down after
+   a Python exception and holds the slot to the walltime (58046658 hung 30 min).
+
+Also added: per-batch wall-clock to `rollout_eval.py`'s progress line, so a truncated run
+still yields throughput (that is how this benchmark survived the 25-min cap).
+
+**D25 stands, now on throughput grounds rather than Vulkan:** cluster eval is 3-5x slower
+per cell and could only win through parallelism, which the queue does not currently offer.
