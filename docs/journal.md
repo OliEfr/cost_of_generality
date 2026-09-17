@@ -5272,3 +5272,18 @@ still yields throughput (that is how this benchmark survived the 25-min cap).
 
 **D25 stands, now on throughput grounds rather than Vulkan:** cluster eval is 3-5x slower
 per cell and could only win through parallelism, which the queue does not currently offer.
+
+### 2026-09-17 (later) -- Cluster-eval how-to extracted; extrapolations removed from timings
+
+User direction: `docs/timings.md` carries **measured numbers only**. The full-suite
+local-vs-cluster extrapolation (72 cells, scaling the 3.2x factor over the surface) is
+therefore removed rather than kept as a projection -- if it is wanted again it should be
+recomputed from whatever the per-cell measurements are at that time.
+
+New page **`docs/cluster_eval.md`**: how to run IsaacLab eval on Leonardo -- the three
+blockers and their fixes (Apptainer 1.5.3 + ICD bind; verifyDriverVersion; cu12 cuDNN
+bind), asset staging, the exact invocation, the gotchas that cost time (no inner srun,
+`--kit_args=` form, Kit hanging on a slot, ICD rewrite being harmful), QOS latency table,
+and the measured timings. `scripts/dev/stage_isaac_assets.py` and
+`scripts/dev/cudnn_probe.py` are now committed (the staging script had existed only in
+job scratch). README points at the new page.

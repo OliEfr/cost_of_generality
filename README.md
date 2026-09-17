@@ -13,7 +13,8 @@ curves N*(s | level) = demos needed to reach success rate s.
 - Compute: this workstation (sim, datagen, debug) + CINECA Leonardo (training; evals if the A100 render gate passes)
 
 Full study plan: `docs/PLAN.md`. Version pins: `docs/PINS.md`. Lab journal:
-`docs/journal.md`. Run registry: `experiments/registry.csv`.
+`docs/journal.md`. Run registry: `experiments/registry.csv`. Running IsaacLab eval
+on the cluster: `docs/cluster_eval.md`.
 
 ## Environments
 - `cog_isaac` (conda, py3.11): Isaac Sim + Isaac Lab + (if compatible) LeRobot -- sim, datagen, eval

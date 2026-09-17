@@ -385,62 +385,25 @@ train_lang_dit.sbatch has 24 h walltime + resume, so even a 1 steps/s outcome fi
 | render_smoke_offline.py end-to-end (boot + 60 steps + PNG) | ~40 s |
 | loader-level vk_probe (3 container legs + host) | < 2 min/job |
 | whole investigation, 7 dbg jobs | ~0.7 GPU-h |
+## 2026-09-17 -- Isaac eval on the cluster: measured per-cell throughput
 
-## 2026-09-17 -- Isaac eval: local 4090 vs cluster A100 (first cluster-side eval ever run)
+Full how-to for running IsaacLab eval on Leonardo, plus these numbers in context:
+**`docs/cluster_eval.md`**.
 
-Measured on one standard cell (T1 `t1_L1_n100_s0` @80k, frozen protocol, 5x20 episodes,
-DDIM-10, max_steps 600). Cluster = job 58049698, `slurm/bench_eval_a100_dbg.sbatch`.
+Measured on one standard cell (T1 `t1_L1_n100_s0` @80k, frozen protocol, 20 envs x
+batches, DDIM-10, max_steps 600). Cluster = job 58049698, `slurm/bench_eval_a100_dbg.sbatch`;
+4 of 5 batches ran before the 30-min dbg walltime, so the per-batch and per-episode figures
+are measured and nothing is projected from them here.
 
-| where | GPU | per batch (20 eps) | per episode | per 100-ep cell |
-|---|---|---|---|---|
-| local | RTX 4090, shared with foreign job | -- | ~4.8 s | **~8 min** |
-| local | RTX 4090, card empty | -- | ~2.4-3.6 s | **4-6 min** |
-| cluster | A100-SXM-64GB | 319 s steady (262 s cold first batch) | **15.9 s** | **~25.6 min** (4/5 batches measured, 5th extrapolated) |
+| where | GPU | per batch (20 eps) | per episode |
+|---|---|---|---|
+| local | RTX 4090, shared with foreign job | -- | ~4.8 s |
+| local | RTX 4090, card empty | -- | ~2.4-3.6 s |
+| cluster | A100-SXM-64GB | **319 s** steady (262 s cold first batch) | **15.9 s** |
 
-**The A100 is 3.2x slower than the shared 4090 and ~5x slower than an empty one.** This is
-the expected consequence of A100 having no RT cores: Isaac's RTX renderer, not policy
-inference, is the bottleneck (the same checkpoint's inference is milliseconds either side).
-Cold-start extras on the cluster: Kit boot ~13 s warm / ~36 s cold, scene creation 0.6-1.7 s
-with assets staged locally (vs a 300 s S3 timeout without).
-
-**Consequence for D25:** moving eval to the cluster does NOT buy per-cell speed, it costs
-3-5x. It could only pay through parallelism (4 GPUs/node x many nodes), and that is exactly
-what is unreliable right now -- boost_usr_prod had 3402 running / 11524 pending jobs, and the
-3 h-walltime benchmark job never started at all while 30 min dbg-QOS jobs started in ~2 min.
-So the local 4090 remains the right place for evaluation on throughput grounds, independent
-of the (now solved) Vulkan question.
-
-### Full eval suite extrapolated: local vs cluster
-
-Suite = the canonical surface, 3 tasks x 4 levels x 6 N = **72 cells** (the 18 L3 rows are
-200-episode diagonals with 10 Isaac boots each). Per-cell local costs are the measured
-planning rule above (T1 10 min, T2 45, T3 20; L3 diagonal x2). Cluster = those x the
-**2.6-3.2x** A100 slowdown measured in job 58049698 (25.6 min for a T1 cell that costs
-8-10 min locally). Sanity check on the model: it predicts 18.8 h for the local 2-way sweep,
-and the real 62-eval sweep took ~18 h.
-
-| scenario | wall-clock | grant GPU-h |
-|---|---|---|
-| **local, serial** | 37.5 h | 0 |
-| **local, 2-way (what we actually do)** | **~19 h** | **0** |
-| cluster, serial | 96-120 h | 96-120 |
-| cluster, 4 concurrent GPUs (1 node) | 24-30 h | 96-120 |
-| cluster, 8 concurrent | 12-15 h | 96-120 |
-| cluster, 16 concurrent | 6.0-7.5 h | 96-120 |
-| cluster, all 72 in parallel | **3.8-4.8 h** (critical path = one T2-L3 diagonal) | 96-120 |
-
-**Reading:** the cluster only beats the local 19 h if it can hold **>=8 evals concurrently**,
-and its floor is ~4 h no matter how wide it goes, because one T2-L3 diagonal cell is itself
-~4-5 h there. Two practical constraints bite before that:
-
-1. **QOS.** The 4-5 h critical-path cell cannot use `boost_qos_dbg` (30 min, 2 jobs). It needs
-   normal QOS -- the queue where our 3 h benchmark job never started at all (3402 running /
-   11524 pending on 2026-09-17). dbg fits only T1 flat cells, and only marginally (25.6 min
-   against a 30 min wall).
-2. **Cost.** Cluster eval spends 96-120 GPU-h of grant (~5% of what remains); local eval
-   spends zero.
-
-So the honest summary is that cluster eval is a **wall-clock gamble against the queue** -- a
-best case of ~4-8 h versus a reliable ~19 h locally, paid for in GPU-hours. It is worth
-reaching for only if a full rerun's eval must land faster than a day AND the queue is quiet;
-otherwise D25 (eval local) remains the better default.
+**Per episode the A100 is ~3.3x slower than the shared 4090 and ~5x slower than an empty
+one** -- the expected consequence of A100 having no RT cores: Isaac's RTX renderer, not
+policy inference, is the bottleneck. Cluster cold-start extras: Kit app-ready 13 s warm /
+36 s cold, scene creation 0.6-1.7 s with assets staged locally (vs a 300 s S3 timeout
+without). Running SR after 80 episodes was 0.812, against 0.86 recorded locally for the
+same cell -- the cluster path reproduces the local result, it is only slower.
