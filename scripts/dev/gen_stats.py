@@ -173,7 +173,14 @@ def main() -> None:
         w.writeheader()
         w.writerows(rows)
 
-    print(f"wrote {OUT.relative_to(REPO)} ({len(rows)} finished datasets)")
+    # relative_to() raises when --out points outside the repo, which is the normal case on the
+    # cluster: the CSV lands under $WORK. The write has already happened by here, so a crash on the
+    # summary line reports failure for a job that succeeded.
+    try:
+        shown = OUT.relative_to(REPO)
+    except ValueError:
+        shown = OUT
+    print(f"wrote {shown} ({len(rows)} finished datasets)")
     if in_flight:
         print(f"still generating, not counted: {', '.join(in_flight)}")
     print(f"{'dataset':12} {'succ':>5} {'att':>6} {'gen SR':>8} {'ep len':>7} {'wall':>6}")
