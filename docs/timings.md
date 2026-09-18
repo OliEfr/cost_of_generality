@@ -193,8 +193,20 @@ barely feels the missing RT cores. A 10-variant T1 arm is ~20 GPU-min of generat
 ~2.2 GPU-h -- and because the legs are independent jobs, both are ~10 min of WALL time at ten-way
 parallelism.
 
-One eval slice (20 episodes, T1, `max_steps` 600, no warm-up) measured **315-317 s**, i.e.
-15.8 s/episode -- reproducing the 2026-09-17 figure of 15.9 s/episode exactly.
+### Eval under the D31 uniform-slice protocol -- measured 2026-09-18 (gate G6)
+
+One slice = one process, one unscored warm-up batch, then one scored batch of 20 episodes.
+
+| | per slice | per 10-slice cell (200 scored episodes) |
+|---|---|---|
+| T1, no warm-up | 315-390 s (median ~340) | ~0.95 GPU-h |
+| **T1, one full warm-up batch (the protocol)** | **490-663 s (median ~630)** | **~1.75 GPU-h** |
+
+Without warm-up that is 15.8 s/episode, reproducing the 2026-09-17 figure of 15.9 s/episode exactly.
+A full warm-up batch roughly doubles the slice, and G6 showed the short warm-ups (20 or 100 steps)
+do not reach the plateau -- so the doubling is not optional. Planning rule for the D31 sweep:
+**1.75 GPU-h per T1 cell**, and scale by each task's `max_steps` for T2 (1200) and T3 (800), giving
+roughly 3.5 and 2.3 GPU-h. 108 cells is then ~270 GPU-h.
 
 ### Training (diffusion policy, batch 64, 2x128x128 cams, L0/N=25)
 
