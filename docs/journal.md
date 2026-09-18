@@ -5558,3 +5558,31 @@ remains: its data is generated (100 demos, 80% gen SR against 85.8% locally -- w
 n=125) and converted, the training cell is submitted, and the comparison will be against the
 re-measured `t1_L1_n100_s0`, which G6 put at **0.950** under the full-warm-up protocol. Both arms
 get 10 slices (200 episodes) so the comparison resolves ~4 points rather than ~7.
+
+## 2026-09-18 -- Phase 2 complete: the AC/BC eval sets are frozen, and they verify
+
+Six frozen benchmarks (`configs/eval_sets/{,T2_,T3_}{AC,BC}.json`), 10 variants x 10 batches x 20
+envs each, generated in state envs on the cluster and merged locally so the git-tracked files are
+the ones written. Rule 8 applies from now on: never regenerated.
+
+**They were verified against the intended distributions rather than assumed correct.** Measuring the
+within-env-column spread of each axis over the 200-episode diagonal (the env origins sit on a grid,
+so the column offset has to come out first):
+
+| arm | removed | kept | verdict |
+|---|---|---|---|
+| T1 `AC` | goal `[0, 0]` | cup `[0.365, 0.399]` | goal pose off, cup pose on |
+| T1 `BC` | cup `[0, 0]` | goal `[0.216, 0.226]` | cup pose off, goal pose on |
+| T2 `AC` | cabinet `[0, 0]` | object `[0.108, 0.203]` | cabinet pose off |
+| T2 `BC` | object `[0, 0]` | cabinet `[0.125, 0.129]` | object pose off |
+| T3 `AC` | bearing exactly **90.0 deg** | puck `[0.146, 0.143]` | bearing off |
+| T3 `BC` | puck `[0, 0]` | bearing **64.8-114.4 deg** (49.5 = +-25) | puck pose off |
+
+Two details confirm the rest is wired correctly. The "fixed" object still shows a few mm of z spread
+in every BC arm -- z is derived from each variant's half-height and the two sizes differ, so that is
+the object dimension doing its job, not a leak. And both T3 arms hold the puck-to-target stroke at
+exactly **0.2000 m** across all 200 episodes, which is D19's invariant: a rigid transform carries no
+scale, so the stroke baked into a source demo is the stroke you get.
+
+This is the check that the reverse ablation actually measures what it claims. A leave-one-out arm
+whose "removed" dimension still varied would produce a perfectly plausible number that meant nothing.
