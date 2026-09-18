@@ -5628,3 +5628,64 @@ overshooting their target, and the parity check comparing async-written demos by
 the case for judging artifacts rather than exit codes, made three times in one day.
 
 Phase 3 (the 60-leg datagen wave) is released.
+
+## 2026-09-18 -- T1/T3 datagen lands; the D27 guard turns out to have had a hole of its own
+
+**40/40 `GEN_OK`** for the T1 and T3 arms (seeds 1300-1409, 3300-3409), 297-623 s per leg, four legs
+overshooting their 40-demo target exactly as G4 predicted -- absorbed by the conversion cap.
+
+**Generation SR sits where it should**, which is the first sign the arms are what they claim:
+
+| | AC | BC | published L2 | published L3 |
+|---|---|---|---|---|
+| T1 cup_place | 89.1 % | 85.4 % | 85.1 % | 86.6 % |
+| T3 push_target | 88.7 % | 89.1 % | 95.0 % | 92.2 % |
+
+### The D27 pose-redundancy check was measuring one axis out of two
+
+`gen_bias.initial_poses` reads the MANIPULANDUM pose and nothing else. Running it on the new arms
+made that visible, because every `BC` arm fixes the manipulandum by design and so reported
+1 unique pose in 404 and tripped the alarm. The false positive is the small problem. The real one:
+
+> **The goal axis had never been checked on any level.** L2 and L3b randomise the goal as well as
+> the object, so a D27-style seeding collapse in the *goal* stream would have produced 400 demos
+> over 43 unique goal poses and this tool would have reported nothing wrong. D27's own audit -- the
+> one written to catch exactly this -- had the hole in it.
+
+Uniqueness is now computed **per entity** over the recorded initial state, which is task-agnostic:
+T1 gets cup + goal_marker, T2 object + cabinet (pose and drawer joint), T3 object + target_marker.
+Two deliberate exclusions, each of which caused a false alarm before it was made:
+
+- **`articulation/robot`.** D8 keeps Gaussian joint-reset noise on at *every* level, so the robot's
+  joints are unique in every episode of every level. Including them makes the count trivially 400
+  even for a seed-bugged arm -- the check would have been unfalsifiable.
+- **the Z translation of `root_pose`.** `levels.py` derives resting height from each variant's
+  half_height, so a pose fixed in x and y still takes two distinct z values across two cylinder
+  sizes. That read as `cup 2/404, LAYOUT REDUNDANCY 202x`. Z is a function of the object variant,
+  not of the randomisation; only the axes a reset samples belong in the count.
+
+**Retroactively, the old hole closes clean:** L2 `goal_marker` 400/400 and L3b `goal_marker`
+401/401, both checked for the first time. L0 reports both entities fixed and does not alarm.
+
+**And the new arms verify as exactly what they claim to be:**
+
+| arm | kept axis | removed axis |
+|---|---|---|
+| T1 `AC` | cup **400/400** | goal_marker **1/400** |
+| T1 `BC` | goal_marker **404/404** | cup **1/404** |
+| T3 `AC` | object **400/400** | target_marker 400/400 * |
+| T3 `BC` | target_marker **397/400** | object **1/400** |
+
+\* T3's target is DERIVED from the puck at a fixed 0.20 m and bearing (D19), so when the puck moves
+the target moves with it. 400 unique targets under a fixed bearing is correct, not a leak.
+
+Every kept axis at ~400 unique, every removed axis at exactly 1. That is the leave-one-out structure
+confirmed a second time and independently -- the frozen eval sets showed it in the benchmark, this
+shows it in the training data.
+
+Two smaller fixes fell out: `gen_stats` gained a real `--out` (the cluster HDF5 never come home, so
+a scan there sees only the new arms and would have rewritten the committed CSV down to those rows --
+the failure its own empty-scan guard exists to prevent, one step removed), and it no longer crashes
+on its summary line when that path is outside the repo.
+
+T2's 20 legs are released on the strength of this.
