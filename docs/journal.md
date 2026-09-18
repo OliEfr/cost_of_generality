@@ -5745,3 +5745,40 @@ Three caveats, stated rather than buried:
 
 T1 shows nothing, which is itself consistent: its generation SR is flat at 85-89 % across every
 level of the published ladder, so there is no cost for an interaction to modulate.
+
+## 2026-09-18 -- conversion 4/6, T1+T3 training submitted, and the superseded bench job ran anyway
+
+**Conversion.** T1 `AC`/`BC` and T3 `T3_AC`/`T3_BC` are `VALIDATE_OK`: 400 episodes each, 10
+variants x 40, and balanced at *every* nested-N prefix (N=50/100/200/400 split exactly 10-ways;
+N=25 is the best achievable 5x2 + 5x3). The round-robin merge therefore survived the
+`GEN_OVERSHOOT` cap -- the thing `L3b_401ep_unbalanced` failed at. Datasets land in
+`$FAST/cog/datasets/<KEY>`, not `$WORK/cog/data/lerobot/`; `DS_DIR` in `lib_cog_container.sh`
+is the definition and `train.sbatch:35` reads the same default, so the two agree by construction.
+
+T2 `AC`/`BC` (58095490/58095492) are still encoding: 250/400 episodes at 2 h of a 4 h limit,
+~28 s/episode. T2's demos are much longer than T1/T3's, which is the whole cost -- h264 encode is
+single-core and the plan's one-job-per-dataset split has no finer grain to give.
+
+**Training.** 24 of the 36 cells submitted -- T1 `AC`/`BC` (58103115-58103175) and T3 `AC`/`BC`
+(58103187-58103288), six N each. `launch_matrix.py` needed no change, as predicted: `--levels` is
+`nargs="*"` with no `choices` and `train.sbatch` derives `DS_NAME` as `${LEVEL}` for T1 and
+`${TASK}_${LEVEL}` for T2/T3, which is exactly what conversion wrote. The 12 T2 cells wait on the
+two conversions above.
+
+Code mirror verified current by md5 (`train.sbatch`, `levels.py`, `rollout_eval.py` all match the
+checkout) before submitting -- a stale mirror is the failure mode that would silently train the
+right cells on the wrong code.
+
+**The superseded bench job ran.** 58040298 (`cog_bench_eval`, the 3 h eval benchmark that G6
+superseded) was never cancelled -- my `scancel` was blocked by the permission classifier and the
+manual `! ssh leonardo scancel 58040298` never happened. It COMPLETED at 03:12 today after 2:30:08,
+so ~2.5 GPU-h of the 2,200 ceiling went to a measurement G6 had already replaced. No scientific
+harm: nothing reads its output, and the D31 sweep re-measures every cell it touched. Recorded here
+because "a job I could not cancel cost 2.5 GPU-h" is exactly the kind of thing that otherwise
+vanishes.
+
+**Monitoring.** Rule 10's three layers for the training wave: tmux `cog_train_d31`, a Monitor
+watching `sacct` for all 24 terminal states, and the hourly `watchdog.sh`. The watchdog now also
+snapshots `df` on `$WORK` and `$FAST` and alerts below 200 G -- $WORK is the binding constraint from
+here on (12.8 GB/cell x 36 cells = 461 GB against 1,282 G free), and rule 1 forbids making room, so
+the only useful action is to warn early enough that the user can.

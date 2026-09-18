@@ -40,6 +40,22 @@ if ssh -o BatchMode=yes -o ConnectTimeout=15 leonardo true 2>/dev/null; then
   if grep -qE 'FAILED|NODE_FAIL|OUT_OF_ME' "$OPS/cluster_status.txt" 2>/dev/null; then
     alert "cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt"
   fi
+  # Cluster disk. $WORK carries the checkpoints (12.8 GB/cell, 36 new cells in the D31 wave)
+  # and $FAST the HDF5 + LeRobot datasets. Rule 1 forbids making room, so the only useful
+  # action is to warn early enough that the user can.
+  ssh -o BatchMode=yes leonardo 'df -BG --output=target,avail $WORK $FAST 2>/dev/null | tail -2' \
+      > "$OPS/cluster_disk.txt" 2>/dev/null || true
+  while read -r TGT AV; do
+    [ -z "${AV:-}" ] && continue
+    AVG=$(echo "$AV" | tr -dc '0-9')
+    [ -z "$AVG" ] && continue
+    if [ "$AVG" -lt 200 ]; then
+      alert "cluster disk low: ${TGT} has ${AVG}G free - ask user to clean up (rule 1: never make room)"
+    else
+      note "cluster disk ok: ${TGT} ${AVG}G free"
+    fi
+  done < <(tail -n +1 "$OPS/cluster_disk.txt" 2>/dev/null)
+
   # Daily budget snapshot (first run after midnight)
   if [ ! -f "$OPS/saldo.txt" ] || [ -n "$(find "$OPS/saldo.txt" -mtime +0 2>/dev/null)" ]; then
     ssh -o BatchMode=yes leonardo "saldo -b 2>/dev/null" > "$OPS/saldo.txt" 2>/dev/null || true

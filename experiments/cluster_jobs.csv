@@ -101,3 +101,9 @@ submitted_at,stage,task,arm,key,stem,n_demos,slice,seed,trials,sbatch,walltime,s
 2026-09-18T07:02:04,datagen,T2,BC,BCv07,T2_BCv07,,,2407,40,slurm/datagen.sbatch,03:00:00,58087574,launch_wave.py
 2026-09-18T07:02:08,datagen,T2,BC,BCv08,T2_BCv08,,,2408,40,slurm/datagen.sbatch,03:00:00,58087575,launch_wave.py
 2026-09-18T07:02:09,datagen,T2,BC,BCv09,T2_BCv09,,,2409,40,slurm/datagen.sbatch,03:00:00,58087576,launch_wave.py
+2026-09-18T08:22:25,convert,T1,AC,AC,,,,,,slurm/convert.sbatch,04:00:00,58095483,launch_wave.py
+2026-09-18T08:22:29,convert,T1,BC,BC,,,,,,slurm/convert.sbatch,04:00:00,58095486,launch_wave.py
+2026-09-18T08:22:34,convert,T2,AC,AC,,,,,,slurm/convert.sbatch,04:00:00,58095490,launch_wave.py
+2026-09-18T08:22:37,convert,T2,BC,BC,,,,,,slurm/convert.sbatch,04:00:00,58095492,launch_wave.py
+2026-09-18T08:22:41,convert,T3,AC,AC,,,,,,slurm/convert.sbatch,04:00:00,58095502,launch_wave.py
+2026-09-18T08:22:42,convert,T3,BC,BC,,,,,,slurm/convert.sbatch,04:00:00,58095509,launch_wave.py
