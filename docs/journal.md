@@ -5822,3 +5822,22 @@ free insurance here (Leonardo bills elapsed, not the reservation).
 
 Caught by the hourly check within 15 minutes of the conversions landing, which is what that layer
 is for.
+
+### 2026-09-18 20:46 -- Phase 6 done: all 36 AC/BC cells trained, zero failures
+
+36/36 `COMPLETED`, 0 FAILED/TIMEOUT/NODE_FAIL/OUT_OF_ME, and 36/36 have the step-080000
+`pretrained_model` on disk. The second check is the one that matters: this repo has been bitten by
+exit-0-without-artifact before (D16, and the reason `eval.sbatch` verdicts on markers), so a
+completed job count alone is not evidence a cell trained.
+
+Wall time 01:53:30 to 02:37:07 per cell, against the 12:00:00 walltime and the ~2.2 h/cell the plan
+budgeted from D26's per-camera-encoder measurement -- the estimate held. Total ~79 GPU-h for the
+wave, as planned. Submitted 11:46, last cell done 20:46: 9 h wall for 36 cells, almost all of it
+queue wait (10,060 jobs were pending partition-wide at 13:46).
+
+`$WORK` went 1282 G -> 805 G, i.e. ~477 G for 36 cells = 13.2 GB/cell, within 3 % of the 12.8 GB/cell
+the plan projected. The prune-after-eval step is still not needed.
+
+**Phase 7 (the eval sweep) is now unblocked**: 36 new cells + 72 re-measured baselines, 10 slices
+each = 1,080 jobs + 108 poolers, 173-276 GPU-h. Not launched -- that is the study's single largest
+expenditure and it waits for an explicit go.
