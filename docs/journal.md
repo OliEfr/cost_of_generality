@@ -5806,3 +5806,19 @@ that only printed "submitted 10 jobs" would have hidden it.
 The `configs/eval_sets/*.json` have no `L3b.json` either, but that one is fine -- they are pose
 snapshots for `success_vs_pose.py`, not inputs to `rollout_eval.py`, which reseeds the env from
 `protocol.json`. Checked rather than assumed.
+
+### 2026-09-18 11:46 -- conversion 6/6; all 36 training cells submitted
+
+T2 `AC`/`BC` finished encoding (58095490/58095492, ~2 h 20 m each, ~21 s/episode against T1/T3's
+much faster legs -- T2's demos are simply longer and h264 encode is single-core). Both
+`VALIDATE_OK`, both 400 episodes = 10 variants x 40, both balanced at every nested-N prefix.
+That closes Phase 5 at **6/6 datasets**, all six checked the same way rather than trusting the
+marker alone.
+
+The remaining 12 cells (`t2_{AC,BC}_n{10,25,50,100,200,400}_s0`, 58111167-58111187) are submitted,
+so the full **36-cell training wave is now in the queue**. The first 24 are still `PENDING
+(Priority)` two hours after submission -- the cluster is busy, nothing is wrong, and walltime is
+free insurance here (Leonardo bills elapsed, not the reservation).
+
+Caught by the hourly check within 15 minutes of the conversions landing, which is what that layer
+is for.

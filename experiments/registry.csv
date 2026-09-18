@@ -123,3 +123,15 @@ t3_BC_n50_s0,push_target,BC,-,50,local/T3_BC,58103269,submitted,,,,,BC,,,launche
 t3_BC_n100_s0,push_target,BC,-,100,local/T3_BC,58103281,submitted,,,,,BC,,,launched by launch_matrix.py
 t3_BC_n200_s0,push_target,BC,-,200,local/T3_BC,58103285,submitted,,,,,BC,,,launched by launch_matrix.py
 t3_BC_n400_s0,push_target,BC,-,400,local/T3_BC,58103288,submitted,,,,,BC,,,launched by launch_matrix.py
+t2_AC_n10_s0,drawer_stow,AC,-,10,local/T2_AC,58111167,submitted,,,,,AC,,,launched by launch_matrix.py
+t2_AC_n25_s0,drawer_stow,AC,-,25,local/T2_AC,58111170,submitted,,,,,AC,,,launched by launch_matrix.py
+t2_AC_n50_s0,drawer_stow,AC,-,50,local/T2_AC,58111173,submitted,,,,,AC,,,launched by launch_matrix.py
+t2_AC_n100_s0,drawer_stow,AC,-,100,local/T2_AC,58111175,submitted,,,,,AC,,,launched by launch_matrix.py
+t2_AC_n200_s0,drawer_stow,AC,-,200,local/T2_AC,58111176,submitted,,,,,AC,,,launched by launch_matrix.py
+t2_AC_n400_s0,drawer_stow,AC,-,400,local/T2_AC,58111177,submitted,,,,,AC,,,launched by launch_matrix.py
+t2_BC_n10_s0,drawer_stow,BC,-,10,local/T2_BC,58111179,submitted,,,,,BC,,,launched by launch_matrix.py
+t2_BC_n25_s0,drawer_stow,BC,-,25,local/T2_BC,58111182,submitted,,,,,BC,,,launched by launch_matrix.py
+t2_BC_n50_s0,drawer_stow,BC,-,50,local/T2_BC,58111183,submitted,,,,,BC,,,launched by launch_matrix.py
+t2_BC_n100_s0,drawer_stow,BC,-,100,local/T2_BC,58111184,submitted,,,,,BC,,,launched by launch_matrix.py
+t2_BC_n200_s0,drawer_stow,BC,-,200,local/T2_BC,58111185,submitted,,,,,BC,,,launched by launch_matrix.py
+t2_BC_n400_s0,drawer_stow,BC,-,400,local/T2_BC,58111187,submitted,,,,,BC,,,launched by launch_matrix.py
