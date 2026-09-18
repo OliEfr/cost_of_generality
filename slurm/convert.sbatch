@@ -63,8 +63,14 @@ if [ -d "${ROOT}" ]; then
   echo "CONVERT_SKIP ${KEY} (dataset root already exists at ${ROOT})"; exit 0
 fi
 
+# apptainer needs a real --home; cog_cpu_exec defaults to a jobscratch path that nothing else
+# creates here (this job deliberately skips cog_job_scratch -- no Kit, so no shader cache to seed).
+COG_SCRATCH="${FAST}/cog/jobscratch/${SLURM_JOB_ID:-manual}"
+mkdir -p "${COG_SCRATCH}"
+trap 'rm -rf "${COG_SCRATCH}"' EXIT
+
 echo "=== node $(hostname)  job ${SLURM_JOB_ID} ==="
-echo "[convert] ${KEY} <- ${#INPUTS[@]} hdf5 file(s) -> ${ROOT}"
+echo "[convert] ${KEY} <- ${#INPUTS[@]} hdf5 file(s) -> ${ROOT}, cap ${MAX_EPISODES}"
 T0=$(date +%s)
 cog_cpu_exec python -u -m cog.convert.hdf5_to_lerobot \
     --task "${TASK_KIND}" --input "${INPUTS[@]}" \

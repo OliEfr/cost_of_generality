@@ -100,6 +100,10 @@ def main() -> None:
     ap.add_argument("--warmup-max-steps", type=int, default=0,
                     help="eval stage only; 0 = the task's own --max_steps")
     ap.add_argument("--suffix", default="u200", help="eval stage only: protocol suffix")
+    ap.add_argument("--env-arm", default=None, dest="env_arm",
+                    help="eval stage only: evaluate in THIS arm's env while loading the checkpoint "
+                         "of --arms. Only use is a diagnostic control (G2b trains on ctl_L1 and is "
+                         "evaluated in the ordinary L1 env)")
     ap.add_argument("--time", default=None, help="override the per-stage walltime table")
     ap.add_argument("--qos", default=None, help="e.g. boost_qos_dbg for a gate")
     ap.add_argument("--partition", default=None, help="e.g. boost_usr_prod for a convert fallback")
@@ -138,6 +142,8 @@ def main() -> None:
     if args.stage == "eval":
         env = (f"COG_WARMUP_BATCHES={args.warmup_batches} "
                f"COG_WARMUP_MAX_STEPS={args.warmup_max_steps} COG_EVAL_SUFFIX={args.suffix} ")
+        if args.env_arm:
+            env += f"COG_EVAL_ENV_ARM={args.env_arm} "
     extra = ""
     if args.qos:
         extra += f"-q {args.qos} "
@@ -150,6 +156,8 @@ def main() -> None:
     if args.stage == "eval":
         note += (f" | suffix={args.suffix} warmup_batches={args.warmup_batches} "
                  f"warmup_max_steps={args.warmup_max_steps} slices={args.slices}")
+        if args.env_arm:
+            note += f" env_arm={args.env_arm}"
 
     rows = []
     for j in jobs:
