@@ -19,3 +19,9 @@ submitted_at,stage,task,arm,key,stem,n_demos,slice,seed,trials,sbatch,walltime,s
 2026-09-18T00:10:59,eval,T1,L1,L1,,100,2,,,slurm/eval.sbatch,01:00:00,58060428,launch_wave.py | suffix=g6wfull warmup_batches=1 warmup_max_steps=0 slices=5 | gate G6
 2026-09-18T00:11:03,eval,T1,L1,L1,,100,3,,,slurm/eval.sbatch,01:00:00,58060429,launch_wave.py | suffix=g6wfull warmup_batches=1 warmup_max_steps=0 slices=5 | gate G6
 2026-09-18T00:11:07,eval,T1,L1,L1,,100,4,,,slurm/eval.sbatch,01:00:00,58060431,launch_wave.py | suffix=g6wfull warmup_batches=1 warmup_max_steps=0 slices=5 | gate G6
+2026-09-18T03:34:44,freeze,T1,AC,AC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078308,launch_wave.py
+2026-09-18T03:34:49,freeze,T1,BC,BC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078310,launch_wave.py
+2026-09-18T03:34:57,freeze,T2,AC,AC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078311,launch_wave.py
+2026-09-18T03:35:01,freeze,T2,BC,BC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078312,launch_wave.py
+2026-09-18T03:35:05,freeze,T3,AC,AC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078316,launch_wave.py
+2026-09-18T03:35:06,freeze,T3,BC,BC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078317,launch_wave.py
