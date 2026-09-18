@@ -5689,3 +5689,59 @@ the failure its own empty-scan guard exists to prevent, one step removed), and i
 on its summary line when that path is outside the repo.
 
 T2's 20 legs are released on the strength of this.
+
+## 2026-09-18 -- All 60 legs generated; the first reverse-ablation result arrives on the generation side
+
+**60/60 `GEN_OK`.** T2's legs ran 1878-4191 s each (~46 s/demo as measured at G3), `$FAST/cog/hdf5`
+holds 65 GB against 861 GB free, and `$FAST/cog/jobscratch` is EMPTY afterwards -- the per-job Kit
+scratch trap held across the whole wave.
+
+**All six arms verify as leave-one-out arms** (per-entity unique initial states, D27 check):
+
+| arm | kept axis | removed axis | static scene |
+|---|---|---|---|
+| T1 `AC` | cup 400/400 | goal_marker 1/400 | -- |
+| T1 `BC` | goal_marker 404/404 | cup 1/404 | -- |
+| T2 `AC` | object 400/400 | cabinet 1/400 | pedestal, plinth 1/400 |
+| T2 `BC` | cabinet 400/400 | object 1/400 | pedestal, plinth 1/400 |
+| T3 `AC` | object 400/400 | target 400/400 * | -- |
+| T3 `BC` | target 397/400 | object 1/400 | -- |
+
+\* T3's target is DERIVED from the puck at a fixed 0.20 m and bearing (D19), so it moves with the
+puck. 400 unique targets under a fixed bearing is correct, not a leak.
+
+### The generation-side leave-one-out, and a large interaction on T2
+
+The additive ladder gives each axis's cost when it is added FIRST. These arms give its cost when it
+is removed LAST. Cost = SR(without the axis) - SR(with it), in points of generation SR; new-arm
+SE ~1.6 points.
+
+| | axis | added first | removed last | gap |
+|---|---|---|---|---|
+| **T2** | A = object pose | **+10.7** | **-1.2** | **+11.9** |
+| | B = cabinet pose | +13.6 | +12.9 | +0.7 |
+| | C = object variant | +0.9 | +0.9 | 0.0 (by construction) |
+| T1 | A = cup pose | +0.6 | -1.2 | +1.8 |
+| | B = goal pose | +0.7 | +2.5 | -1.8 |
+| T3 | A = puck pose | +3.7 | -3.1 | +6.8 |
+| | B = bearing | -0.2 | -3.5 | +3.3 |
+
+**On T2 the object-pose axis costs 10.7 points of generation SR when it is the first disturbance
+added, and nothing at all when it is the last one removed** -- a gap of ~5 SE. Once the cabinet is
+randomised, randomising the object pose costs the generator nothing further. The cabinet axis by
+contrast costs ~13 points either way: additive, within noise of itself. This extends the paper's
+existing per-axis generation finding (-10.7 object pose, -13.6 fixture pose, ~-1 appearance), which
+was computed from the forward direction alone and therefore could not see the interaction.
+
+Three caveats, stated rather than buried:
+
+1. **C's gap is 0 by construction, not by measurement.** L3 minus C *is* L2, so its first and last
+   marginal are the same subtraction. Only A and B carry information here.
+2. **This is generation SR, not policy success.** It measures how hard the demos are to make, not
+   how hard the task is to learn. The study's headline quantity is the latter, and these arms have
+   not been trained yet.
+3. **T3 sits near ceiling** (89-98 %), where a binomial SE understates the uncertainty; its +6.8 gap
+   on A is suggestive but should not be leaned on until the policy numbers exist.
+
+T1 shows nothing, which is itself consistent: its generation SR is flat at 85-89 % across every
+level of the published ladder, so there is no cost for an interaction to modulate.
