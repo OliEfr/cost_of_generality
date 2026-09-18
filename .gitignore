@@ -19,3 +19,7 @@ experiments/runs/**/*.safetensors
 # local pre-push safety backups
 data/_prepush_backup/
 experiments/runs/
+
+# gate scratch: G6 slice partials pulled for analysis, and the check_levels verdict file
+ops/g6/
+ops/check_levels.txt
