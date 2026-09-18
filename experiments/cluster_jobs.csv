@@ -25,3 +25,9 @@ submitted_at,stage,task,arm,key,stem,n_demos,slice,seed,trials,sbatch,walltime,s
 2026-09-18T03:35:01,freeze,T2,BC,BC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078312,launch_wave.py
 2026-09-18T03:35:05,freeze,T3,AC,AC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078316,launch_wave.py
 2026-09-18T03:35:06,freeze,T3,BC,BC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078317,launch_wave.py
+2026-09-18T03:41:39,freeze,T1,AC,AC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078561,launch_wave.py
+2026-09-18T03:41:43,freeze,T1,BC,BC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078569,launch_wave.py
+2026-09-18T03:41:47,freeze,T2,AC,AC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078573,launch_wave.py
+2026-09-18T03:41:48,freeze,T2,BC,BC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078578,launch_wave.py
+2026-09-18T03:41:51,freeze,T3,AC,AC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078581,launch_wave.py
+2026-09-18T03:41:52,freeze,T3,BC,BC,,,,,,slurm/freeze_eval_sets.sbatch,00:30:00,58078584,launch_wave.py
