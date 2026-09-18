@@ -118,6 +118,7 @@ cog_cpu_exec() {
     -B "${COG}/repo/scripts:${REPO_IN}/scripts" \
     --home "${COG_SCRATCH:-${FAST}/cog/jobscratch/${SLURM_JOB_ID:-manual}}" \
     --env HF_HUB_OFFLINE=1 --env HDF5_USE_FILE_LOCKING=FALSE \
+    --env "COG_DATA_HDF5=${HDF5_DIR}" \
     --env PYTHONPATH="${REPO_IN}/src" \
     "${SIF}" bash -c "cd ${REPO_IN} && $*" \
     < /dev/null
