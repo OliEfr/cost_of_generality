@@ -23,3 +23,12 @@ experiments/runs/
 # gate scratch: G6 slice partials pulled for analysis, and the check_levels verdict file
 ops/g6/
 ops/check_levels.txt
+
+# D31 sweep intermediates. Both are strictly recoverable from what IS committed, and this sweep is
+# ~30x the size of the L3 one whose partials were tracked (results/_l3_partials, 320 files):
+#   _partials/      per-slice eval JSONs -- the pooled result concatenates every episode outcome
+#                   and records the slice in per_variant/per_batch, so nothing is lost
+#   _evalsets_raw/  per-sub-level snapshots -- merge_eval_sets copies each one verbatim into the
+#                   frozen configs/eval_sets/*.json, which are committed and never regenerated
+results/_partials/
+results/_evalsets_raw/
