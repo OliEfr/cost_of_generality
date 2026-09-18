@@ -10,6 +10,13 @@
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.out
 #
+# SUPERSEDED 2026-09-18 by slurm/eval.sbatch (D31). Kept for the record only.
+# DO NOT COPY FROM THIS FILE. It predates the FoldSpace recipe and carries two faults that look
+# like something else when they fire: plain `singularity` (vkCreateInstance returns
+# ERROR_INCOMPATIBLE_DRIVER, and Kit falls back to CPU rendering without saying so) and an inner
+# `srun` (a job step does not inherit --gres, so the GPU simply is not there). Copy
+# slurm/bench_eval_a100_dbg.sbatch or the current slurm/eval.sbatch instead.
+#
 # Evaluate a cell's checkpoint(s) on the FROZEN eval set. Default = the LAST checkpoint only
 # (80k), per the 2026-08-19 user directive; pass explicit step names for the one-time
 # multi-checkpoint comparison. See D24.
