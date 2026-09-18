@@ -1040,3 +1040,37 @@ G2b then settled what that means for a trained policy: 0.940 on A100-generated d
 branch below (regenerating L2 and L3b on the cluster, ~99 GPU-h) is NOT needed. Remaining: (b) `gen_bias` reports ~400 unique
 initial poses per new arm at <=1.1x redundancy -- the D27 check, which must run on every new arm.
 (d) `curves.canonical()` maps `AC`/`BC` with no caller filtering levels itself.
+
+### D31 addendum -- 2026-09-18: the L3b checkpoint stem is not the L3b gym key
+
+Caught in an eval dry-run, before the sweep rather than inside it.
+
+D27 regenerated the L3 arm under per-variant seeds; D29 then renamed the **artifacts** -- datasets,
+`run_id`s, result filenames, `$FAST` stems -- from `L3` to `L3b`, and taught `curves.canonical()` to
+report `L3b` as "L3". What D29 did **not** rename is the gym registrations: `levels.py` in all three
+tasks still registers `L3v00..L3v09`, and no `L3bv*` id exists anywhere.
+
+So the re-measurement half of this study has an asymmetry the new-arm half does not:
+
+| | checkpoint | gym key |
+|---|---|---|
+| `AC` / `BC` | `t2_AC_n400_s0` | `ACv0<slice>` |
+| **`L3b`** | `t2_L3b_n400_s0` | **`L3v0<slice>`** |
+
+`slurm/eval.sbatch` derived the gym key from the arm token directly and would have asked for
+`Cog-DrawerStow-L3bv00-IK-Rel-Visuomotor-v0` -- a gym registration error, failing all 180 L3b slices
+(3 tasks x 6 N x 10) of the 720-slice baseline re-measurement, arriving as 180 separate
+`EVAL_FAILED`s some hours into the sweep.
+
+**Decision: map `L3b -> L3` inside `eval.sbatch`, not at the call sites.** `launch_wave.py`,
+`resweep_eval.py` and any future caller all name the arm by its checkpoint stem, which is the token
+the registry and the result filenames use; the sbatch is the one place that needs the gym key, so it
+is the one place that should know the mapping. A convention held only in callers is exactly what
+D29 records as drifting.
+
+`scripts/dev/check_levels.py` now asserts both halves -- `L3v00` IS registered, no `L3bv*` is -- so
+the invariant the sbatch depends on cannot be silently inverted by a later rename.
+
+**Not affected:** `configs/eval_sets/*.json` are pose *snapshots* consumed by analysis
+(`success_vs_pose.py`), not inputs to `rollout_eval.py`, which reproduces the benchmark by seeding
+the env from `protocol.json`. The absence of an `L3b.json` is therefore correct, not a second bug.

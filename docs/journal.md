@@ -5782,3 +5782,27 @@ watching `sacct` for all 24 terminal states, and the hourly `watchdog.sh`. The w
 snapshots `df` on `$WORK` and `$FAST` and alerts below 200 G -- $WORK is the binding constraint from
 here on (12.8 GB/cell x 36 cells = 461 GB against 1,282 G free), and rule 1 forbids making room, so
 the only useful action is to warn early enough that the user can.
+
+### later on 2026-09-18 -- an eval dry-run caught the L3b gym-key trap
+
+Pre-flighting the eval sweep while training queued. Two checks, one clean and one not.
+
+**Clean:** all 72 baseline checkpoints (3 tasks x {L0,L1,L2,L3b} x 6 N) are present at step 080000
+on `$WORK`, so the `_u200` re-measurement has everything it needs. This retroactively justifies
+declining the plan's prune-after-eval step while `$WORK` had headroom -- had it run on the original
+sweep, the re-measurement would have had nothing to re-measure.
+
+**Not clean:** `slurm/eval.sbatch T2 L3b 400 0` would have built env id
+`Cog-DrawerStow-L3bv00-IK-Rel-Visuomotor-v0`, which does not exist. D29 renamed the L3b *artifacts*
+but never the *gym registrations*, which are still `L3v00..L3v09` in all three tasks. That is 180 of
+the 720 baseline slices failing as gym registration errors, hours into a multi-day sweep. Fixed by
+mapping `L3b -> L3` inside the sbatch (D31 addendum for why there and not at the call sites), and
+`check_levels.py` now pins both halves of the asymmetry so a later rename cannot silently invert it.
+
+Worth noting what made it findable: the dry-run prints the full sbatch line, so the arm token is
+visible next to the slice index, and `t2_L3b` next to `L3bv00` reads wrong immediately. A launcher
+that only printed "submitted 10 jobs" would have hidden it.
+
+The `configs/eval_sets/*.json` have no `L3b.json` either, but that one is fine -- they are pose
+snapshots for `success_vs_pose.py`, not inputs to `rollout_eval.py`, which reseeds the env from
+`protocol.json`. Checked rather than assumed.

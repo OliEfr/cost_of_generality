@@ -63,9 +63,17 @@ mkdir -p "${PART}"
 # on a cluster-generated dataset called ctl_L1 and must be evaluated in the ordinary L1 env, which
 # is the whole point of the control. COG_EVAL_ENV_ARM overrides only the env id.
 ENV_ARM="${COG_EVAL_ENV_ARM:-${ARM}}"
+
+# The checkpoint stem and the gym key are NOT the same token for L3b. D27 regenerated L3 under
+# per-variant seeds and D29 renamed the ARTIFACTS -- datasets, run_ids, result files -- to L3b, but
+# the gym ids were never renamed: levels.py registers L3v00..L3v09 in all three tasks and no L3bv*
+# exists anywhere. So `eval.sbatch T2 L3b 400 0` must load checkpoint t2_L3b_n400_s0 and env L3v00.
+# Mapped here rather than at each call site: a convention that lives only in the caller is precisely
+# what D29 says drifts, and this one fails as a gym registration error ten slices at a time.
+[ "${ENV_ARM}" = "L3b" ] && ENV_ARM="L3"
 case "${ENV_ARM}" in
-  AC|BC|L3|L3b) VKEY=$(printf "%sv%02d" "${ENV_ARM}" "${SLICE}") ;;
-  *)            VKEY="${ENV_ARM}" ;;
+  AC|BC|L3) VKEY=$(printf "%sv%02d" "${ENV_ARM}" "${SLICE}") ;;
+  *)        VKEY="${ENV_ARM}" ;;
 esac
 ENVID="${GYM}-${VKEY}-IK-Rel-Visuomotor-v0"
 OUT="${PART}/eval_${TASK}_${ARM}_n${NDEMOS}_${STEP}_${SUFFIX}_s${SLICE}.json"

@@ -96,6 +96,15 @@ def main() -> int:
                     bad.append(f"{prefix}-{k}: {off_field} is NOT degenerate (dimension not removed)")
                 if not any(s > 1e-9 for s in _spans(getattr(sub, on_field))):
                     bad.append(f"{prefix}-{k}: {on_field} IS degenerate (kept dimension is off)")
+        # slurm/eval.sbatch maps the L3b CHECKPOINT stem back to the L3 GYM key, because D29
+        # renamed the artifacts and not the registrations. Pin both halves of that asymmetry here
+        # so the mapping can never be "fixed" by renaming the envs without the sbatch noticing.
+        if "L3v00" not in levels:
+            bad.append(f"{prefix}: L3v00 is not registered -- eval.sbatch's L3b->L3 map is broken")
+        if any(k.startswith("L3bv") for k in levels):
+            bad.append(f"{prefix}: an L3bv* key exists -- eval.sbatch maps L3b->L3 and would now "
+                       f"evaluate the wrong env")
+
         emit(f"{prefix}: {len(levels)} sub-levels, {len(levels) * 4} gym ids, arms {arms}")
 
     if bad:
