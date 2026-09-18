@@ -5528,3 +5528,33 @@ So three things fall out of one gate:
 `--warmup_batches 1 --warmup_max_steps 0` is already the default in `slurm/eval.sbatch` and
 `launch_wave.py`, so nothing changes in the code; what changes is that it is now measured rather
 than assumed.
+
+## 2026-09-18 -- Phase 2 starts; two bugs, both caught by markers rather than by wrong numbers
+
+**Conversion works GPU-less on the cluster.** `ctl_L1` (100 episodes, T1) converted and validated in
+**498 s** on a `boost_usr_prod` node with no `--gres`: `CONVERT_ctl_L1_EXIT=0`, `VALIDATE_OK`, 20 MB
+LeRobot dataset. That closes the last untested stage of the pipeline -- generation, conversion,
+eval-set freezing, training and eval have now each run cluster-side at least once.
+
+**Bug 1: `seq -w` does not zero-pad to two digits.** It pads to the width of the LARGEST value, so
+`seq -w 0 9` yields `0 1 2 ... 9`. The freeze wave therefore asked for `ACv0`..`ACv9` -- ten gym ids
+that do not exist -- and `convert.sbatch` would have gone looking for `${KEY}v0.hdf5`. Fixed by
+building the keys with `printf "%sv%02d"`, which is what `eval.sbatch` and `launch_wave.py` already
+did. Cost: one arm's worth of Kit boots, ~5 min of GPU, and it was reported as
+`FREEZE_ARM_FAILED T1 AC (10 sub-level(s))` rather than as an empty eval set discovered weeks later.
+That is the entire argument for the marker convention.
+
+Worth noting for the future: **Slurm spools the batch script at SUBMIT time.** The five freeze jobs
+queued before the fix kept running the broken version (they wrote `BCv0.log` after the fix had
+landed on disk). Editing a script does not repair jobs already in the queue.
+
+**Bug 2 (found by G4, fixed earlier today): a generation leg can overshoot its target.** See the
+G1-G5 entry. Both of today's bugs share a shape -- neither produced an error, both produced the
+wrong artifact -- which is why every sbatch in this wave judges its own output rather than its exit
+code.
+
+**Where Phase 1 stands:** G0a/b/c, G1, G2 (TOLERABLE), G3, G4, G5 and G6 are all settled. Only G2b
+remains: its data is generated (100 demos, 80% gen SR against 85.8% locally -- within noise at
+n=125) and converted, the training cell is submitted, and the comparison will be against the
+re-measured `t1_L1_n100_s0`, which G6 put at **0.950** under the full-warm-up protocol. Both arms
+get 10 slices (200 episodes) so the comparison resolves ~4 points rather than ~7.
