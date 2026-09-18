@@ -187,7 +187,16 @@ def initial_layout(path):
                     for leaf in sorted(init[kind][entity]):
                         if "velocity" in leaf:                  # always ~0 at reset; adds no signal
                             continue
-                        vec.append(np.asarray(init[kind][entity][leaf]).ravel())
+                        arr = np.asarray(init[kind][entity][leaf]).ravel()
+                        if leaf == "root_pose":
+                            # Drop the Z translation (index 2 of [x, y, z, qw, qx, qy, qz]). Resting
+                            # height is a function of the OBJECT VARIANT, not of the randomisation:
+                            # levels.py sets z from each variant's half_height, so an arm with a
+                            # fixed pose and two cylinder sizes shows 2 unique "poses" and trips the
+                            # redundancy alarm at 202x. Only the axes a reset actually samples --
+                            # x, y and orientation -- belong in this count.
+                            arr = np.delete(arr, 2)
+                        vec.append(arr)
                     if vec:
                         out.setdefault(entity, []).append(np.concatenate(vec))
     return {k: np.asarray(v) for k, v in out.items()} if out else None
