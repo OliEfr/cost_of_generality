@@ -5586,3 +5586,45 @@ scale, so the stroke baked into a source demo is the stroke you get.
 
 This is the check that the reverse ablation actually measures what it claims. A leave-one-out arm
 whose "removed" dimension still varied would produce a perfectly plausible number that meant nothing.
+
+## 2026-09-18 -- G2b PASSES: the generating machine does not move the success rate. Phase 1 complete.
+
+The control: 100 T1 L1 demos generated on an A100 (seed block 1100, 80% gen SR against 85.8%
+locally -- within noise at n=125), converted on the cluster, trained for the frozen 80k steps
+(1 h 54 m, inside the 1.84-2.83 h spread of the 24 original T1 cells), and evaluated under the D31
+protocol against `t1_L1_n100_s0` trained on 4090-generated data.
+
+Both arms ran slices on seeds 5000-5009, so this is a **paired** comparison on identical initial
+conditions, not two independent samples:
+
+| | successes | SR | Wilson 95% |
+|---|---|---|---|
+| baseline, 4090-generated data | 192/200 | **0.960** | [0.923, 0.980] |
+| control, A100-generated data | 188/200 | **0.940** | [0.898, 0.965] |
+
+| slice | b00 | b01 | b02 | b03 | b04 | b05 | b06 | b07 | b08 | b09 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| delta | -0.10 | 0.00 | +0.05 | -0.10 | 0.00 | 0.00 | -0.05 | +0.05 | 0.00 | -0.05 |
+
+**Paired mean delta -0.020, sd 0.054, t(9) = -1.18. Unpaired two-proportion z = -0.92.** Neither is
+close to significant, the intervals overlap across most of their width, and 5 of the 10 slices are
+exactly equal.
+
+**What this licenses, stated precisely.** The paired design gives se = 0.017 per-slice, so a true
+effect above ~3.5 points (2 se) would probably have shown; below that it is undetected, not absent.
+The leave-one-out contrasts this study exists to measure are an order of magnitude larger -- L2 0.82
+vs L3 0.70 at N=100 is 12 points. And the comparison bounds MORE than the machine: the control's
+100 demos are a different sample from a different seed block, so what is bounded at ~2 points is
+"different GPU **and** different demo draw" together, which is exactly what separates a
+cluster-generated AC arm from a hypothetical local one.
+
+So the G2 verdict of TOLERABLE resolves to usable, and the contingency branch in D31 -- regenerating
+L2 and L3b on the cluster for ~99 GPU-h -- is **not needed**.
+
+**Phase 1 is complete: G0a/b/c, G1, G2, G2b, G3, G4, G5, G6 all settled.** Cost, gates included,
+~4 GPU-h of the ~2,000 remaining. Three bugs were found along the way and every one of them produced
+a wrong artifact rather than an error: `seq -w` not zero-padding to two digits, generation legs
+overshooting their target, and the parity check comparing async-written demos by file index. That is
+the case for judging artifacts rather than exit codes, made three times in one day.
+
+Phase 3 (the 60-leg datagen wave) is released.

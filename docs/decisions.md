@@ -1033,7 +1033,10 @@ eval budget is the conservative ~276 GPU-h. The fully-warmed pooled value, 0.950
 the 4090's four warm batches for the same cell to three decimals -- which also discharges eval-side
 machine parity, and shows the published 0.86 to be exactly one cold batch in five. The per-variant
 L3 diagonal was 100% cold, so the object-axis arm carried the largest penalty: the confound runs in
-the direction that manufactures Finding 4. Remaining:
-(a) G2's pixel verdict, journalled whatever it says. (b) `gen_bias` reports ~400 unique
+the direction that manufactures Finding 4. **(a) is DISCHARGED.** G2 returned TOLERABLE -- pixels within the renderer's own run-to-run noise
+(which a local-vs-local rerun showed is not zero), trajectories identical on matched episodes -- and
+G2b then settled what that means for a trained policy: 0.940 on A100-generated data against 0.960 on
+4090-generated data, paired over identical seeds, mean delta -0.020, t(9) = -1.18. The contingency
+branch below (regenerating L2 and L3b on the cluster, ~99 GPU-h) is NOT needed. Remaining: (b) `gen_bias` reports ~400 unique
 initial poses per new arm at <=1.1x redundancy -- the D27 check, which must run on every new arm.
 (d) `curves.canonical()` maps `AC`/`BC` with no caller filtering levels itself.
