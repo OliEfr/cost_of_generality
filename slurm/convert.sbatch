@@ -49,12 +49,13 @@ ROOT="${DS_DIR}/${KEY}"
 INPUTS=()
 case "${ARM}" in
   AC|BC|L3|L3b)
-    for i in $(seq -w 0 9); do INPUTS+=("${HDF5_DIR}/${KEY}v${i}.hdf5"); done
-    MAX_EPISODES=400 ;;
+    for i in $(seq -w 0 9); do INPUTS+=("${HDF5_DIR}/${KEY}v${i}.hdf5"); done ;;
   *)
-    INPUTS+=("${HDF5_DIR}/${KEY}.hdf5")
-    MAX_EPISODES=400 ;;
+    INPUTS+=("${HDF5_DIR}/${KEY}.hdf5") ;;
 esac
+# A study arm is 400 episodes; a diagnostic control (G2b) is whatever it was generated at, and
+# validate_dataset takes the count as an assertion rather than a hint.
+MAX_EPISODES="${COG_MAX_EPISODES:-400}"
 cog_require "${SIF}" "${INPUTS[@]}" || { echo "CONVERT_FAILED ${KEY}: missing input"; exit 3; }
 
 if [ -d "${ROOT}" ]; then
@@ -72,7 +73,7 @@ CONVERT_RC=$?
 echo "CONVERT_${KEY}_EXIT=${CONVERT_RC}"
 
 cog_cpu_exec python -u -m cog.convert.validate_dataset \
-    --root "${ROOT}" --repo_id "local/${KEY}" --expect_episodes 400
+    --root "${ROOT}" --repo_id "local/${KEY}" --expect_episodes "${MAX_EPISODES}"
 VALIDATE_RC=$?
 echo "VALIDATE_${KEY}_EXIT=${VALIDATE_RC}"
 echo "CONVERT_WALL_SECONDS=$(( $(date +%s) - T0 ))"

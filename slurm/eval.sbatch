@@ -59,9 +59,13 @@ CKPT="${COG}/checkpoints/${RUN_ID}/checkpoints/${STEP}/pretrained_model"
 PART="${RESULTS_DIR}/_partials"
 mkdir -p "${PART}"
 
-case "${ARM}" in
-  AC|BC|L3|L3b) VKEY=$(printf "%sv%02d" "${ARM}" "${SLICE}") ;;
-  *)            VKEY="${ARM}" ;;
+# The ENV arm and the CHECKPOINT arm are usually the same, but not always: the G2b control trains
+# on a cluster-generated dataset called ctl_L1 and must be evaluated in the ordinary L1 env, which
+# is the whole point of the control. COG_EVAL_ENV_ARM overrides only the env id.
+ENV_ARM="${COG_EVAL_ENV_ARM:-${ARM}}"
+case "${ENV_ARM}" in
+  AC|BC|L3|L3b) VKEY=$(printf "%sv%02d" "${ENV_ARM}" "${SLICE}") ;;
+  *)            VKEY="${ENV_ARM}" ;;
 esac
 ENVID="${GYM}-${VKEY}-IK-Rel-Visuomotor-v0"
 OUT="${PART}/eval_${TASK}_${ARM}_n${NDEMOS}_${STEP}_${SUFFIX}_s${SLICE}.json"
