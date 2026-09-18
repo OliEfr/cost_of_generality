@@ -41,3 +41,43 @@ submitted_at,stage,task,arm,key,stem,n_demos,slice,seed,trials,sbatch,walltime,s
 2026-09-18T06:20:46,eval,T1,ctl_L1,ctl_L1,,100,7,,,slurm/eval.sbatch,01:00:00,58085332,launch_wave.py | suffix=g2bctl warmup_batches=1 warmup_max_steps=0 slices=10 env_arm=L1
 2026-09-18T06:20:50,eval,T1,ctl_L1,ctl_L1,,100,8,,,slurm/eval.sbatch,01:00:00,58085334,launch_wave.py | suffix=g2bctl warmup_batches=1 warmup_max_steps=0 slices=10 env_arm=L1
 2026-09-18T06:20:51,eval,T1,ctl_L1,ctl_L1,,100,9,,,slurm/eval.sbatch,01:00:00,58085335,launch_wave.py | suffix=g2bctl warmup_batches=1 warmup_max_steps=0 slices=10 env_arm=L1
+2026-09-18T06:34:29,datagen,T1,AC,ACv00,ACv00,,,1300,40,slurm/datagen.sbatch,00:30:00,58085953,launch_wave.py
+2026-09-18T06:34:33,datagen,T1,AC,ACv01,ACv01,,,1301,40,slurm/datagen.sbatch,00:30:00,58085961,launch_wave.py
+2026-09-18T06:34:34,datagen,T1,AC,ACv02,ACv02,,,1302,40,slurm/datagen.sbatch,00:30:00,58085968,launch_wave.py
+2026-09-18T06:34:37,datagen,T1,AC,ACv03,ACv03,,,1303,40,slurm/datagen.sbatch,00:30:00,58085973,launch_wave.py
+2026-09-18T06:34:41,datagen,T1,AC,ACv04,ACv04,,,1304,40,slurm/datagen.sbatch,00:30:00,58085976,launch_wave.py
+2026-09-18T06:34:46,datagen,T1,AC,ACv05,ACv05,,,1305,40,slurm/datagen.sbatch,00:30:00,58085977,launch_wave.py
+2026-09-18T06:34:47,datagen,T1,AC,ACv06,ACv06,,,1306,40,slurm/datagen.sbatch,00:30:00,58085979,launch_wave.py
+2026-09-18T06:34:49,datagen,T1,AC,ACv07,ACv07,,,1307,40,slurm/datagen.sbatch,00:30:00,58085980,launch_wave.py
+2026-09-18T06:34:53,datagen,T1,AC,ACv08,ACv08,,,1308,40,slurm/datagen.sbatch,00:30:00,58085981,launch_wave.py
+2026-09-18T06:34:55,datagen,T1,AC,ACv09,ACv09,,,1309,40,slurm/datagen.sbatch,00:30:00,58085982,launch_wave.py
+2026-09-18T06:34:59,datagen,T1,BC,BCv00,BCv00,,,1400,40,slurm/datagen.sbatch,00:30:00,58085983,launch_wave.py
+2026-09-18T06:35:03,datagen,T1,BC,BCv01,BCv01,,,1401,40,slurm/datagen.sbatch,00:30:00,58085990,launch_wave.py
+2026-09-18T06:35:07,datagen,T1,BC,BCv02,BCv02,,,1402,40,slurm/datagen.sbatch,00:30:00,58085995,launch_wave.py
+2026-09-18T06:35:11,datagen,T1,BC,BCv03,BCv03,,,1403,40,slurm/datagen.sbatch,00:30:00,58085996,launch_wave.py
+2026-09-18T06:35:15,datagen,T1,BC,BCv04,BCv04,,,1404,40,slurm/datagen.sbatch,00:30:00,58085997,launch_wave.py
+2026-09-18T06:35:16,datagen,T1,BC,BCv05,BCv05,,,1405,40,slurm/datagen.sbatch,00:30:00,58085998,launch_wave.py
+2026-09-18T06:35:23,datagen,T1,BC,BCv06,BCv06,,,1406,40,slurm/datagen.sbatch,00:30:00,58086000,launch_wave.py
+2026-09-18T06:35:27,datagen,T1,BC,BCv07,BCv07,,,1407,40,slurm/datagen.sbatch,00:30:00,58086001,launch_wave.py
+2026-09-18T06:35:28,datagen,T1,BC,BCv08,BCv08,,,1408,40,slurm/datagen.sbatch,00:30:00,58086002,launch_wave.py
+2026-09-18T06:35:30,datagen,T1,BC,BCv09,BCv09,,,1409,40,slurm/datagen.sbatch,00:30:00,58086003,launch_wave.py
+2026-09-18T06:35:31,datagen,T3,AC,ACv00,T3_ACv00,,,3300,40,slurm/datagen.sbatch,00:30:00,58086004,launch_wave.py
+2026-09-18T06:35:33,datagen,T3,AC,ACv01,T3_ACv01,,,3301,40,slurm/datagen.sbatch,00:30:00,58086007,launch_wave.py
+2026-09-18T06:35:34,datagen,T3,AC,ACv02,T3_ACv02,,,3302,40,slurm/datagen.sbatch,00:30:00,58086009,launch_wave.py
+2026-09-18T06:35:43,datagen,T3,AC,ACv03,T3_ACv03,,,3303,40,slurm/datagen.sbatch,00:30:00,58086011,launch_wave.py
+2026-09-18T06:35:49,datagen,T3,AC,ACv04,T3_ACv04,,,3304,40,slurm/datagen.sbatch,00:30:00,58086012,launch_wave.py
+2026-09-18T06:35:53,datagen,T3,AC,ACv05,T3_ACv05,,,3305,40,slurm/datagen.sbatch,00:30:00,58086014,launch_wave.py
+2026-09-18T06:35:57,datagen,T3,AC,ACv06,T3_ACv06,,,3306,40,slurm/datagen.sbatch,00:30:00,58086024,launch_wave.py
+2026-09-18T06:36:01,datagen,T3,AC,ACv07,T3_ACv07,,,3307,40,slurm/datagen.sbatch,00:30:00,58086026,launch_wave.py
+2026-09-18T06:36:06,datagen,T3,AC,ACv08,T3_ACv08,,,3308,40,slurm/datagen.sbatch,00:30:00,58086034,launch_wave.py
+2026-09-18T06:36:13,datagen,T3,AC,ACv09,T3_ACv09,,,3309,40,slurm/datagen.sbatch,00:30:00,58086054,launch_wave.py
+2026-09-18T06:36:14,datagen,T3,BC,BCv00,T3_BCv00,,,3400,40,slurm/datagen.sbatch,00:30:00,58086057,launch_wave.py
+2026-09-18T06:36:17,datagen,T3,BC,BCv01,T3_BCv01,,,3401,40,slurm/datagen.sbatch,00:30:00,58086060,launch_wave.py
+2026-09-18T06:36:18,datagen,T3,BC,BCv02,T3_BCv02,,,3402,40,slurm/datagen.sbatch,00:30:00,58086061,launch_wave.py
+2026-09-18T06:36:21,datagen,T3,BC,BCv03,T3_BCv03,,,3403,40,slurm/datagen.sbatch,00:30:00,58086062,launch_wave.py
+2026-09-18T06:36:22,datagen,T3,BC,BCv04,T3_BCv04,,,3404,40,slurm/datagen.sbatch,00:30:00,58086063,launch_wave.py
+2026-09-18T06:36:24,datagen,T3,BC,BCv05,T3_BCv05,,,3405,40,slurm/datagen.sbatch,00:30:00,58086064,launch_wave.py
+2026-09-18T06:36:27,datagen,T3,BC,BCv06,T3_BCv06,,,3406,40,slurm/datagen.sbatch,00:30:00,58086065,launch_wave.py
+2026-09-18T06:36:31,datagen,T3,BC,BCv07,T3_BCv07,,,3407,40,slurm/datagen.sbatch,00:30:00,58086066,launch_wave.py
+2026-09-18T06:36:33,datagen,T3,BC,BCv08,T3_BCv08,,,3408,40,slurm/datagen.sbatch,00:30:00,58086067,launch_wave.py
+2026-09-18T06:36:38,datagen,T3,BC,BCv09,T3_BCv09,,,3409,40,slurm/datagen.sbatch,00:30:00,58086068,launch_wave.py
