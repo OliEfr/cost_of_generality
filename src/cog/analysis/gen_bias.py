@@ -152,6 +152,59 @@ def _pool(paths: list[pathlib.Path]) -> np.ndarray | None:
 DIMS = ("x", "y", "yaw")
 
 
+def initial_layout(path):
+    """{entity: (N, D) array} of each demo's initial scene layout, one row per demo.
+
+    Why this exists alongside initial_poses(). `initial_poses` reads the MANIPULANDUM only (cup /
+    box / puck), so the D27 redundancy check has only ever covered that one axis. Two consequences
+    that went unnoticed until the D31 arms were generated:
+
+      * A level whose manipulandum pose is fixed BY DESIGN -- every `BC` arm, and L0 -- reports
+        1 unique pose out of 400 and trips the redundancy alarm, which is a false positive.
+      * Far worse, the GOAL axis has never been checked at all. L2 and L3b randomise the goal as
+        well as the object, so a D27-style seeding collapse in the goal stream would have produced
+        400 demos over 43 unique goal poses and this tool would have reported nothing wrong.
+
+    So uniqueness is reported per entity over the recorded initial state, which is task-agnostic:
+    T1 gets cup + goal_marker, T2 object + cabinet (pose AND drawer joint), T3 object +
+    target_marker. `articulation/robot` is EXCLUDED deliberately -- D8 keeps Gaussian joint-reset
+    noise on at every level, so the robot's joints are unique in every episode of every level and
+    including them would make the joint count trivially 400 even for a seed-bugged arm.
+    """
+    out = {}
+    with h5py.File(path, "r") as f:
+        if "data" not in f:
+            return None
+        for demo in f["data"].keys():
+            init = f[f"data/{demo}"].get("initial_state")
+            if init is None:
+                return None
+            for kind in init:                                  # articulation / rigid_object
+                for entity in init[kind]:
+                    if kind == "articulation" and entity == "robot":
+                        continue
+                    vec = []
+                    for leaf in sorted(init[kind][entity]):
+                        if "velocity" in leaf:                  # always ~0 at reset; adds no signal
+                            continue
+                        vec.append(np.asarray(init[kind][entity][leaf]).ravel())
+                    if vec:
+                        out.setdefault(entity, []).append(np.concatenate(vec))
+    return {k: np.asarray(v) for k, v in out.items()} if out else None
+
+
+def layout_uniqueness(paths):
+    """{entity: (unique, total)} pooled over the given files."""
+    per = {}
+    for path in paths:
+        d = initial_layout(path)
+        if not d:
+            continue
+        for k, v in d.items():
+            per.setdefault(k, []).append(v)
+    return {k: (len(_uniq(np.concatenate(v))), len(np.concatenate(v))) for k, v in per.items()}
+
+
 def _uniq(a: np.ndarray) -> np.ndarray:
     return np.unique(np.round(a, 5), axis=0)
 
@@ -190,10 +243,12 @@ def _level_stats_inner(level: str) -> dict | None:
         succ = _pool(variants)
         fail = _pool(sorted(HDF5_DIR.glob(f"{level}v[0-9][0-9]_failed.hdf5")))
         pooled = len(variants)
+        succ_files = variants
     else:
         succ = initial_poses(succ_p)
         fp = HDF5_DIR / f"{level}_failed.hdf5"
         fail = initial_poses(fp) if fp.exists() else None
+        succ_files = [succ_p]
     if succ is None:
         return None
 
@@ -202,7 +257,7 @@ def _level_stats_inner(level: str) -> dict | None:
     u_s = _uniq(succ)
     u_f = _uniq(fail) if n_f else np.empty((0, 3))
     st = {
-        "level": level, "pooled_files": pooled,
+        "level": level, "pooled_files": pooled, "layout": layout_uniqueness(succ_files),
         "n_succ": n_s, "n_fail": n_f, "attempts": n_s + n_f,
         "gen_sr": 100 * n_s / max(n_s + n_f, 1),
         "unique_succ": len(u_s), "unique_fail": len(u_f),
@@ -240,9 +295,29 @@ def analyse(level: str) -> dict | None:
         print(f"  (pooled {st['pooled_files']} variant files)")
     print(f"retained {st['n_succ']}   rejected {st['n_fail']}   attempts {st['attempts']}   "
           f"gen_SR {st['gen_sr']:.1f}%")
-    print(f"  UNIQUE initial poses: retained {st['unique_succ']}/{st['n_succ']}"
+    print(f"  UNIQUE manipulandum poses: retained {st['unique_succ']}/{st['n_succ']}"
           + (f"   rejected {st['unique_fail']}/{st['n_fail']}" if st["n_fail"] else ""))
-    if st["n_succ"] > 1 and st["redundancy"] > 1.11:
+    # Per-entity, because the manipulandum is only one of a level's randomised axes: an arm that
+    # fixes it by design (every BC arm, and L0) is not redundant, and an arm whose GOAL stream
+    # collapsed would look perfectly healthy on the manipulandum alone.
+    layout = st.get("layout") or {}
+    if layout:
+        parts = []
+        degenerate, collapsed = [], []
+        for ent, (u, n) in sorted(layout.items()):
+            parts.append(f"{ent} {u}/{n}")
+            if u == 1 and n > 1:
+                degenerate.append(ent)
+            elif 1 < u < n / 1.11:
+                collapsed.append((ent, n / u))
+        print(f"  UNIQUE initial layout, per entity: {'   '.join(parts)}")
+        if degenerate:
+            print(f"     ({', '.join(degenerate)} fixed at a single value -- expected wherever the "
+                  f"level switches that axis OFF; verify against levels.py)")
+        for ent, r in collapsed:
+            print(f"  !! LAYOUT REDUNDANCY on {ent}: {r:.1f}x -- an axis that varies, but over far "
+                  f"fewer values than demos. This is the D27 signature.")
+    if st["n_succ"] > 1 and st["redundancy"] > 1.11 and not (layout and len(layout) > 1):
         print(f"  !! POSE REDUNDANCY {st['redundancy']:.1f}x -- this level's demo-count axis "
               f"is inflated: adding demos adds appearances, not new initial states. Expected only "
               f"for L0 (fixed by design); anywhere else it is the seeding bug of D27.")
