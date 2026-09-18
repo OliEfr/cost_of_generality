@@ -32,3 +32,10 @@ ops/check_levels.txt
 #                   frozen configs/eval_sets/*.json, which are committed and never regenerated
 results/_partials/
 results/_evalsets_raw/
+
+# Hourly-watcher state. These files exist so alerts fire on TRANSITIONS rather than on state
+# (see docs/running_jobs.md); they are per-machine bookkeeping, not results, and committing them
+# would make a fresh checkout re-announce every job that has ever finished.
+ops/.failed_seen
+ops/status_d31.state
+ops/status_d31.log

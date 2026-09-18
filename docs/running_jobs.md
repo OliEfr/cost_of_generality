@@ -91,3 +91,31 @@ tmux sessions gave 4x throughput at unchanged per-level speed (2 h instead of 8 
 - Generation SR and demo counts come from `experiments/gen_stats.csv` (recomputed from the
   HDF5 pairs), never from a generator log -- log tails understate because the final progress
   flush is lost at shutdown.
+
+## Hourly status checks (added 2026-09-18, D31 waves)
+
+Three layers, because each has failed alone (rule 10) -- but the *alerting* also has to stay
+readable, which is a fourth failure mode discovered here.
+
+1. **`ops/status_d31.sh`** -- one comprehensive, ACTIONABLE report: new terminal job states, queue
+   counts, phase progress (datasets/cells/slices/pooled) and an explicit "unblocked" section naming
+   the next command. Cron at minute 12. Log: `ops/status_d31.log`.
+2. **`scripts/ops/watchdog.sh`** -- the general hourly health check (cert, disk on the workstation
+   and on `$WORK`/`$FAST`, failed jobs, budget). Cron at minute 7.
+3. **A session cron re-invoking Claude at :44**, so something actually *reads* layers 1-2 and acts
+   -- launches the next phase, diagnoses a failure, journals a finished wave. Session-only: it dies
+   with the Claude session and auto-expires after 7 days, so layers 1-2 are the durable ones.
+
+**Alerts are transition-based, never state-based.** Both scripts diff against a state file
+(`ops/.failed_seen`, `ops/status_d31.state`) and report only what is new. The previous watchdog
+grepped the sacct snapshot for the word FAILED and re-alerted every hour for as long as the job
+stayed in the 2-day window: 64 identical lines between 2026-08-19 and 2026-09-18, 21 % of
+ALERTS.md, all for jobs long since handled. A channel that noisy is one where a real failure is
+invisible -- which is the exact thing the channel exists to prevent. `status_d31.sh` seeds its
+state silently on first run for the same reason.
+
+**Completion is read from markers, not from the filesystem.** `status_d31.sh` counts a conversion
+done on `VALIDATE_OK`, not on `datasets/<key>/meta` existing -- `hdf5_to_lerobot` creates `meta/`
+on the first episode, so a dataset that is 325/400 encoded looks finished on disk. Same reasoning
+as rule 9 reading `gen_stats.csv` instead of generator logs. The first version of the script got
+this wrong and announced T2 training was unblocked while both conversions were still running.

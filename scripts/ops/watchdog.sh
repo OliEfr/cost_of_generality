@@ -36,10 +36,18 @@ if ssh -o BatchMode=yes -o ConnectTimeout=15 leonardo true 2>/dev/null; then
   # Job status snapshot
   ssh -o BatchMode=yes leonardo "squeue --me -o '%.10i %.20j %.8T %.10M %.6D %R' 2>/dev/null; sacct -X -S \$(date -d '2 days ago' +%F) --format=JobID,JobName%20,State,Elapsed -n 2>/dev/null | tail -20" \
       > "$OPS/cluster_status.txt" 2>/dev/null
-  # Failed jobs in last 2 days?
-  if grep -qE 'FAILED|NODE_FAIL|OUT_OF_ME' "$OPS/cluster_status.txt" 2>/dev/null; then
-    alert "cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt"
+  # Failed jobs -- alert once per JOB ID, never once per hour. The previous form grepped the
+  # snapshot for the word FAILED and re-fired every hour for as long as a failed job stayed in
+  # the 2-day sacct window: 64 identical alerts between 2026-08-19 and 2026-09-18, 21% of
+  # ALERTS.md, all for jobs long since dealt with. An alert channel that noisy is one where a
+  # real failure is invisible, which is the exact thing the channel exists to prevent.
+  touch "$OPS/.failed_seen"
+  awk '/FAILED|NODE_FAIL|OUT_OF_ME/ {print $1}' "$OPS/cluster_status.txt" 2>/dev/null | sort -u > "$OPS/.failed_now"
+  NEWFAIL=$(comm -13 "$OPS/.failed_seen" "$OPS/.failed_now")
+  if [ -n "$NEWFAIL" ]; then
+    alert "NEW failed cluster job(s): $(echo $NEWFAIL | tr '\n' ' ')- see ops/cluster_status.txt"
   fi
+  sort -u "$OPS/.failed_seen" "$OPS/.failed_now" > "$OPS/.failed_seen.tmp" && mv "$OPS/.failed_seen.tmp" "$OPS/.failed_seen" 
   # Cluster disk. $WORK carries the checkpoints (12.8 GB/cell, 36 new cells in the D31 wave)
   # and $FAST the HDF5 + LeRobot datasets. Rule 1 forbids making room, so the only useful
   # action is to warn early enough that the user can.
