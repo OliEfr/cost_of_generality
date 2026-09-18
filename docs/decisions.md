@@ -1026,8 +1026,14 @@ leave-one-out deltas are actually taken against. Budget: the whole study is ~300
 ~2,000 remaining of the approved 2,200 ceiling; the binding constraint is the grant calendar
 (2026-10-29), not GPU-hours.
 
-**VERIFY:** (a) G2's pixel verdict, journalled whatever it says. (b) `gen_bias` reports ~400 unique
+**VERIFY (updated 2026-09-18 as the gates landed):** **(c) is DISCHARGED and the warm-up is
+decided: one FULL batch.** G6 measured 0.720 / 0.800 / 0.810 / 0.950 for warm-up of
+none / 20 steps / 100 steps / a batch run to termination, so the short warm-ups buy nothing and the
+eval budget is the conservative ~276 GPU-h. The fully-warmed pooled value, 0.950, equals the mean of
+the 4090's four warm batches for the same cell to three decimals -- which also discharges eval-side
+machine parity, and shows the published 0.86 to be exactly one cold batch in five. The per-variant
+L3 diagonal was 100% cold, so the object-axis arm carried the largest penalty: the confound runs in
+the direction that manufactures Finding 4. Remaining:
+(a) G2's pixel verdict, journalled whatever it says. (b) `gen_bias` reports ~400 unique
 initial poses per new arm at <=1.1x redundancy -- the D27 check, which must run on every new arm.
-(c) a re-measured `t1_L1_n100_s0` reproduces its published 0.86 within binomial noise; if not, G6's
-warm-up choice is wrong and must be settled before the sweep rather than discovered in the surface.
 (d) `curves.canonical()` maps `AC`/`BC` with no caller filtering levels itself.

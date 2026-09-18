@@ -5487,3 +5487,44 @@ nondeterminism from architecture, once at a different demo count to separate Kit
 per-demo cost. The same move cracked the cuDNN diagnosis on 2026-09-17. A second run is nearly free
 and it converts "these numbers differ" into "these numbers differ by more/less than they differ from
 themselves".
+
+## 2026-09-18 -- G6: the warm-up is a full batch, and it reproduces the 4090's warm number exactly
+
+Twenty slices of `t1_L1_n100_s0` on the A100, five per warm-up setting, 20 scored episodes each:
+
+| warm-up before the scored batch | s0 | s1 | s2 | s3 | s4 | pooled | Wilson 95% |
+|---|---|---|---|---|---|---|---|
+| none | 0.65 | 0.80 | 0.60 | 0.70 | 0.85 | **0.720** | [0.625, 0.799] |
+| 1 batch, capped at 20 steps | 0.80 | 0.80 | 0.70 | 0.75 | 0.95 | 0.800 | [0.711, 0.867] |
+| 1 batch, capped at 100 steps | 0.85 | 0.85 | 0.70 | 0.75 | 0.90 | 0.810 | [0.722, 0.875] |
+| **1 full batch (to termination)** | 0.95 | 0.90 | 0.95 | 1.00 | 0.95 | **0.950** | [0.888, 0.978] |
+
+**Decision: one FULL warm-up batch.** The success rate does not plateau at a short warm-up -- 20 and
+100 steps are indistinguishable from each other (0.80 / 0.81) and both are far below a batch run to
+termination, with barely-overlapping intervals. The hoped-for saving does not exist, so the eval
+budget is the conservative ~276 GPU-h rather than ~173. A slice costs ~630 s with a full warm-up
+against ~340 s without, i.e. 1.75 GPU-h per 10-slice T1 cell.
+
+**The number it lands on is the check that matters.** The local per-batch profile of this same cell,
+with the t==0 guard active, is [0.50, 0.90, 0.95, 0.95, 1.00]:
+
+- mean of the four WARM batches (1-4) on the 4090 = **0.950**
+- pooled over five fully-warmed slices on the A100 = **0.950**
+- and the published cell SR, 0.86, is exactly (0.50 + 4 x 0.95) / 5 -- one cold batch in five.
+
+So three things fall out of one gate:
+
+1. **The warm-up model of the batch-0 effect is correct.** It is not a scoring artefact and not
+   specific to the workstation; a batch that has been preceded by a completed batch in the same
+   process scores ~0.95 on both machines, and one that has not scores 0.50-0.72.
+2. **Eval-side machine parity is established, for free.** Once the warm-up state is matched the A100
+   and the 4090 measure the same success rate. That was going to need its own control.
+3. **The Finding-4 confound is now quantified, and it runs in the damaging direction.** The published
+   surface mixes 1-cold-in-5 for flat cells (0.86 where the warm value is 0.95, a ~9-point
+   under-read) with **100% cold** for the per-variant L3 diagonal, which has no warm batches at all.
+   The arm carrying the object axis was therefore penalised hardest, which is precisely the direction
+   that would manufacture "the object axis dominates". The D31 re-measurement is not bookkeeping.
+
+`--warmup_batches 1 --warmup_max_steps 0` is already the default in `slurm/eval.sbatch` and
+`launch_wave.py`, so nothing changes in the code; what changes is that it is now measured rather
+than assumed.
