@@ -40,12 +40,13 @@ echo "[qa] levels: ${LEVELS[*]}   hdf5: ${HDF5_DIR}"
 
 echo
 echo "=== gen_stats (rule 9: counts from the HDF5, never from the logs) ==="
-cog_cpu_exec python -u "${REPO_IN}/scripts/dev/gen_stats.py" --out "${COG}/results/gen_stats_cluster.csv"
+cog_cpu_exec python -u "${REPO_IN}/scripts/dev/gen_stats.py" \
+  --out "${COG}/results/gen_stats_cluster.csv" 2>&1
 echo "GEN_STATS_EXIT=$?"
 
 echo
 echo "=== gen_bias (D27: unique initial poses per arm) ==="
-cog_cpu_exec python -u -m cog.analysis.gen_bias --levels "${LEVELS[@]}" \
-  --out "${COG}/results/gen_bias_cluster.csv"
+# gen_bias only PRINTS; its table is the artifact, captured in this job log.
+cog_cpu_exec python -u -m cog.analysis.gen_bias --levels "${LEVELS[@]}" 2>&1
 echo "GEN_BIAS_EXIT=$?"
 echo "DATAQA_DONE"

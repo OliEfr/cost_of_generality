@@ -92,6 +92,12 @@ def episode_stats(path: pathlib.Path) -> tuple[int, list[int]]:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default=None,
+                    help="CSV to write (default experiments/gen_stats.csv). The cluster-generated "
+                         "arms go to their OWN file: their HDF5 never come home, so a scan there "
+                         "sees only them and would rewrite the committed CSV down to those rows -- "
+                         "which is exactly what the empty-scan guard below exists to prevent, one "
+                         "step removed.")
     ap.add_argument("--include-smoke", action="store_true",
                     help="also report smoke/debug datasets (excluded by default)")
     ap.add_argument("--chain-wave", default=None,
@@ -100,6 +106,9 @@ def main() -> None:
     ap.add_argument("--wave-start", default=None,
                     help="'YYYY-MM-DD HH:MM:SS' start of --chain-wave, for its first leg")
     args = ap.parse_args()
+    global OUT
+    if args.out:
+        OUT = pathlib.Path(args.out)
 
     rows: list[dict] = []
     in_flight: list[str] = []
