@@ -28,8 +28,10 @@ usage:
                        --task T1 --arm BC --n 100 [--step 080000] [--suffix u200]
 """
 
-from __future__ import annotations
-
+# NO `from __future__ import annotations`, and no subscripted builtins in signatures: this script
+# runs on a Leonardo LOGIN node, whose system python3 is 3.6.8, because the pooling job is a
+# dependency job on lrd_all_serial with no GPU and no container. Keeping it importable by 3.6 means
+# it runs unchanged on the login node, inside the SIF and on the workstation.
 import argparse
 import json
 import sys
@@ -42,8 +44,7 @@ GYM_PREFIX = {"T1": "Cog-CupPlace", "T2": "Cog-DrawerStow", "T3": "Cog-PushTarge
 STAGE_KEYS = ("drawer_opened", "object_lifted", "object_over_drawer")
 
 
-def build_payload(parts: list[dict], *, task_tag: str, arm: str, step: str, checkpoint: str,
-                  slice_keys: list[str], scheme: str, comment: str) -> dict:
+def build_payload(parts, task_tag, arm, step, checkpoint, slice_keys, scheme, comment):
     """One pooled result from the per-slice results, in the order given."""
     per_slice = {}
     outcomes: list = []
@@ -87,7 +88,7 @@ def build_payload(parts: list[dict], *, task_tag: str, arm: str, step: str, chec
     return payload
 
 
-def main() -> int:
+def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--partials", required=True, help="directory holding the per-slice JSONs")
     ap.add_argument("--results", required=True, help="directory the pooled result is written to")
