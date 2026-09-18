@@ -39,7 +39,9 @@ case "${TASK}" in
 esac
 
 case "${ARM}" in
-  AC|BC|L3|L3b) KEYS=$(for i in $(seq -w 0 9); do printf "%sv%s " "${ARM}" "${i}"; done) ;;
+  # printf, not `seq -w`: seq pads to the width of the LARGEST value, so `seq -w 0 9` yields
+  # 0..9 and built ACv0..ACv9 -- ten keys that do not exist. Caught by the EVALSET_OK marker.
+  AC|BC|L3|L3b) KEYS=$(for i in $(seq 0 9); do printf "%sv%02d " "${ARM}" "${i}"; done) ;;
   *)            KEYS="${ARM}" ;;
 esac
 

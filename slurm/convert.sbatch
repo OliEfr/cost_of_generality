@@ -49,7 +49,9 @@ ROOT="${DS_DIR}/${KEY}"
 INPUTS=()
 case "${ARM}" in
   AC|BC|L3|L3b)
-    for i in $(seq -w 0 9); do INPUTS+=("${HDF5_DIR}/${KEY}v${i}.hdf5"); done ;;
+    # printf, not `seq -w` -- see slurm/freeze_eval_sets.sbatch: seq pads to the width of the
+    # largest value, so `seq -w 0 9` gives 0..9 and would look for ${KEY}v0.hdf5.
+    for i in $(seq 0 9); do INPUTS+=("$(printf "%s/%sv%02d.hdf5" "${HDF5_DIR}" "${KEY}" "${i}")"); done ;;
   *)
     INPUTS+=("${HDF5_DIR}/${KEY}.hdf5") ;;
 esac
