@@ -81,9 +81,27 @@ echo "   train    ${NCK}/36 cells at step 080000"
 echo "   eval     ${NPA:-0}/1080 slices, ${NPO:-0}/108 pooled"
 
 # --- what is unblocked right now
+# "Unblocked" means SUBMITTED-ness, not trained-ness. Keying the T2 line on checkpoints instead
+# kept it lit for the whole training wave and told the next hourly tick to re-launch cells that
+# were already queued. The registry is the record of what has been submitted -- launch_matrix
+# writes a row per cell at submit time -- so ask it, not the filesystem.
+NSUB=$(python3 -c "
+import csv
+rows = list(csv.DictReader(open('$REPO/experiments/registry.csv')))
+print(sum(1 for r in rows if '_AC_n' in r['run_id'] or '_BC_n' in r['run_id']))
+" 2>/dev/null || echo 0)
 echo "-- unblocked --"
-[ "$NDS" -eq 6 ] && [ "$NCK" -lt 36 ] && echo "   T2 training can launch: launch_matrix.py --task T2 --levels AC BC"
-[ "$NCK" -eq 36 ] && [ "${NPA:-0}" -eq 0 ] && echo "   EVAL SWEEP can launch (all 36 cells trained)"
-[ "$NDS" -lt 6 ] && echo "   (waiting on conversion)"
+echo "   submitted ${NSUB}/36 cells"
+if [ "$NDS" -lt 6 ]; then
+  echo "   (waiting on conversion)"
+elif [ "${NSUB:-0}" -lt 36 ]; then
+  echo "   training can launch for the missing cells: launch_matrix.py --task T{1,2,3} --levels AC BC"
+elif [ "$NCK" -lt 36 ]; then
+  echo "   (waiting on training: ${NCK}/36 at step 080000)"
+elif [ "${NPA:-0}" -eq 0 ]; then
+  echo "   EVAL SWEEP can launch (all 36 cells trained) -- ~276 GPU-h, ASK FIRST"
+elif [ "${NPA:-0}" -lt 1080 ]; then
+  echo "   (eval in flight: ${NPA}/1080 slices)"
+fi
 
 sec DISK | sed 's/^/   disk /'
