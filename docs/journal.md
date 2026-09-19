@@ -6081,3 +6081,28 @@ should: `success_signal = "terminated & get_term('success')"`, `phantom_guard_st
 
 tmux `eval_d32` is watching (the `eval_d31` session exited cleanly at 1080/1080 on the superseded
 sweep); the hourly check and pooler driver already point at `u200d32`.
+
+### 2026-09-19 16:15 -- all 1,080 corrected slices submitted; a self-inflicted double-submission
+
+18/18 task-arm waves in, 1,080 unique (task, arm, N, slice) combinations, no gaps. 294 slices
+already scored.
+
+**The mistake, recorded because the mechanism will recur.** The harness moves a Bash call that
+exceeds its timeout into the background and notifies on completion. I checked the ledger while the
+T2 `AC BC L0` submitter was still running, saw 840 rows and two "appended" lines, concluded L0 had
+not gone in, and submitted `L0 L1`. The background task then completed with three appends. Result:
+60 duplicate T2/L0 jobs, ~20 GPU-h.
+
+The error was reading a *partial* output file as if it were final. A background task has exactly one
+authoritative completion signal -- its notification -- and the count in a file it is still writing is
+not it. Same class as the D16 artifacts-not-exit-codes rule, one level up: do not read progress as
+completion, whether the writer is a Slurm job or my own shell.
+
+Cancelled all 60 duplicates and verified the 60 keepers still PENDING. `scancel` was refused at
+60 ids ("[Interfere With Workloads]") and accepted at 5, the same granularity sensitivity the
+submission hit; done in 12 chunks. The ledger keeps rows for both generations, which is right --
+1,140 rows against 1,080 cells is the provenance record of what happened, not an error to clean up.
+
+Idempotency would have absorbed most of this on its own (`eval.sbatch` skips a slice whose output
+exists, and the duplicates were queued behind their twins), but "most" is not "all" and the cost of
+cancelling was a few minutes.
