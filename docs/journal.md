@@ -5884,3 +5884,38 @@ binomial CI or the G6 warm-up choice is wrong.
 exits when 1080/1080 slices have artifacts and the queue is empty); a Monitor armed on the two
 baseline smokes; the hourly `ops/status_d31.sh`, which already counts `_u200_s` partials against
 1080. The tmux layer counts artifacts, not `sacct` states, for the D16 reason.
+
+### 2026-09-19 10:15 -- baseline pre-flight passes; the L3b->L3 map is correct at runtime
+
+Both smoke slices `EVAL_OK` in ~10 min, and each one resolved the thing it was submitted to test:
+
+| job | arm | env in the result | checkpoint in the result |
+|---|---|---|---|
+| 58188477 | `L1` | `Cog-CupPlace-L1-IK-Rel-Visuomotor-v0` | `t1_L1_n100_s0` |
+| 58188479 | `L3b` | `Cog-CupPlace-**L3v00**-IK-Rel-Visuomotor-v0` | `t1_**L3b**_n100_s0` |
+
+That second row is the whole point of `80a9d8c`: the arm token splits, env one way and checkpoint the
+other, and both halves land right. `check_levels.py` pins that `L3v00` exists and no `L3bv*` does,
+but static pinning cannot show that the sbatch resolves it -- this does. The flat arm also confirms
+the `*)` branch appends no `v0s` suffix.
+
+**Protocol control passes.** `t1_L1_n100_s0` re-measured on slice 0 under the D31 warm-up gives
+0.90 (18/20) against the published 0.86, whose Wilson CI is [0.7786, 0.9147]. Inside. So the G6
+warm-up choice is not shifting this cell off its known value, which was the plan's stated condition
+for trusting the re-measured baselines.
+
+**Worth flagging for the analysis, not acting on yet.** `t1_L3b_n100_s0` slice 0 scored 20/20, where
+the published pooled L3 n100 is 0.70. Slice 0 is exactly the episode block that was first-in-process
+under the old protocol, i.e. the one the 2026-08-22 confound note measured as depressed (0.50 vs
+0.90-1.00 for later batches in `t1_L1_n100_s0`). A warm-up batch removing that depression is the
+intended effect of D31 and the reason Finding 4 was marked CONFOUNDED. But one slice is not the
+cell: read this only after all ten pool.
+
+**720 baseline slices submitted** (L0/L1/L2/L3b x 3 tasks x 6 N x 10 slices), bringing the sweep to
+1,080. The new-arm wave was draining at 145 running / 78 pending when they went in, so the new arms
+keep their submission-order priority.
+
+Also fixed the hourly check while the wave ran: it printed every COMPLETED transition, which during
+an eval sweep is 100+ lines an hour with any FAILED line buried in the middle of them. Now COMPLETED
+is a count and only bad states are listed (`2d5842d`). Same alert-fatigue failure as the pre-existing
+watchdog bug from 2026-08-19, one level down: fixed "re-fires every hour", missed "prints every line".
