@@ -1,12 +1,24 @@
      JOBID                 NAME    STATE       TIME  NODES NODELIST(REASON)
-53273129                cog_train  COMPLETED   02:09:45 
-53273130                cog_train  COMPLETED   02:01:40 
-53273131                cog_train  COMPLETED   01:53:35 
-53273132                cog_train  COMPLETED   01:59:09 
-53273134                cog_train  COMPLETED   02:13:59 
-53273135                cog_train  COMPLETED   02:16:20 
-53636023          cog_smoke_mtdit  COMPLETED   00:05:30 
-53636024          cog_smoke_mtdit     FAILED   00:03:33 
-53636038               cog_lang_a  COMPLETED   02:12:21 
-53640545          cog_train_mtdit  COMPLETED   11:42:35 
-53640552               cog_lang_a  COMPLETED   02:04:37 
+  58135713        train_learned  PENDING       0:00      1 (Priority)
+  58135863    export_sl6_005000  PENDING       0:00      1 (Dependency)
+  58135861    export_sl6_030000  PENDING       0:00      1 (Dependency)
+58194681                 cog_eval  COMPLETED   00:22:32 
+58194684                 cog_eval  COMPLETED   00:21:53 
+58194686                 cog_eval  COMPLETED   00:22:48 
+58194688                 cog_eval  COMPLETED   00:24:15 
+58194691                 cog_eval  COMPLETED   00:20:08 
+58194692                 cog_eval  COMPLETED   00:20:08 
+58194707                 cog_eval  COMPLETED   00:20:17 
+58194712                 cog_eval  COMPLETED   00:20:16 
+58194714                 cog_eval  COMPLETED   00:19:50 
+58194719                 cog_eval  COMPLETED   00:21:45 
+58194720                 cog_eval  COMPLETED   00:22:07 
+58195006                 cog_eval  COMPLETED   00:21:57 
+58195025                 cog_eval  COMPLETED   00:20:04 
+58195026                 cog_eval  COMPLETED   00:10:16 
+58195031                 cog_eval  COMPLETED   00:10:02 
+58196648                 cog_eval  COMPLETED   00:19:42 
+58196649                 cog_eval  COMPLETED   00:21:29 
+58196651                 cog_eval  COMPLETED   00:11:00 
+58196653                 cog_eval  COMPLETED   00:10:34 
+58196654                 cog_eval  COMPLETED   00:19:57 

@@ -1,0 +1,2 @@
+/leonardo_work     762G
+/leonardo_scratch  856G

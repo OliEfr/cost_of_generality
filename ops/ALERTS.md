@@ -55,3 +55,258 @@
 - 2026-08-23 15:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
 - 2026-08-23 16:07  Leonardo cert <0h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
 - 2026-08-23 16:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 00:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 01:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 02:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 03:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 04:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 05:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 06:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 07:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 08:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 09:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 10:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 11:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 12:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 13:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 14:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 15:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 16:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 17:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 18:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 19:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 20:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 21:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 22:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-05 23:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-06 07:07  Leonardo cert <11h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 08:07  Leonardo cert <10h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 09:07  Leonardo cert <9h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 10:07  Leonardo cert <8h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 11:07  Leonardo cert <7h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 11:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-06 12:07  Leonardo cert <6h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 12:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-06 13:07  Leonardo cert <5h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 13:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-06 14:07  Leonardo cert <4h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 14:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-06 15:07  Leonardo cert <3h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 15:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-06 16:07  Leonardo cert <2h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 16:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-06 17:07  Leonardo cert <1h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 17:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-06 18:07  Leonardo cert <0h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-06 18:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-10 05:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 06:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 07:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 08:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 09:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 10:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 11:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 12:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 13:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 14:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 15:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 16:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 17:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 18:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 19:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 20:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 21:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 22:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-10 23:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 00:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 01:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 02:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 03:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 04:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 05:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 06:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 07:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 08:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 09:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 10:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 11:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 12:07  local disk low: 79G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 13:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 14:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 15:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 16:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 17:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 18:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 19:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 20:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 21:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 22:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-11 23:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 00:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 01:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 02:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 03:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 04:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 05:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 06:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 07:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 08:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 09:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 10:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 11:07  local disk low: 78G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 12:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 13:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 14:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 15:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 16:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 17:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 18:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 19:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 20:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 21:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 22:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-12 23:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 00:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 01:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 02:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 03:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 04:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 05:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 06:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 07:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 08:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 09:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 10:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 11:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 12:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 13:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 14:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 15:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 16:07  local disk low: 77G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 17:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 18:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 19:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 20:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 21:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 22:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-13 23:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 00:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 01:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 02:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 03:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 04:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 05:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 06:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 07:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 08:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 09:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 10:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 11:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 12:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 13:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 14:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 15:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 16:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 17:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 18:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 19:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 20:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 21:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 22:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-14 23:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 00:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 01:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 02:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 03:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 04:07  local disk low: 76G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 05:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 06:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 07:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 08:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 09:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 10:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 11:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 12:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 13:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 14:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 15:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 16:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 17:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 18:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 19:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 20:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 21:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 22:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-15 23:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 00:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 01:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 02:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 03:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 04:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 05:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 06:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 07:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 08:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 09:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 10:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 11:07  local disk low: 75G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 12:07  local disk low: 29G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 13:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 14:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 15:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 16:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 17:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 18:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 19:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 20:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 21:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 22:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-16 23:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 00:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 01:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 02:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 03:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 04:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 05:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 06:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 07:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 08:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 09:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 10:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 11:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 12:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 13:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 14:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 15:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 16:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 17:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 18:07  local disk low: 31G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 19:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-17 19:07  local disk low: 33G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 20:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-17 20:07  local disk low: 38G free - ask user for cleanup (no-delete rule)
+- 2026-09-17 21:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-17 22:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-17 23:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-18 00:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-18 04:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-18 05:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-18 06:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-18 08:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-18 09:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-18 10:07  cluster jobs in FAILED/NODE_FAIL state - see ops/cluster_status.txt
+- 2026-09-18 11:29  D31: 39 job(s) COMPLETED -- next phase may be unblocked
+- 2026-09-18 11:46  D31: 2 job(s) COMPLETED -- next phase may be unblocked
+- 2026-09-18 16:46  D31: 17 job(s) COMPLETED -- next phase may be unblocked
+- 2026-09-18 17:12  D31: 5 job(s) COMPLETED -- next phase may be unblocked
+- 2026-09-18 17:46  D31: 1 job(s) COMPLETED -- next phase may be unblocked
+- 2026-09-18 20:46  D31: 13 job(s) COMPLETED -- next phase may be unblocked
+- 2026-09-19 07:07  Leonardo cert <11h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-19 08:07  Leonardo cert <10h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-19 09:07  Leonardo cert <9h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-19 09:12  D31: 6 job(s) COMPLETED -- next phase may be unblocked
+- 2026-09-19 09:46  D31: 55 job(s) COMPLETED -- next phase may be unblocked
+- 2026-09-19 10:07  Leonardo cert <8h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-19 11:07  Leonardo cert <7h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-19 12:07  Leonardo cert <6h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)
+- 2026-09-19 13:07  Leonardo cert <5h remaining - renew from laptop soon (ssh st07; ~/cineca_login.sh)

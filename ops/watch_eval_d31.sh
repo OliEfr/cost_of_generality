@@ -7,7 +7,7 @@
 # failure -- transition-based, for the reason recorded in docs/running_jobs.md: a
 # state-based grep re-fires every tick and trains the reader to ignore the channel.
 #
-# Counts the ARTIFACTS (_u200_s*.json), never the exit codes -- D16: a Kit job exits 0
+# Counts the ARTIFACTS (_u200d32_s*.json), never the exit codes -- D16: a Kit job exits 0
 # after a fatal error, so "COMPLETED" is not evidence that a slice was scored.
 set -u
 LOG=/home/admin_07/cost_of_generality/ops/eval_d31_progress.log
@@ -16,8 +16,8 @@ TOTAL=1080
 touch "$SEEN"
 while :; do
   SNAP=$(timeout 120 ssh leonardo '
-    echo "PARTIALS $(ls $WORK/cog/results/_partials/ 2>/dev/null | grep -c "_u200_s")"
-    echo "POOLED $(ls $WORK/cog/results/ 2>/dev/null | grep -c "_u200\.json$")"
+    echo "PARTIALS $(ls $WORK/cog/results/_partials/ 2>/dev/null | grep -c "_u200d32_s")"
+    echo "POOLED $(ls $WORK/cog/results/ 2>/dev/null | grep -c "_u200d32\.json$")"
     echo "QUEUE $(squeue -u $USER -h -n cog_eval -o "%T" | sort | uniq -c | tr "\n" " ")"
     sacct -X -S now-3days -n -o JobID,State --name cog_eval 2>/dev/null \
       | awk "/FAILED|TIMEOUT|NODE_FAIL|OUT_OF_ME|CANCELLED/ {print \"BAD \" \$1 \" \" \$2}"

@@ -11,6 +11,10 @@
 # still draining -- each run pools whatever has become complete and leaves the rest alone. That is
 # the point: a cell is poolable the moment its tenth slice lands, not when the last cell finishes.
 set -uo pipefail
+# Suffix of BOTH the slice inputs and the pooled output. Defaults to the corrected generation:
+# u200 and u200g10 are the two broken ones (D32) and pooling them is only ever a deliberate act,
+# so it has to be typed out.
+SUFFIX="${1:-u200d32}"
 REPO="${WORK}/cog/repo"
 PART="${WORK}/cog/results/_partials"
 RES="${WORK}/cog/results"
@@ -20,7 +24,7 @@ for TASK in T1 T2 T3; do
     for N in 10 25 50 100 200 400; do
       OUT=$(python3 "${REPO}/scripts/ops/pool_variant_eval.py" \
               --partials "${PART}" --results "${RES}" \
-              --task "${TASK}" --arm "${ARM}" --n "${N}" --step 080000 --suffix u200 2>&1)
+              --task "${TASK}" --arm "${ARM}" --n "${N}" --step 080000 --suffix "${SUFFIX}" 2>&1)
       RC=$?
       case "${RC}" in
         0) if echo "${OUT}" | grep -q POOL_SKIP; then SKIP=$((SKIP+1)); else OK=$((OK+1)); echo "${OUT}"; fi ;;
@@ -30,5 +34,5 @@ for TASK in T1 T2 T3; do
     done
   done
 done
-echo "=== pooled=${OK} already_present=${SKIP} incomplete=${INC} errors=${BAD} of 108 ==="
+echo "=== suffix=${SUFFIX} pooled=${OK} already_present=${SKIP} incomplete=${INC} errors=${BAD} of 108 ==="
 [ "${BAD}" -eq 0 ] || exit 1

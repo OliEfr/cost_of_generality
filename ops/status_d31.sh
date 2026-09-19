@@ -35,9 +35,9 @@ SNAP=$(ssh -o BatchMode=yes leonardo '
   grep -h "VALIDATE_OK" $WORK/cog/logs/cog_convert-*.out 2>/dev/null \
     | awk "{print \$2}" | grep -E "^(AC|BC|T2_AC|T2_BC|T3_AC|T3_BC)$" | sort -u | sed "s/^/DS /"
   echo "###PARTIALS"
-  ls $WORK/cog/results/_partials/*_u200_s*.json 2>/dev/null | wc -l
+  ls $WORK/cog/results/_partials/*_u200d32_s*.json 2>/dev/null | wc -l
   echo "###POOLED"
-  ls $WORK/cog/results/eval_*_u200.json 2>/dev/null | wc -l
+  ls $WORK/cog/results/eval_*_u200d32.json 2>/dev/null | wc -l
   echo "###DISK"
   df -BG --output=target,avail $WORK $FAST 2>/dev/null | tail -2
 ' 2>/dev/null)

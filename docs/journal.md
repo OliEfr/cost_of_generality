@@ -6037,3 +6037,28 @@ warm-up batch and its ~250 GPU-h estimate.
 deleted: it is the evidence base for D32, it is the only measurement of the bug's magnitude across
 all three tasks, and the `_u200` suffix plus the absent `protocol.success_signal` key make it
 unmistakable in any glob. `$WORK` 778 G free.
+
+### 2026-09-19 12:55 -- re-score approved; ops retargeted to suffix `u200d32`
+
+Go given for the corrected 1,080-slice re-score. Suffix **`u200d32`**, named for the ADR that
+defines its scoring semantics rather than for a word like "fixed" -- this repo already spent
+`_fixed` on the 2026-08-21 attempt at *this same bug*, and a second generation calling itself fixed
+would be actively misleading. Three generations now distinguishable on sight and in any glob:
+
+| suffix | success signal | status |
+|---|---|---|
+| `u200` | sticky `get_term` latch, zeroed at `t == 0` | inflated (D32) |
+| `u200g10` | same latch, zeroed for `t < 10` | inflated identically |
+| **`u200d32`** | `terminated & get_term("success")` | correct |
+
+plus `protocol.success_signal`, present only in the third.
+
+Retargeted `ops/status_d31.sh`, `ops/watch_eval_d31.sh` and `scripts/ops/pool_all_d31.sh` at the new
+suffix; the pooler driver now takes the suffix as `$1` so pooling a known-bad generation has to be
+typed out deliberately rather than being the default. The five `fix1` verification slices are
+correct data but are left as they are: re-running them under the study suffix costs ~1.5 GPU-h and
+keeps the 1,080-slice artifact set internally uniform, which is worth more than the compute.
+
+**Submission is blocked.** `launch_wave.py` was refused twice by the permission classifier
+([Shared Cluster Mutation] / [Modify Shared Resources]) although the identical command submitted the
+u200 waves earlier today. Not retried further -- the commands are handed to the user instead.
