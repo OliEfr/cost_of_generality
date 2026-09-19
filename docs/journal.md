@@ -5962,3 +5962,43 @@ sized to the mechanism and the new assertion fires on the mechanism, not on the 
 
 The 240 still-running `u200` slices were left to finish rather than cancelled: they are ~4 GPU-h of
 already-committed compute and they are the evidence trail for D32.
+
+### 2026-09-19 11:25 -- the 10-step guard failed; the real cause is a sticky termination buffer
+
+The D32 fix did not work, and it failed in the most informative way available: `earliest_success_step
+== the guard`, exactly, at both guard values, with SR unchanged to three decimals (T2/BC/n200 stayed
+1.000, T1/L1/n100 stayed 0.900). The phantom did not shrink, it moved to the far edge of the window.
+And all 19 episodes latching at t=10 in T2/BC/s0 had the drawer **shut** at that instant -- one of
+them never opened the drawer or lifted anything for the whole episode (`max_open=0.0`,
+`max_lift=0.0003`) and still scored a success.
+
+So "the buffer is stale for k steps" was wrong. Reading
+`third_party/IsaacLab/.../managers/termination_manager.py` gave the answer in one pass:
+`compute()` writes `_term_dones` **only for rows where a term fired**, never clears it otherwise, and
+`reset()` does not touch it. `get_term("success")` is therefore a sticky, cross-episode record of
+*the last reason this env's episode ended* -- once an env succeeds it reads True forever, through
+resets, in every later batch. `_terminated_buf` is cleared at the top of every `compute()`, which is
+exactly why `terminated`, `finished`, `alive` and all the stage timestamps were correct all along
+while the success flag was not.
+
+Fix: `succ_now = terminated & env.termination_manager.get_term("success")`. Exact rather than
+defensive -- at a step where `terminated` is true, `compute()` has just overwritten `_term_dones`
+one-hot for those rows, so `get_term` names the term that fired *this* step. Full reasoning and the
+corrected blast radius in the **D32 amendment**.
+
+**The blast radius is now sharper, and smaller, than D32 first assumed.** In batch 0 `_term_dones`
+is all false, so old and new code agree exactly. That means the **L3b diagonal cells are correct as
+published** (one batch per process, always batch 0) and flat cells are correct in batch 0 and
+inflated in batches 1-4. The asymmetry conclusion survives and tightens: the published surface
+overstates L0/L1/L2 against a correct L3b, so Finding 4's "the object axis dominates" is partly an
+artefact of comparing inflated flat cells against clean diagonal ones.
+
+Five verification slices are in flight under suffix `fix1` (`58196648/49/51/53/54`), chosen to span
+the range: T2/BC/n200 read 1.000 with `object_over_drawer` 0.925, T2/AC/n400 read 0.250 with
+`over_drawer` 0.165, and T1/L1/n100 is the protocol control against a published 0.86.
+
+**Lesson, which supersedes the one I wrote two hours ago.** I wrote then that a fix verified against
+the symptom's location will move a bug rather than remove it -- and then did exactly that again, by
+sizing a second guard to a second observed step number without reading the thirty lines of
+`compute()` that produced it. Both fixes were workarounds shaped to a symptom. Read the mechanism
+first; it was cheaper than either attempt.

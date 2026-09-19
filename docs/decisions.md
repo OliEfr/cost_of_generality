@@ -1153,3 +1153,77 @@ wrong and nothing about it looks wrong.
   lands far *below*, the guard is now suppressing something real and 10 is too wide.
 - Re-score the pre-D31 flat baselines too, or the additive surface keeps its asymmetry. The
   `u200g10` sweep already covers L0/L1/L2/L3b for all three tasks, so this is satisfied by it.
+
+### D32 amendment -- 2026-09-19, same day: the mechanism above is wrong, and so was the first fix
+
+The evidence in D32 stands; the **explanation does not**, and the 10-step guard it prescribed does
+not work. Recorded rather than rewritten, because the wrong model was load-bearing for two fixes and
+the way it failed is the useful part.
+
+**What the 10-step guard did.** Four verification slices, suffix `u200g10`:
+
+| cell | SR under `u200` | SR under `u200g10` | earliest success |
+|---|---|---|---|
+| T2 BC n200 s0 | 1.000 | 1.000 | 10 |
+| T2 BC n200 s1 | 1.000 | 1.000 | 10 |
+| T1 L1 n100 s0 | 0.900 | 0.900 | 10 |
+| T1 L1 n100 s1 | 0.900 | 0.900 | 10 |
+
+`earliest == guard` exactly, at both guard values, with the SR unchanged to three decimals. The
+phantom did not shrink; it moved to the far edge of the window. And of the 19 episodes latching at
+t=10 in T2/BC/s0, **all 19 had the drawer shut at that instant** (`t_open` 145-259, or -1 for one
+episode that never opened the drawer or lifted anything at all: `max_open=0.0`, `max_lift=0.0003`,
+and still scored a success).
+
+**The actual mechanism.** `TerminationManager.compute()`:
+
+```python
+self._truncated_buf[:] = False      # cleared every call
+self._terminated_buf[:] = False     # cleared every call
+for i, term_cfg in enumerate(self._term_cfgs):
+    value = term_cfg.func(self._env, **term_cfg.params)
+    ...
+    rows = value.nonzero(as_tuple=True)[0]
+    if rows.numel() > 0:
+        self._term_dones[rows] = False      # written ONLY for rows that fired
+        self._term_dones[rows, i] = True
+```
+
+`_term_dones` is written only for envs where some term fired, is never cleared otherwise, and
+`TerminationManager.reset()` does not touch it -- it only reads the column means for logging.
+So `get_term("success")` is not a per-step signal at all: it is a **sticky, cross-episode record of
+the last reason this env's episode ended**. Once an env succeeds it reads True forever, through
+resets, in every subsequent batch. `_terminated_buf` is cleared at the top of every `compute()`,
+which is why the `terminated` flag returned by `env.step()` was always fresh and why `finished`,
+`alive` and the stage timestamps were all correct throughout.
+
+This predicts every observation, including the ones that made the "stale for k steps" model look
+right: batch 0 clean (nothing has fired yet), latch at whatever step suppression stops (it is
+latched at *all* of them), and genuine late successes still detected (in envs that had not
+previously succeeded).
+
+**The fix.** `succ_now = terminated & env.termination_manager.get_term("success")`. Exact, not
+defensive: at a step where `terminated` is true, `compute()` has just overwritten `_term_dones`
+one-hot for those rows, so `get_term` names the term that fired *this* step; at every other step the
+conjunction is false whatever the latch holds. Generic over the three tasks and needs no second copy
+of the success predicate. `PHANTOM_GUARD_STEPS` is retired to 0 and `protocol.success_signal` is
+stamped into each result, so the three generations -- no key (`u200`, 1-step guard), `guard=10`
+(`u200g10`), and `success_signal` present (correct) -- are distinguishable on sight.
+
+**Consequence for the blast radius, which is now smaller and sharper than D32 assumed.** In batch 0
+of any process `_term_dones` is all false, so old and new code agree *exactly*: the sticky flag and
+the fresh one first become true at the same step. Therefore
+
+- **the L3b diagonal cells are correct as published** -- one batch per process, always batch 0;
+- **flat cells' batch 0 is correct** and their batches 1-4 are inflated;
+- **every `u200` and `u200g10` slice is inflated**, because the D31 warm-up makes every scored batch
+  a batch >= 1.
+
+So D32's asymmetry conclusion holds and tightens: the published surface overstates L0/L1/L2 against
+a correct L3b, and Finding 4's "the object axis dominates" is partly an artefact of comparing
+inflated flat cells with clean diagonal ones.
+
+**Lesson, superseding the one in the journal.** The August fix and the 10-step fix failed the same
+way: both were sized to the *symptom's location* (t == 0, then t < 10) without reading the code that
+produced it. Thirty lines of `TerminationManager.compute()` answered in one pass what two rounds of
+guard-widening could not. Read the mechanism before sizing a workaround to it.

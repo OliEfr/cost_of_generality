@@ -128,11 +128,12 @@ def obs_to_batch(obs, device):
     return batch
 
 
-# Steps at the head of each batch during which env.termination_manager.get_term("success") is
-# treated as stale. See the carryover comment in the rollout loop. Not 2 (the observed staleness)
-# but 10, because the measurement can bound the staleness from below and not from above, and the
-# cost of over-guarding is zero: genuine success needs >= 150 steps in every task.
-PHANTOM_GUARD_STEPS = 10
+# Retired. A step window was the wrong shape of fix: the stale flag is latched for the whole
+# episode, not for k steps, so any window simply moves the phantom latch to its far edge (measured:
+# guard 1 -> earliest success 1, guard 10 -> earliest success 10, SR unchanged to three decimals).
+# Kept as 0 so the key stays in every result and a reader can tell corrected files from the two
+# generations of broken ones.
+PHANTOM_GUARD_STEPS = 0
 # Any success latching before this is physically impossible and means the guard has been outrun
 # by a new failure mode. Loud, because this bug has now escaped twice by being silent.
 IMPLAUSIBLE_SUCCESS_STEP = 100
@@ -155,6 +156,9 @@ def main():
     # uncorrected one -- results written before 2026-09-19 have no such key and were scored with
     # a 1-step guard, which is the bug.
     proto_out["phantom_guard_steps"] = PHANTOM_GUARD_STEPS
+    # The signal the SR was computed from. u200 results have no such key and were scored off the
+    # sticky get_term() latch; u200g10 has guard_steps=10 and the same latch one window later.
+    proto_out["success_signal"] = "terminated & get_term('success')"
 
     # Stage instrumentation reads sim state the policy never sees; it cannot alter the
     # rollout. Thresholds mirror the success termination (min_drawer_open=0.15) and the
@@ -303,28 +307,28 @@ def main():
                 batch = pre(raw)
                 action = post(policy.select_action(batch))
             obs, _, terminated, truncated, _ = env.step(action.to(env.device))
-            succ_now = env.termination_manager.get_term("success")
-            # BATCH-BOUNDARY CARRYOVER BUG (found 2026-08-21, RE-OPENED 2026-09-19): after a
-            # manual env.reset(), get_term("success") keeps returning the previous batch's
-            # value, so every env that genuinely succeeded in batch b-1 latches a phantom
-            # success at the start of batch b.
+            # THE SUCCESS SIGNAL. `terminated` is the only fresh one: TerminationManager.compute()
+            # clears _terminated_buf at the top of every call. get_term() reads _term_dones, which
+            # compute() writes ONLY for rows where a term fired --
             #
-            # The 2026-08-21 fix zeroed t == 0 only, and that was too narrow: the term is
-            # still stale at t == 1. Measured on the D31 T2 sweep (2,400 episodes with
-            # --stages, which timestamps each latch), t_success takes exactly two values --
-            # 1 (907 episodes) and >= 590 (395) -- with nothing in between, and in the three
-            # pre-D31 five-batch runs batch 0 has ZERO early latches while every later batch
-            # is full of them, matching batch b-1's success count exactly on the first
-            # transition (16->16, 2->2, 5->5). That is the carryover, one step further along
-            # than anyone looked in August.
+            #     rows = value.nonzero(as_tuple=True)[0]
+            #     if rows.numel() > 0:
+            #         self._term_dones[rows] = False
+            #         self._term_dones[rows, i] = True
             #
-            # Guard a WINDOW rather than a step count, because the data cannot bound the
-            # staleness from above: once success latches at t == 1 the timestamp is never
-            # updated, so a stale t == 2 would be invisible. The window is safe at both ends
-            # -- the shortest source demo is >= 150 steps and the earliest genuine success
-            # ever observed is 590, so nothing real can happen inside it.
-            if t < PHANTOM_GUARD_STEPS:
-                succ_now = torch.zeros_like(succ_now)
+            # -- and never clears otherwise, while reset() does not touch it at all. So
+            # get_term("success") is a STICKY, CROSS-EPISODE record of "the last reason this env's
+            # episode ended", not a per-step signal: once an env succeeds it reads True forever,
+            # through resets, in every later batch. That is the whole bug (D32), and it is why the
+            # 2026-08-21 and the first 2026-09-19 fix both failed -- they suppressed the latched
+            # flag for a window of steps, and it was still latched on the far side of the window.
+            #
+            # AND-ing with `terminated` is exact rather than defensive: at a step where terminated
+            # is true, compute() has just overwritten _term_dones one-hot for exactly those rows,
+            # so get_term names the term that fired THIS step; at any other step the conjunction is
+            # false whatever the stale latch says. Generic across all three tasks, and it needs no
+            # duplicate copy of the success predicate.
+            succ_now = terminated & env.termination_manager.get_term("success")
             if stages_on:
                 alive = ~finished  # same latching semantics as the official success
                 jpos = cab.data.joint_pos[:, jid]

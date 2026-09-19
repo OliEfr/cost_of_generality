@@ -1190,3 +1190,12 @@ submitted_at,stage,task,arm,key,stem,n_demos,slice,seed,trials,sbatch,walltime,s
 2026-09-19T10:50:09,eval,T2,L3b,L3b,,400,7,,,slurm/eval.sbatch,02:00:00,58194714,launch_wave.py | suffix=u200 warmup_batches=1 warmup_max_steps=0 slices=10
 2026-09-19T10:50:10,eval,T2,L3b,L3b,,400,8,,,slurm/eval.sbatch,02:00:00,58194719,launch_wave.py | suffix=u200 warmup_batches=1 warmup_max_steps=0 slices=10
 2026-09-19T10:50:13,eval,T2,L3b,L3b,,400,9,,,slurm/eval.sbatch,02:00:00,58194720,launch_wave.py | suffix=u200 warmup_batches=1 warmup_max_steps=0 slices=10
+2026-09-19T10:58:02,eval,T2,BC,BC,,200,0,,,slurm/eval.sbatch,02:00:00,58195006,launch_wave.py | suffix=u200g10 warmup_batches=1 warmup_max_steps=0 slices=2
+2026-09-19T10:58:07,eval,T2,BC,BC,,200,1,,,slurm/eval.sbatch,02:00:00,58195025,launch_wave.py | suffix=u200g10 warmup_batches=1 warmup_max_steps=0 slices=2
+2026-09-19T10:58:10,eval,T1,L1,L1,,100,0,,,slurm/eval.sbatch,01:00:00,58195026,launch_wave.py | suffix=u200g10 warmup_batches=1 warmup_max_steps=0 slices=2
+2026-09-19T10:58:14,eval,T1,L1,L1,,100,1,,,slurm/eval.sbatch,01:00:00,58195031,launch_wave.py | suffix=u200g10 warmup_batches=1 warmup_max_steps=0 slices=2
+2026-09-19T11:25:37,eval,T2,BC,BC,,200,0,,,slurm/eval.sbatch,02:00:00,58196648,launch_wave.py | suffix=fix1 warmup_batches=1 warmup_max_steps=0 slices=2
+2026-09-19T11:25:38,eval,T2,BC,BC,,200,1,,,slurm/eval.sbatch,02:00:00,58196649,launch_wave.py | suffix=fix1 warmup_batches=1 warmup_max_steps=0 slices=2
+2026-09-19T11:25:41,eval,T1,L1,L1,,100,0,,,slurm/eval.sbatch,01:00:00,58196651,launch_wave.py | suffix=fix1 warmup_batches=1 warmup_max_steps=0 slices=2
+2026-09-19T11:25:42,eval,T1,L1,L1,,100,1,,,slurm/eval.sbatch,01:00:00,58196653,launch_wave.py | suffix=fix1 warmup_batches=1 warmup_max_steps=0 slices=2
+2026-09-19T11:25:45,eval,T2,AC,AC,,400,0,,,slurm/eval.sbatch,02:00:00,58196654,launch_wave.py | suffix=fix1 warmup_batches=1 warmup_max_steps=0 slices=1
