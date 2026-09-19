@@ -58,12 +58,21 @@ if [ ! -s "$STATE" ]; then
 fi
 NEW=$(comm -13 <(sort "$STATE") /tmp/.d31_term.$$)
 if [ -n "$NEW" ]; then
+  BAD=$(echo "$NEW" | grep -E "FAILED|TIMEOUT|NODE_FAIL|OUT_OF_ME")
+  NBAD=$(echo "$NEW" | grep -cE "FAILED|TIMEOUT|NODE_FAIL|OUT_OF_ME")
+  NDONE=$(echo "$NEW" | grep -c "COMPLETED")
+  # COMPLETED is SUMMARISED, the bad states are LISTED. During the eval sweep an hour is
+  # 100+ finished slices, and printing each one buries the single FAILED line in the middle
+  # of a screen of good news -- the same alert-fatigue failure the transition check was
+  # added to fix, just relocated from "every hour" to "every line". The COMPLETED job ids
+  # stay in $STATE and in ops/status_d31.log; only the terminal display is condensed.
   echo "-- NEW terminal states --"
-  echo "$NEW" | sed 's/^/   /'
-  BAD=$(echo "$NEW" | grep -cE "FAILED|TIMEOUT|NODE_FAIL|OUT_OF_ME")
-  DONE=$(echo "$NEW" | grep -c "COMPLETED")
-  [ "${BAD:-0}" -gt 0 ] && echo "- $TS  D31: $BAD job(s) ended badly -- see ops/status_d31.log" >> "$OPS/ALERTS.md"
-  [ "${DONE:-0}" -gt 0 ] && echo "- $TS  D31: $DONE job(s) COMPLETED -- next phase may be unblocked" >> "$OPS/ALERTS.md"
+  [ "${NDONE:-0}" -gt 0 ] && echo "   ${NDONE} COMPLETED (ids in $STATE)"
+  [ "${NBAD:-0}" -gt 0 ] && { echo "   ${NBAD} ended BADLY:"; echo "$BAD" | sed 's/^/     /'; }
+  [ "${NBAD:-0}" -gt 0 ] && echo "- $TS  D31: $NBAD job(s) ended badly -- see ops/status_d31.log" >> "$OPS/ALERTS.md"
+  # No ALERTS.md line for COMPLETED during a sweep: 1,080 slices finishing normally is the
+  # expected case, not an event. The "-- unblocked --" section below is what says a phase
+  # is ready, and it reads artifacts rather than job states.
 else
   echo "-- no new terminal states --"
 fi
