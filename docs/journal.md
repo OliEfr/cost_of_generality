@@ -5841,3 +5841,46 @@ the plan projected. The prune-after-eval step is still not needed.
 **Phase 7 (the eval sweep) is now unblocked**: 36 new cells + 72 re-measured baselines, 10 slices
 each = 1,080 jobs + 108 poolers, 173-276 GPU-h. Not launched -- that is the study's single largest
 expenditure and it waits for an explicit go.
+
+### 2026-09-19 09:30 -- Phase 7 begins: eval smoke passes, 360 new-arm slices in flight
+
+Launched on an explicit go, in the order agreed: one smoke slice, then the two new arms, then the
+baselines.
+
+**Smoke (`58185744`, T1/AC/n100/slice 0).** `EVAL_OK` in 10:56, `EVAL_WALL_SECONDS=640`. The JSON is
+right in every field the D31 protocol turns on: env `Cog-CupPlace-ACv00-IK-Rel-Visuomotor-v0`,
+checkpoint `t1_AC_n100_s0/checkpoints/080000`, `protocol.warmup = {batches: 1, seed: 4900,
+max_steps: 600}`, `base_seed 5000`, 20 scored episodes with per-episode outcomes. So the warm-up
+block is recorded in the artifact, which is the thing that stops a result being confused with a
+differently-warmed one.
+
+SR was 20/20. Worth writing down that this is *above* the additive prediction and that this is not a
+red flag: L1 n100 = 0.86 and C costs 0.12 at n100 in the additive direction (L2 0.82 -> L3b 0.70), so
+an additive AC would sit near 0.74. One variant, 20 episodes, Wilson CI [0.83, 1.0] -- the whole
+point of the study is that the last-marginal need not equal the first-marginal, and a single slice
+cannot distinguish "the LOO marginal is smaller" from variant-level noise. Pool all ten before
+reading anything into it.
+
+**New arms submitted: 360 jobs** (T1 `58186548`-, T3 `58187…`, T2 `58188…`; ledgered in
+`experiments/cluster_jobs.csv`). Absorption was far better than the training wave: 36 T1/AC slices
+were already `COMPLETED` within ~15 min of submit, all at 9:14-11:22 elapsed, against a 01:00:00
+walltime. One job exited in 00:00:04 -- that is `EVAL_SKIP` on the smoke's own cell, i.e. the
+artifact-based idempotency doing its job on a re-submitted slice.
+
+Marker/artifact cross-check held: 36 `_u200_s*.json` under `$WORK/cog/results/_partials/` against
+36 producing jobs + 1 skip.
+
+**Before the 720 baseline jobs, two pre-flights rather than one.** All 72 baseline checkpoints
+verified present at step 080000 (`have=72 missing=0`) -- cheap, and it is the failure that would
+otherwise surface 720 jobs at a time. Then two smoke slices (`58188477` T1/L1/n100,
+`58188479` T1/L3b/n100) to exercise the two code paths the new arms do not: the flat-arm env id, and
+the L3b->L3 gym-key map added in `80a9d8c`. The map is statically pinned by `check_levels.py`, but
+static pinning says the key exists, not that the sbatch resolves it at runtime. T1/L1/n100 doubles as
+the plan's protocol control: its published SR is 0.86, and the re-measure has to land inside that
+binomial CI or the G6 warm-up choice is wrong.
+
+**Monitoring, all three layers (rule 10):** tmux session `eval_d31` running
+`ops/watch_eval_d31.sh` (5-min poll, one progress line per tick, transition-based failure lines,
+exits when 1080/1080 slices have artifacts and the queue is empty); a Monitor armed on the two
+baseline smokes; the hourly `ops/status_d31.sh`, which already counts `_u200_s` partials against
+1080. The tmux layer counts artifacts, not `sacct` states, for the D16 reason.
