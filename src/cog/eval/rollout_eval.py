@@ -128,6 +128,16 @@ def obs_to_batch(obs, device):
     return batch
 
 
+# Steps at the head of each batch during which env.termination_manager.get_term("success") is
+# treated as stale. See the carryover comment in the rollout loop. Not 2 (the observed staleness)
+# but 10, because the measurement can bound the staleness from below and not from above, and the
+# cost of over-guarding is zero: genuine success needs >= 150 steps in every task.
+PHANTOM_GUARD_STEPS = 10
+# Any success latching before this is physically impossible and means the guard has been outrun
+# by a new failure mode. Loud, because this bug has now escaped twice by being silent.
+IMPLAUSIBLE_SUCCESS_STEP = 100
+
+
 def main():
     proto = json.load(open(args_cli.protocol))
     num_envs, batches, base_seed = proto["num_envs"], proto["batches"], proto["base_seed"]
@@ -141,6 +151,10 @@ def main():
         "seed": args_cli.warmup_seed,
         "max_steps": warmup_max_steps if args_cli.warmup_batches else 0,
     }
+    # Stamped into every result so a corrected number can never be silently compared against an
+    # uncorrected one -- results written before 2026-09-19 have no such key and were scored with
+    # a 1-step guard, which is the bug.
+    proto_out["phantom_guard_steps"] = PHANTOM_GUARD_STEPS
 
     # Stage instrumentation reads sim state the policy never sees; it cannot alter the
     # rollout. Thresholds mirror the success termination (min_drawer_open=0.15) and the
@@ -260,6 +274,12 @@ def main():
                 batch_embs = instr_embs[idx_list]
         success = torch.zeros(num_envs, dtype=torch.bool, device=env.device)
         finished = torch.zeros(num_envs, dtype=torch.bool, device=env.device)
+        # When each episode's success first latched, recorded for EVERY task and not only when
+        # --stages is on. This is the instrumentation that would have caught the 2026-09-19
+        # carryover eight months earlier: the bug was visible only in T2's stage timestamps, on
+        # three cells nobody re-read, and was invisible in T1/T3 because a bare success flag
+        # cannot say WHEN. It costs one int per episode.
+        t_first_succ = torch.full((num_envs,), -1, dtype=torch.long, device=env.device)
         if stages_on:
             cab, obj = env.scene["cabinet"], env.scene["object"]
             jid = cab.find_joints(["drawer_top_joint"])[0][0]
@@ -284,14 +304,26 @@ def main():
                 action = post(policy.select_action(batch))
             obs, _, terminated, truncated, _ = env.step(action.to(env.device))
             succ_now = env.termination_manager.get_term("success")
-            # BATCH-BOUNDARY CARRYOVER BUG (found 2026-08-21): on the FIRST step after a
-            # manual env.reset(), get_term("success") still returns the previous batch's
+            # BATCH-BOUNDARY CARRYOVER BUG (found 2026-08-21, RE-OPENED 2026-09-19): after a
+            # manual env.reset(), get_term("success") keeps returning the previous batch's
             # value, so every env that genuinely succeeded in batch b-1 latches a phantom
-            # success at t=0 of batch b (verified: 20/20 batch transitions, phantom
-            # episodes never even lift the object). Genuine success at t=0 is physically
-            # impossible in all three tasks (shortest demo >= 150 steps), so drop it.
-            # All evals before this fix are affected; see docs/journal.md 2026-08-21.
-            if t == 0:
+            # success at the start of batch b.
+            #
+            # The 2026-08-21 fix zeroed t == 0 only, and that was too narrow: the term is
+            # still stale at t == 1. Measured on the D31 T2 sweep (2,400 episodes with
+            # --stages, which timestamps each latch), t_success takes exactly two values --
+            # 1 (907 episodes) and >= 590 (395) -- with nothing in between, and in the three
+            # pre-D31 five-batch runs batch 0 has ZERO early latches while every later batch
+            # is full of them, matching batch b-1's success count exactly on the first
+            # transition (16->16, 2->2, 5->5). That is the carryover, one step further along
+            # than anyone looked in August.
+            #
+            # Guard a WINDOW rather than a step count, because the data cannot bound the
+            # staleness from above: once success latches at t == 1 the timestamp is never
+            # updated, so a stale t == 2 would be invisible. The window is safe at both ends
+            # -- the shortest source demo is >= 150 steps and the earliest genuine success
+            # ever observed is 590, so nothing real can happen inside it.
+            if t < PHANTOM_GUARD_STEPS:
                 succ_now = torch.zeros_like(succ_now)
             if stages_on:
                 alive = ~finished  # same latching semantics as the official success
@@ -319,6 +351,7 @@ def main():
                 over |= over_now & alive
                 max_open = torch.where(alive, torch.maximum(max_open, jpos), max_open)
                 max_lift = torch.where(alive, torch.maximum(max_lift, opos[:, 2] - obj_z0), max_lift)
+            t_first_succ[succ_now & ~success & ~finished] = t
             success |= succ_now & ~finished
             finished |= terminated | truncated
             if bool(finished.all()):
@@ -338,6 +371,7 @@ def main():
                     "t_lift": int(t_lift[i]),
                     "t_over": int(t_over[i]),
                     "t_success": int(t_succ[i]),
+                    "t_first_success": int(t_first_succ[i]),
                     **({"instruction_index": idx_list[i]} if idx_list else {}),
                 }
                 for i in range(num_envs)
@@ -345,6 +379,7 @@ def main():
         else:
             outcomes.extend(
                 {"batch": b, "env": i, "success": bool(success[i]),
+                 "t_first_success": int(t_first_succ[i]),
                  **({"instruction_index": idx_list[i]} if idx_list else {})}
                 for i in range(num_envs)
             )
@@ -377,6 +412,20 @@ def main():
         result["per_instruction"] = {
             str(j): {"successes": s[0], "episodes": s[1]} for j, s in sorted(per.items())
         }
+    # A success inside the implausible window means the guard has been outrun. Loud and recorded,
+    # because this bug has now escaped twice by failing silently.
+    early = [o["t_first_success"] for o in outcomes
+             if o["success"] and 0 <= o["t_first_success"] < IMPLAUSIBLE_SUCCESS_STEP]
+    result["earliest_success_step"] = min(
+        [o["t_first_success"] for o in outcomes if o["success"] and o["t_first_success"] >= 0],
+        default=-1,
+    )
+    if early:
+        result["PHANTOM_SUSPECT"] = len(early)
+        print(f"[eval] *** WARNING: {len(early)} success(es) latched before step "
+              f"{IMPLAUSIBLE_SUCCESS_STEP} (steps {sorted(set(early))[:10]}) -- the phantom guard "
+              f"of {PHANTOM_GUARD_STEPS} steps did not cover the carryover. This result is "
+              f"SUSPECT. ***", flush=True)
     if stages_on:
         result["stages"] = {
             key: sum(o[key] for o in outcomes) / n

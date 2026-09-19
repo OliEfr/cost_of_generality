@@ -5919,3 +5919,46 @@ Also fixed the hourly check while the wave ran: it printed every COMPLETED trans
 an eval sweep is 100+ lines an hour with any FAILED line buried in the middle of them. Now COMPLETED
 is a count and only bad states are listed (`2d5842d`). Same alert-fatigue failure as the pre-existing
 watchdog bug from 2026-08-19, one level down: fixed "re-fires every hour", missed "prints every line".
+
+### 2026-09-19 11:30 -- the phantom-success guard is one step too narrow (D32); the sweep needs re-scoring
+
+Found while verifying the one thing in the pooler that had never run before: the T2 `stages` block.
+It pooled correctly -- and the first pooled episode read `t_success: 1` next to `t_open: 155`,
+`t_lift: 393`, `t_over: 620`. Success cannot precede the drawer opening.
+
+It is the August batch-boundary carryover, still live one step further along. Full reasoning,
+evidence tables and consequences in **D32**; the short version:
+
+- `t_success` across 2,400 T2 episodes is bimodal at **1** (907) and **>= 590** (395), nothing between.
+- In the three pre-D31 five-batch runs, batch 0 has **zero** early latches and every later batch is
+  full of them, matching batch *b−1*'s success count exactly on the first transition.
+- The phantom episodes are not inert: median `max_object_lift` 0.450 vs 0.460 for genuine successes.
+  So nothing about the aggregate looks wrong, which is why it survived four weeks.
+
+**What this costs.** Every `u200` result is overstated, because the warm-up batch makes every scored
+batch a batch *b>=1*. It is not correctable post hoc -- the timestamp stops at the phantom latch, so
+a carried-over env that later genuinely succeeded is unrecoverable. The 108 checkpoints are fine;
+this is a scoring bug, so nothing needs retraining.
+
+**The part that matters beyond this study:** the published additive surface is affected
+*asymmetrically*. Flat cells run five batches per process (batch 0 clean, 1-4 inflated, ~80 % of
+episodes overstated); the L3b diagonal runs one batch per process and is clean. So L0/L1/L2 are
+inflated relative to L3b, which inflates the apparent cost of axis C -- and Finding 4 is exactly the
+claim that axis C dominates. That finding now has two independent confounds pointing the same way
+and cannot be restated until the re-score lands.
+
+**Fix** (`src/cog/eval/rollout_eval.py`): guard a 10-step window instead of one step, because the
+measurement bounds the staleness from below but not from above -- once success latches the timestamp
+stops moving, so a stale `t == 2` would be invisible. Over-guarding is free at a >= 150-step floor.
+Plus the instrumentation whose absence let the bug outlive its own fix: `t_first_success` recorded
+for **every** task rather than only under `--stages`, `earliest_success_step` in every result, a
+`PHANTOM_SUSPECT` flag and a loud warning under step 100, and `protocol.phantom_guard_steps` stamped
+into each result so corrected and uncorrected numbers can never be pooled together.
+
+**Lesson, written down because it generalises.** The August fix was verified against the symptom it
+was found by (`t == 0`) rather than against the mechanism (a stale buffer of unknown depth). A fix
+checked only where the bug was first seen will move a bug rather than remove it. The new guard is
+sized to the mechanism and the new assertion fires on the mechanism, not on the step number.
+
+The 240 still-running `u200` slices were left to finish rather than cancelled: they are ~4 GPU-h of
+already-committed compute and they are the evidence trail for D32.

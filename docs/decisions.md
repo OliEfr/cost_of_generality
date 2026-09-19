@@ -1074,3 +1074,82 @@ the invariant the sbatch depends on cannot be silently inverted by a later renam
 **Not affected:** `configs/eval_sets/*.json` are pose *snapshots* consumed by analysis
 (`success_vs_pose.py`), not inputs to `rollout_eval.py`, which reproduces the benchmark by seeding
 the env from `protocol.json`. The absence of an `L3b.json` is therefore correct, not a second bug.
+
+## D32 -- 2026-09-19: the phantom-success guard was one step too narrow; re-score the sweep
+
+**Status:** accepted. Supersedes the 2026-08-21 fix, which is now known to be incomplete.
+
+### What happened
+
+`rollout_eval.py` reads `env.termination_manager.get_term("success")` after each `env.step()`. After
+a manual `env.reset()` that term is STALE: it still reports the previous batch's value, so every env
+that succeeded in batch *b−1* latches a phantom success at the head of batch *b*. D-2026-08-21
+diagnosed this and zeroed `succ_now` at `t == 0`.
+
+The term is still stale at `t == 1`. The August fix moved the symptom by one step instead of
+removing it, and nothing noticed for four weeks because a bare success flag cannot say *when* a
+success latched -- only T2's `--stages` path timestamps it, and `--stages` had run on three cells
+that nobody re-read.
+
+### The evidence
+
+Two independent measurements, both from data already on disk:
+
+1. **D31 sweep, T2, 2,400 episodes.** `t_success` takes exactly two values: **1** (907 episodes) and
+   **>= 590** (395). Nothing in between. A bimodal distribution with a 589-step gap is not a
+   behavioural mode.
+2. **The three pre-D31 five-batch runs.** Early latches per batch:
+
+   | file | b0 | b1 | b2 | b3 | b4 |
+   |---|---|---|---|---|---|
+   | `eval_T2_L0_n400_..._stages` | 0/16 | 16/19 | 19/20 | 16/20 | 15/19 |
+   | `eval_T2_L1_n400_..._stages` | 0/2 | 2/4 | 2/5 | 4/7 | 3/8 |
+   | `eval_T2_L2_n400_..._stages` | 0/5 | 5/10 | 6/12 | 8/11 | 3/9 |
+
+   Batch 0 -- the only batch with no predecessor -- is clean in all three. The first transition
+   matches batch *b−1*'s success count exactly (16→16, 2→2, 5→5).
+
+The phantom episodes are *not* the inert ones of the August note: their median `max_object_lift` is
+0.450 against 0.460 for genuine successes, and 622 of 907 reach the drawer. They are real attempts
+that were credited a step before they began. So the failure is silent in every aggregate: the SR is
+wrong and nothing about it looks wrong.
+
+### Consequences, and who is affected
+
+- **Every D31 result under the `u200` suffix is overstated.** The uniform-slice protocol puts a
+  warm-up batch before every scored batch, so *every* scored batch is a batch *b>=1*. Observed
+  SR ≈ 1 − (1−p_true)(1−p_warmup): T2/BC/n200 reads 0.995 where `object_over_drawer` is 0.925.
+- **It cannot be corrected post hoc.** Once success latches at `t == 1` the timestamp is never
+  updated, so an env that carried over *and* then genuinely succeeded is indistinguishable from one
+  that only carried over. Counting `t_success > 1` undercounts by exactly the amount that matters
+  most in high-SR cells.
+- **The published additive surface is affected ASYMMETRICALLY, which is worse than uniformly.**
+  Flat cells (L0/L1/L2) score batches 0-4 in one process: batch 0 clean, batches 1-4 inflated, so
+  ~80 % of their episodes are overstated. The L3b diagonal runs one batch per process -- batch 0,
+  with no predecessor -- so it is **clean**. The surface therefore overstates L0/L1/L2 relative to
+  L3b, which inflates the apparent cost of the object-variant axis C. **Finding 4 ("the axes are not
+  additive and the object axis dominates") rests partly on this artefact** and cannot be restated
+  until the re-score lands. It was already marked CONFOUNDED for the warm-up reason; this is a
+  second, independent defect pointing the same way.
+
+### Decision
+
+1. Guard a **window**, not a step: `PHANTOM_GUARD_STEPS = 10`. The data bounds the staleness from
+   below (>= 2 steps) but *not* from above -- once the latch fires the timestamp stops moving, so a
+   stale `t == 2` would be invisible. Over-guarding is free: the shortest source demo is >= 150
+   steps and the earliest genuine success ever observed is 590.
+2. **Timestamp every success in every task**, not only under `--stages`. One int per episode. This
+   is the instrumentation whose absence let the bug survive its own fix.
+3. **Fail loudly**: any success before step 100 sets `PHANTOM_SUSPECT` in the result and prints a
+   warning. `earliest_success_step` is recorded unconditionally.
+4. **Stamp `protocol.phantom_guard_steps` into every result.** A result without the key was scored
+   with the broken guard; a corrected number can then never be silently pooled with an old one.
+5. **Re-score the full 1,080-slice sweep** under suffix `u200g10`. No retraining -- the bug is in
+   scoring only, so the 108 checkpoints stand. ~250 GPU-h.
+
+### VERIFY (open)
+
+- Does the corrected T2 SR land near `object_over_drawer`, as the carryover model predicts? If it
+  lands far *below*, the guard is now suppressing something real and 10 is too wide.
+- Re-score the pre-D31 flat baselines too, or the additive surface keeps its asymmetry. The
+  `u200g10` sweep already covers L0/L1/L2/L3b for all three tasks, so this is satisfied by it.
