@@ -68,6 +68,12 @@ if [ -n "$NEW" ]; then
   # stay in $STATE and in ops/status_d31.log; only the terminal display is condensed.
   echo "-- NEW terminal states --"
   [ "${NDONE:-0}" -gt 0 ] && echo "   ${NDONE} COMPLETED (ids in $STATE)"
+  # CANCELLED was collected into the state file and reported in NEITHER bucket -- not counted as
+  # done, not listed as bad -- so a scheduler-side cancellation (preemption, a node drain, an admin
+  # kill) vanished silently. Deliberate cancellations are rare enough that listing them costs
+  # nothing, and the one thing this check exists to prevent is a terminal state nobody sees.
+  NCAN=$(echo "$NEW" | grep -c "CANCELLED")
+  [ "${NCAN:-0}" -gt 0 ] && { echo "   ${NCAN} CANCELLED:"; echo "$NEW" | grep "CANCELLED" | head -5 | sed 's/^/     /'; }
   [ "${NBAD:-0}" -gt 0 ] && { echo "   ${NBAD} ended BADLY:"; echo "$BAD" | sed 's/^/     /'; }
   [ "${NBAD:-0}" -gt 0 ] && echo "- $TS  D31: $NBAD job(s) ended badly -- see ops/status_d31.log" >> "$OPS/ALERTS.md"
   # No ALERTS.md line for COMPLETED during a sweep: 1,080 slices finishing normally is the
