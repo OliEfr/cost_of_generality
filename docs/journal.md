@@ -6002,3 +6002,38 @@ the symptom's location will move a bug rather than remove it -- and then did exa
 sizing a second guard to a second observed step number without reading the thirty lines of
 `compute()` that produced it. Both fixes were workarounds shaped to a symptom. Read the mechanism
 first; it was cheaper than either attempt.
+
+### 2026-09-19 11:50 -- fix1 verifies; the u200 sweep finished 1080/1080 and is superseded
+
+**The corrected signal does what the mechanism predicts, on every axis that can be checked.**
+
+| cell / slice | u200 (sticky latch) | u200g10 (window) | **fix1 (corrected)** | earliest success |
+|---|---|---|---|---|
+| T2 BC n200 s0 | 1.00 | 1.00 | **0.85** | 647 |
+| T2 AC n400 s0 | 0.50 | -- | **0.25** | 665 |
+| T1 L1 n100 s0 | 0.90 | 0.90 | **0.85** | 165 |
+| T1 L1 n100 s1 | 0.90 | 0.90 | **0.85** | 152 |
+
+`earliest_success_step` is 152-665 in every corrected slice, against 1 and 10 before: every success
+now lands beyond the >=150-step physical floor, and `PHANTOM_SUSPECT` is 0 everywhere. The protocol
+control is the clincher -- `t1_L1_n100_s0` re-measures **0.85, 0.85** against a published 0.86,
+where the broken guard read 0.90 twice.
+
+**A second finding fell out of the same table: the G6 warm-up calibration was itself contaminated.**
+The G6 runs read 0.65 / 0.80 / 0.85 / 0.95 for warm-ups of 0 / 20 / 100 / full-batch steps, and that
+rising curve is what justified paying for a full warm-up batch in D31. But `g6w0` -- no warm-up -- is
+batch 0 of its process and therefore *clean*, while `g6wfull` is a batch >= 1 and therefore inflated.
+Part of that "warm-up" gradient was the carryover. Likewise the [0.50, 0.90, 0.95, 0.95, 1.00]
+five-batch profile from 2026-08-22 that the whole uniform-slice protocol was designed around is
+exactly the signature of "batch 0 clean, batches 1-4 inflated".
+
+**The warm-up batch survives the re-examination, though.** Corrected-with-warm-up is 0.85/0.85
+against clean-no-warm-up (`g6w0`, valid data since it is batch 0 under either code path) at
+0.65/0.80. So a real first-batch depression of roughly +0.12 remains after the inflation is removed.
+Two slices is thin, but the sign is consistent and the D31 design stands -- the re-score keeps its
+warm-up batch and its ~250 GPU-h estimate.
+
+**Phase 7 (u200) reached 1080/1080 slices, 82/108 pooled, and is superseded on arrival.** Kept, not
+deleted: it is the evidence base for D32, it is the only measurement of the bug's magnitude across
+all three tasks, and the `_u200` suffix plus the absent `protocol.success_signal` key make it
+unmistakable in any glob. `$WORK` 778 G free.
