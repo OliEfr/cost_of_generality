@@ -6106,3 +6106,53 @@ submission hit; done in 12 chunks. The ledger keeps rows for both generations, w
 Idempotency would have absorbed most of this on its own (`eval.sbatch` skips a slice whose output
 exists, and the duplicates were queued behind their twins), but "most" is not "all" and the cost of
 cancelling was a few minutes.
+
+### 2026-09-20 14:50 -- the corrected surface lands, and Finding 4 inverts
+
+Cert renewed after a 20-hour outage; the sweep had run to completion unattended. 1,079/1,080 slices,
+one failure, 107/108 cells pooled, 0 pooling errors.
+
+**The one failure was hardware, not code.** `58216279` = T2/BC/n10 slice 5, `rc=137` (SIGKILL) at
+6,890 s -- killed by the container's own `timeout -s KILL`, not by Slurm. Its log shows Nvidia
+Aftermath trying and failing to produce a crash dump inside its 15-second window, i.e. the GPU hung
+mid-rollout. The other 1,079 slices ran the same binary without incident. Resubmitted (`58277145`);
+the nine sibling slices skipped in seconds via the artifact check, which is exactly what that check
+is for.
+
+**The result.** Pooled over N >= 50, per axis, "last marginal" = removing it from the full set,
+"first marginal" = adding it at its ladder position:
+
+| task | axis | last (remove from L3b) | first (add on ladder) | \|last\|-\|first\| |
+|---|---|---|---|---|
+| T1 | A pose | **+0.129** [+0.10,+0.16] | -0.131 [-0.16,-0.11] | -0.002 |
+| T1 | B goal | +0.033 [-0.00,+0.07] | -0.048 [-0.08,-0.01] | -0.015 |
+| T1 | C variant | -0.005 | +0.005 | 0.000 |
+| T2 | A pose | **+0.699** [+0.66,+0.73] | -0.645 [-0.68,-0.61] | +0.054 |
+| T2 | B goal | +0.059 [+0.02,+0.09] | +0.009 [-0.03,+0.05] | +0.050 |
+| T2 | C variant | +0.071 [+0.03,+0.11] | -0.071 [-0.11,-0.03] | 0.000 |
+| T3 | A pose | **+0.102** [+0.07,+0.14] | -0.088 [-0.11,-0.07] | +0.015 |
+| T3 | B goal | +0.017 [-0.02,+0.06] | -0.025 [-0.06,+0.01] | -0.008 |
+| T3 | C variant | +0.074 [+0.04,+0.11] | -0.074 [-0.11,-0.04] | 0.000 |
+
+Two things, and the second is the paper's.
+
+**1. The axes compose additively.** First and last marginals agree within 0.054 everywhere, against
+marginals up to 0.70. The largest discrepancy, T2 axis A, is 8 % of the effect it sits on. (Axis C's
+0.000 is a tautology -- `L3∖C` is bit-identical to L2, so last = -first by construction -- and is
+useful only as an arithmetic check on the pipeline, which it passes on all three tasks.)
+
+**2. Axis A -- manipulandum pose -- dominates on every task, and axis C does not.** This *inverts*
+Finding 4, which said the object-variant axis dominates and the axes are not additive. Both halves
+were artefacts, and D32 predicts exactly this inversion: the old surface inflated the flat cells
+L0/L1/L2 (batches 1-4 phantom-credited) while leaving the L3b diagonal clean, and the apparent cost
+of C *is* `L3b - L2` -- a clean number minus an inflated one. Remove the inflation and C's cost
+mostly disappears, while A's, which was never load-bearing on that comparison, stands.
+
+T2 is the extreme case and the clearest: removing object pose takes it from ~0.14 to ~0.84. On T2,
+axis A is very nearly the entire task.
+
+Registry updated from the corrected results: 330 fields changed.
+
+**What this means for the study as published.** `experiments/clean_surface.csv` and every figure
+derived from it are superseded for all 108 cells. Finding 4 must be rewritten, not merely re-caveated
+-- its sign is wrong, not just its magnitude.
