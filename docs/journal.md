@@ -6297,3 +6297,41 @@ Separately: the LOO deltas also cross a **29-day training boundary** (new cells 
 baselines 2026-08-19/21, reused not retrained), and **no git SHA is recorded in any run artifact**
 (`$WORK/cog/repo` has no `.git`), so code-revision parity rests on the 126/126 config-key identity,
 identical parameter counts and zero lerobot `.py` files modified since 2026-08-19.
+
+### G2b re-measured under the corrected scorer -- it no longer passes
+
+M7 above: the GPU-portability gate G2b was only ever scored with the pre-D32 evaluator, which the
+same cell's own numbers show inflates T1/L1/n100 by ~10 points. Re-ran the control cell
+`t1_ctl_L1_n100_s0` (A100-generated L1 demos, seed 1100) through the corrected pipeline --
+5 slices, suffix `g2bd32`, identical protocol to the study (`warmup 1 batch, seed 4900`, scored
+seeds 5000-5004, 20 envs), 0.88 GPU-h:
+
+| | control (A100 demos) | baseline `t1_L1_n100_s0` (4090 demos) |
+|---|---|---|
+| pre-D32 (`g2bctl` / `g6wfull`, 200 ep) | 188/200 = **0.940** | 192/200 = **0.960** |
+| corrected `u200d32`, matched seeds 5000-5004 (100 ep) | 75/100 = **0.750** | 85/100 = **0.850** |
+| corrected, vs the baseline's full 10 slices (200 ep) | 0.750 | 172/200 = **0.860** |
+
+Per-slice control [14,14,16,15,16] vs baseline [16,16,15,20,18]; per-slice delta
+[-2,-2,+1,-5,-2].
+
+**Verdict: the gate's own criterion fails.** G2b required the control's SR to land inside the
+baseline cell's binomial CI. It does not: baseline Wilson95 is [0.767,0.907] on the matched 100
+episodes and [0.805,0.901] on all 200, and the control is 0.750 in both cases. Against the full
+baseline the difference is **-0.110, 95% CI [-0.208,-0.012]** -- significant at 95%; against the
+matched 5 slices it is -0.100 [-0.210,+0.010], which is not. Under the broken scorer the same
+comparison was -0.020 and passed comfortably: the phantom inflation pushed both cells toward 1.0
+and compressed the gap.
+
+Two facts that bound what this can be attributed to:
+- The control differs from the baseline in **both** the generating GPU *and* the RNG stream
+  (`ctl_L1` was generated fresh at seed 1100; its generation SR is 80.0 % against L1's published
+  85.8 %). The design cannot separate "A100 renders differently" from "a different 100 demos".
+- The control is 100 scored episodes, half the study's per-cell budget.
+
+Standing consequence, unchanged by this: every leave-one-out contrast in the study is cross-GPU
+(AC/BC on A100 demos vs L2/L3b on 4090 demos), and the only quantitative control on that boundary
+now reads -0.11 rather than -0.02.
+
+GPU spend for the whole audit: **1.17 GPU-h of the 2 GPU-h granted** (0.88 this re-score, 0.19 the
+eval reproducibility slice, 0.10 the runtime env-semantics checks).
