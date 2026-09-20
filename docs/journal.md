@@ -6371,3 +6371,11 @@ was introduced and corrected inside this session -- but the same mistake is easy
 The report also carries the audit's findings as a numbered flaw list (F1-F11) and an open-items
 list (T1-T10, two already done). Nothing in `experiments/clean_surface.csv` or the older figures
 was touched.
+
+**T2 stage plot redrawn.** The milestone line chart was unreadable: four latched rates plotted
+against budget, which shows the numbers but not the funnel. Replaced with a stacked share of the
+200 episodes, each classified by the *furthest* milestone reached (success > over drawer > lifted >
+opened > nothing), which sums to 100 % and reads as a funnel. `furthest_rows()` in
+`cog.analysis.loo` imposes that ordering explicitly, since the flags themselves do not nest.
+What it makes visible: with all disturbances on, 130/200 episodes at N=100 open the drawer and stop
+there; with the object start pose fixed, 170/200 finish the task. T2's failure is at the grasp.

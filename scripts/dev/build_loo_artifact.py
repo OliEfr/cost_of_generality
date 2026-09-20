@@ -32,8 +32,8 @@ FIGS = {
         "intervals; above the dashed line the simpler setup did better."),
     2: ("simple01_success.png",
         "Success rate of each setup. Error bars are 95&thinsp;% intervals on 200 episodes."),
-    3: ("simple03_stages.png",
-        "Fraction of 200 episodes reaching each milestone, per setup."),
+    3: ("simple03_funnel.png",
+        "How far each episode got before it stopped. Numbers are percentages of 200 episodes."),
 }
 
 
@@ -159,24 +159,27 @@ def build_html():
               rows, cls="cells"))
     A('</section>')
 
-    # ---- T2 stages
+    # ---- T2 funnel
     A('<section><h2>Where T2 policies got stuck</h2>')
-    A('<p class="lede">T2 is the only task that records intermediate progress, so a failure can '
-      'be placed rather than just counted. The milestones do not nest: a policy can lift the '
-      'object without having opened the drawer far enough.</p>')
+    A('<p class="lede">T2 is a four-part task: open the drawer, pick up the object, carry it over '
+      'the open drawer, drop it in. Every episode records how far it got, so a failure can be '
+      'placed instead of just counted. Each bar is 200 episodes split by the furthest point '
+      'reached, so the five shares add to 100.</p>')
     A(fig(3))
     rows = []
     for a in SETUPS:
         for n in NDEMOS:
-            r = [x for x in d["stages"] if x["arm"] == a and x["n"] == n][0]
+            r = [x for x in d["furthest"] if x["arm"] == a and x["n"] == n][0]
             rows.append([f'<b class="setup s-{CLS[a]}">{NAME[a]}</b>',
                          f'<span class="n">{n}</span>',
-                         f'<span class="n">{r["p_opened"]:.3f}</span>',
-                         f'<span class="n">{r["p_lifted"]:.3f}</span>',
-                         f'<span class="n">{r["p_over"]:.3f}</span>',
-                         f'<span class="n big">{r["p_success"]:.3f}</span>'])
-    A(tbl(["setup", "demos", "opened drawer", "lifted object", "held over drawer", "succeeded"],
-          rows))
+                         f'<span class="n">{r["got nowhere"]}</span>',
+                         f'<span class="n">{r["opened drawer"]}</span>',
+                         f'<span class="n">{r["lifted object"]}</span>',
+                         f'<span class="n">{r["held over drawer"]}</span>',
+                         f'<span class="n big">{r["succeeded"]}</span>'])
+    A(tbl(["setup", "demos", "never opened", "opened, stopped", "lifted, stopped",
+           "held over, stopped", "stowed it"], rows))
+    A('<p class="note">Counts out of 200 episodes.</p>')
     A('</section>')
 
     # ---- caveats

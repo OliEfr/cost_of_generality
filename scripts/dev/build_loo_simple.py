@@ -158,22 +158,27 @@ def build():
         st.append(Spacer(1, 4))
     st.append(PageBreak())
 
-    # -------- 4 T2 milestones
+    # -------- 4 T2 funnel
     st += [para("Where T2 policies got stuck", "h1"),
-           para("T2 is the only task that records intermediate progress, so a failure can be "
-                "placed rather than just counted. The milestones do not nest: a policy can lift "
-                "the object without having opened the drawer far enough.", "body"),
-           figure("simple03_stages.png",
-                  "Fraction of 200 episodes reaching each milestone, per setup.")]
-    rows = [["setup", "demonstrations", "opened drawer", "lifted object", "held over drawer",
-             "succeeded"]]
+           para("T2 is a four-part task: open the drawer, pick up the object, carry it over the "
+                "open drawer, drop it in. Every episode records how far it got, so a failure can "
+                "be placed instead of just counted. Each bar below is 200 episodes split by the "
+                "furthest point reached, so the five shares add to 100.", "body"),
+           figure("simple03_funnel.png",
+                  "How far each episode got before it stopped. Numbers are percentages of 200 "
+                  "episodes."),
+           Spacer(1, 4)]
+    rows = [["setup", "demos", "never opened", "opened, stopped", "lifted, stopped",
+             "held over, stopped", "stowed it"]]
     for a in SETUPS:
         for n in NDEMOS:
-            r = [x for x in d["stages"] if x["arm"] == a and x["n"] == n][0]
-            rows.append([NAME[a], str(n), f"{r['p_opened']:.3f}", f"{r['p_lifted']:.3f}",
-                         f"{r['p_over']:.3f}", f"{r['p_success']:.3f}"])
-    st.append(table(hdr(rows), widths=[44 * mm, 30 * mm] + [(CONTENT_W - 74 * mm) / 4] * 4,
-                    font=7.8, align=[((1, 5), "RIGHT")], pad=2.4))
+            r = [x for x in d["furthest"] if x["arm"] == a and x["n"] == n][0]
+            rows.append([NAME[a], str(n), str(r["got nowhere"]), str(r["opened drawer"]),
+                         str(r["lifted object"]), str(r["held over drawer"]),
+                         str(r["succeeded"])])
+    st.append(table(hdr(rows), widths=[44 * mm, 22 * mm] + [(CONTENT_W - 66 * mm) / 5] * 5,
+                    font=7.8, align=[((1, 6), "RIGHT")], pad=2.4))
+    st.append(para("Counts out of 200 episodes.", "small"))
     st.append(PageBreak())
 
     # -------- 5 caveats

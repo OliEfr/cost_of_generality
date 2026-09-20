@@ -395,3 +395,50 @@ def fig_simple_stages(d):
 def build_simple():
     d = build()
     return d, [fig_simple_curves(d), fig_simple_delta(d), fig_simple_stages(d)]
+
+
+STOP_ORDER = ["got nowhere", "opened drawer", "lifted object", "held over drawer", "succeeded"]
+STOP_LABEL = {"got nowhere": "never opened the drawer",
+              "opened drawer": "opened it, then stopped",
+              "lifted object": "lifted the object, then stopped",
+              "held over drawer": "held it over the drawer, then stopped",
+              "succeeded": "stowed it -- success"}
+STOP_COLOR = {"got nowhere": "#c9ced6", "opened drawer": "#8fa8c4",
+              "lifted object": "#e6b86a", "held over drawer": "#d98b52",
+              "succeeded": "#3f7f39"}
+
+
+def fig_simple_funnel(d):
+    """Every T2 episode classified by how far it got. The segments sum to 200."""
+    fig, axes = plt.subplots(1, 4, figsize=(13.0, 3.9), sharey=True)
+    for ax, arm in zip(axes, SETUPS):
+        rows = sorted([r for r in d["furthest"] if r["arm"] == arm], key=lambda r: r["n"])
+        y = np.arange(len(rows))
+        left = np.zeros(len(rows))
+        for key in STOP_ORDER:
+            vals = np.array([r[key] / r["episodes"] for r in rows])
+            ax.barh(y, vals, left=left, height=0.72, color=STOP_COLOR[key],
+                    label=STOP_LABEL[key], edgecolor="white", linewidth=0.7)
+            for yi, (v, l) in enumerate(zip(vals, left)):
+                if v > 0.085:
+                    ax.text(l + v / 2, yi, f"{v*100:.0f}", ha="center", va="center",
+                            fontsize=7.4, color="white" if key != "got nowhere" else "#444")
+            left += vals
+        ax.set_yticks(y, [str(r["n"]) for r in rows])
+        ax.set_xlim(0, 1)
+        ax.set_xticks([0, .25, .5, .75, 1], ["0", "25", "50", "75", "100 %"])
+        ax.invert_yaxis()
+        ax.set_title(SETUP_NAME[arm])
+        ax.grid(False)
+        ax.set_xlabel("share of the 200 episodes")
+    axes[0].set_ylabel("demonstrations")
+    h, l = axes[0].get_legend_handles_labels()
+    fig.legend(h, l, loc="lower center", ncol=5, fontsize=8.2, bbox_to_anchor=(0.5, -0.09))
+    fig.suptitle("T2 drawer_stow: how far each episode got before it stopped",
+                 y=1.03, fontsize=11.5, fontweight="bold")
+    return _save(fig, "simple03_funnel.png")
+
+
+def build_simple():  # noqa: F811  -- supersedes the earlier definition
+    d = build()
+    return d, [fig_simple_curves(d), fig_simple_delta(d), fig_simple_funnel(d)]

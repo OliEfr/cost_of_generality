@@ -298,7 +298,8 @@ def build() -> dict:
     surface = load_surface()
     return {"surface": surface_rows(surface), "loo": loo_rows(surface),
             "pooled": pooled_rows(surface), "stages": stage_rows(surface),
-            "timing": timing_rows(surface), "gen": gen_rows(), "_raw": surface}
+            "furthest": furthest_rows(surface), "timing": timing_rows(surface),
+            "gen": gen_rows(), "_raw": surface}
 
 
 if __name__ == "__main__":
@@ -306,7 +307,7 @@ if __name__ == "__main__":
     out_dir = REPO / "paper" / "loo_report" / "tables"
     out_dir.mkdir(parents=True, exist_ok=True)
     data = build()
-    for name in ("surface", "loo", "pooled", "stages", "timing", "gen"):
+    for name in ("surface", "loo", "pooled", "stages", "furthest", "timing", "gen"):
         rows = data[name]
         flat = []
         for r in rows:
@@ -321,3 +322,34 @@ if __name__ == "__main__":
             w.writeheader()
             w.writerows(flat)
         print(f"wrote {out_dir / (name + '.csv')}  ({len(flat)} rows)")
+
+
+FURTHEST = [("succeeded", "success"), ("held over drawer", "object_over_drawer"),
+            ("lifted object", "object_lifted"), ("opened drawer", "drawer_opened")]
+
+
+def furthest_rows(surface: dict) -> list[dict]:
+    """T2 only. Classify every episode by the furthest milestone it reached.
+
+    The flags do not nest, so 'furthest' is an ordering imposed here: success beats over-drawer
+    beats lifted beats opened beats nothing. Unlike the marginal rates these sum to 1, which is
+    what makes the funnel readable.
+    """
+    rows = []
+    for arm in ARMS:
+        for n in NDEMOS:
+            o = surface[("T2", arm, n)]["outcomes"]
+            counts = {lab: 0 for lab, _ in FURTHEST}
+            counts["got nowhere"] = 0
+            for x in o:
+                for lab, key in FURTHEST:
+                    if x[key]:
+                        counts[lab] += 1
+                        break
+                else:
+                    counts["got nowhere"] += 1
+            tot = len(o)
+            rows.append({"arm": arm, "n": n, "episodes": tot,
+                         **{lab: counts[lab] for lab in counts},
+                         **{f"p_{lab.replace(' ', '_')}": counts[lab] / tot for lab in counts}})
+    return rows
