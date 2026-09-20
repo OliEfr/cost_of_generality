@@ -29,7 +29,7 @@ from cog.analysis import loo_figures  # noqa: E402
 
 OUTDIR = REPO / "paper" / "loo_report"
 FIGDIR = OUTDIR / "figures"
-PDF = OUTDIR / "loo_report.pdf"
+PDF = OUTDIR / "loo_report_full.pdf"
 
 PAGE = landscape(A4)
 MARGIN = 14 * mm

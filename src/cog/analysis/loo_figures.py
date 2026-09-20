@@ -313,3 +313,85 @@ def build_all():
 
 if __name__ == "__main__":
     build_all()
+
+
+# ------------------------------------------------- plain-language edition (4 setups only)
+
+SETUPS = ["L3b", "BC", "AC", "L2"]
+SETUP_NAME = {"L3b": "all on", "BC": "minus object start", "AC": "minus goal",
+              "L2": "minus object type"}
+SETUP_COLOR = {"L3b": "#333333", "BC": "#e45756", "AC": "#f58518", "L2": "#54a24b"}
+AXIS_PLAIN = {"A": "object start", "B": "goal", "C": "object type"}
+
+
+def fig_simple_curves(d):
+    fig, axes = plt.subplots(1, 3, figsize=(12.0, 3.8), sharey=True)
+    for ax, task in zip(axes, TASKS):
+        for arm in SETUPS:
+            rows = sorted(_idx(d["surface"], task=task, arm=arm), key=lambda r: r["n"])
+            x = [r["n"] for r in rows]
+            y = [r["sr"] for r in rows]
+            lo = [r["sr"] - r["wilson_lo"] for r in rows]
+            hi = [r["wilson_hi"] - r["sr"] for r in rows]
+            ax.errorbar(x, y, yerr=[lo, hi], marker="o", ms=4.5, lw=1.9, capsize=2.5,
+                        color=SETUP_COLOR[arm], label=SETUP_NAME[arm], elinewidth=0.9)
+        ax.set_xscale("log")
+        ax.set_xticks(NDEMOS)
+        ax.set_xticklabels([str(n) for n in NDEMOS])
+        ax.set_xlabel("demonstrations")
+        ax.set_title(TASK_LABEL[task])
+        ax.set_ylim(-0.03, 1.03)
+    axes[0].set_ylabel("success rate")
+    axes[0].legend(loc="lower right", fontsize=8.4)
+    fig.suptitle("Success rate of each setup", y=1.03, fontsize=11.5, fontweight="bold")
+    return _save(fig, "simple01_success.png")
+
+
+def fig_simple_delta(d):
+    fig, axes = plt.subplots(1, 3, figsize=(12.0, 3.8), sharey=True)
+    for ax, task in zip(axes, TASKS):
+        for axis in ("A", "B", "C"):
+            rows = sorted(_idx(d["loo"], task=task, axis=axis), key=lambda r: r["n"])
+            x = [r["n"] for r in rows]
+            ax.plot(x, [r["delta"] for r in rows], marker="o", ms=4.5, lw=1.9,
+                    color=SETUP_COLOR[REMOVE[axis]], label=f"minus {AXIS_PLAIN[axis]}")
+            ax.fill_between(x, [r["ci_lo"] for r in rows], [r["ci_hi"] for r in rows],
+                            color=SETUP_COLOR[REMOVE[axis]], alpha=0.14, lw=0)
+        ax.axhline(0, color="black", lw=1.0, ls="--", alpha=0.7)
+        ax.set_xscale("log")
+        ax.set_xticks(NDEMOS)
+        ax.set_xticklabels([str(n) for n in NDEMOS])
+        ax.set_xlabel("demonstrations")
+        ax.set_title(TASK_LABEL[task])
+    axes[0].set_ylabel("change in success rate")
+    axes[0].legend(loc="upper right", fontsize=8.4)
+    fig.suptitle("What dropping one disturbance does, against keeping all three",
+                 y=1.03, fontsize=11.5, fontweight="bold")
+    return _save(fig, "simple02_delta.png")
+
+
+def fig_simple_stages(d):
+    fig, axes = plt.subplots(1, 4, figsize=(12.6, 3.4), sharey=True)
+    for ax, arm in zip(axes, SETUPS):
+        rows = sorted(_idx(d["stages"], arm=arm), key=lambda r: r["n"])
+        x = [r["n"] for r in rows]
+        for key, lab in (("p_opened", "opened drawer"), ("p_lifted", "lifted object"),
+                         ("p_over", "held it over drawer"), ("p_success", "succeeded")):
+            ax.plot(x, [r[key] for r in rows], marker="o", ms=4, lw=1.8,
+                    color=STAGE_COLOR[key], label=lab)
+        ax.set_xscale("log")
+        ax.set_xticks(NDEMOS)
+        ax.set_xticklabels([str(n) for n in NDEMOS])
+        ax.set_xlabel("demonstrations")
+        ax.set_title(SETUP_NAME[arm])
+        ax.set_ylim(-0.03, 1.03)
+    axes[0].set_ylabel("fraction of episodes")
+    axes[0].legend(loc="center left", fontsize=7.8, bbox_to_anchor=(0.02, 0.42))
+    fig.suptitle("T2 drawer_stow: how far each setup got", y=1.03, fontsize=11.5,
+                 fontweight="bold")
+    return _save(fig, "simple03_stages.png")
+
+
+def build_simple():
+    d = build()
+    return d, [fig_simple_curves(d), fig_simple_delta(d), fig_simple_stages(d)]
