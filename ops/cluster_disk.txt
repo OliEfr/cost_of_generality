@@ -1,2 +1,2 @@
-/leonardo_work     762G
-/leonardo_scratch  856G
+/leonardo_work     727G
+/leonardo_scratch  855G

@@ -6156,3 +6156,144 @@ Registry updated from the corrected results: 330 fields changed.
 **What this means for the study as published.** `experiments/clean_surface.csv` and every figure
 derived from it are superseded for all 108 cells. Finding 4 must be rewritten, not merely re-caveated
 -- its sign is wrong, not just its magnitude.
+
+---
+
+## 2026-09-20 -- Adversarial audit of the leave-one-out study (3 independent agents, datagen / training / eval+results)
+
+Commissioned after the corrected `u200d32` surface landed: three agents, each told to assume the
+work is wrong and to verify against artifacts only (never against this journal or `decisions.md`).
+Budget 2 GPU-h; **0.29 GPU-h actually spent by the agents** (0.10 runtime env-semantics checks,
+0.19 one eval re-run), plus 0.9 GPU-h spent by the coordinator on the G2b re-score below.
+
+First, the last cell landed: **108/108 cells pooled**. `t2_BC_n10_s0` = 19/200 = 0.095
+(stages 0.335 / 0.195 / 0.105) after slice 5's GPU-hang resubmit (58277145) completed. Registry
+complete: 4 fields changed, all 108 rows `done`.
+
+### What survived the audit
+
+- **Protocol conformance: all 1,080 `u200d32` slices, zero deviations.** `episodes=20`,
+  `base_seed=5000+s`, `warmup={batches:1, seed:4900, max_steps:600/1200/800}`,
+  `success_signal == "terminated & get_term('success')"` on every file, step 080000, flat arms on
+  the flat env and variant arms exactly on the D18 diagonal, `--stages` on 360/360 T2 slices and on
+  no T1/T3 slice. Every job log shows `warmup 1/1 (unscored, seed 4900)` then `batch 1/1`.
+  No `PHANTOM_SUSPECT` anywhere; earliest genuine success T1 123 / T3 141 / T2 576.
+- **No broken-generation leak.** 108 pooled `u200d32`, 0 `u200g10`, 0 `fix1` pooled; `sr_80k` equals
+  the `u200d32` value for all 108 rows.
+- **Pooling arithmetic: 108/108 cells recomputed from their slices, 0 mismatches** (successes,
+  episodes, SR, the 200-entry outcomes array, per-variant/per-batch blocks, and the 18 T2 stage
+  blocks). Local files md5-identical to the cluster copies.
+- **Headline arithmetic reproduces exactly**: max |recomputed - published| = 0.0005 over all 18
+  marginals, with the pairings confirmed (`BC = L3b\A`, `AC = L3b\B`).
+- **The D32 fix is exact, and for a reason now recorded**: `success` is the last-declared `DoneTerm`
+  in all three tasks, so it always wins `_term_dones`' one-hot; `terminated` is true whenever it
+  fires. No drop even when success coincides with a failure/timeout term. **But nothing asserts the
+  ordering** -- appending a `DoneTerm` after `success` would silently start dropping successes.
+- **Training: no BLOCKER, no MAJOR.** All 108 cells reached step 80000 in exactly one Slurm job, no
+  resumes anywhere (`resume: True` in none of the 127 training logs), all 126 resolved config keys
+  identical across the matrix apart from cell-identity fields, seed 0 plumbed, no NaN/divergence/loss
+  outlier, per-camera encoder (D26) confirmed **in the saved weights** (278 tensors / 277,995,527
+  params in both groups; the superseded shared-encoder build is structurally distinguishable).
+  N-nesting proven from dataset metadata: prefix frame sums match logged `num_frames` exactly.
+- **Arm semantics verified at runtime, not just in `levels.py`** (0.10 GPU-h, state envs, 300 resets
+  per sub-level, seeds 6000-6014): in `AC` the goal/fixture is constant *at L1's exact fixed point*;
+  in `BC` the manipulandum is constant *at L0's exact fixed point*; on-axis coverage bounds equal the
+  reference arm's. A 6-distinct-float32 artefact on the "fixed" manipulandum is 2.4e-7 m of
+  rigid-body settle read-back, identical in the 4090-era L0 baseline.
+- **`L3b\C == L2` is now verified, not assumed**: identical on every config field in all three tasks,
+  and **bit-identical initial states over 300 resets** at runtime for T1 and T3. Also measured: the C
+  axis is exactly orthogonal to the pose sampler (`ACv00` vs `ACv05` give identical cup XY/quat on
+  300/300 rows), which is the mechanism the whole design rests on.
+- **Success criterion identical across arms** (one `DoneTerm` per task, parameterized only by the
+  variant's own geometry), cameras/observations identical, seed blocks disjoint.
+- **60/60 datagen legs `GEN_OK`; ~400 unique poses per new arm at 1.00x redundancy** (no trace of the
+  D27 collapse); 6/6 conversions `VALIDATE_OK`, variant-balanced at every nested-N prefix, identical
+  to L3b's balance; the six frozen eval sets are new files only -- `git log` shows the D31 commit
+  touched 6 files, 0 deletions, and no pre-existing eval set was regenerated (rule 8 respected).
+
+### BLOCKERS found (both about the analysis, not the data)
+
+**B1. The "axis A dominates, axis C does not" claim is an artifact of the N>=50 pooling window.**
+The window was chosen post-hoc. Per demo budget, 5 of 9 axis rows change sign between reasonable
+windows. At N=400 no axis is detectable on T1; on T2 axis **C's marginal (+0.120) exceeds B's
+(-0.005) and is significant**; on T3 A (+0.055) and C (+0.045) are the same size; at N=200 T3's A
+marginal has the wrong sign. Only **T2's A axis is stable across every window** (+0.56 ... +0.71).
+On T1 and T3 the A-dominance is carried by the small-budget cells (T1 last_A: n50 +0.290 ->
+n100 +0.170 -> n200 +0.040 -> n400 +0.015).
+
+**B2. The additivity claim is one-third tautology and fails on T2 where it is testable.**
+The C row is algebraically forced (`last_C` and `first_C` are the same two cells negated, zero
+variance), so 3 of 9 rows carry no information. Of the 6 informative comparisons, **2 fall outside
+their own 95% band**: T2 A `last+first = +0.054 +/-0.051`, T2 B `+0.068 +/-0.054`. The published
+"within 0.054" bound is **magnitude-only** (`|last|-|first|`), which scores a sign disagreement as
+agreement -- T2 B is exactly that (last +0.059, first +0.009, both positive, i.e. the two estimates
+of B's effect point opposite ways). The sign-respecting max discrepancy is **0.068**. And the noise
+floor on `last+first` is +/-0.039...0.054, so the test cannot separate additive from non-additive for
+any axis except T2's A, where it fails. At N=10, T2 A gives `last+first = -0.475`.
+
+### MAJOR findings
+
+- **M1. The eval is not reproducible at the episode level** (measured): re-running T1/L1/n100 s0 with
+  identical env, seed, checkpoint, warm-up and code gives the same k=16/20 but **two envs flip**, and
+  `t_first_success` differs on 14 of 20 envs. Corroborated by the pre-existing `fix1` slices (17 vs
+  16, 17 vs 16, 5 vs 4, 17 vs 18; 1 of 5 matched). Mitigating and measured: the L0 cells' design
+  effect is ~1 (ICC -0.045...+0.030), so the per-cell binomial n=200 is sound -- but no single slice
+  is an exact regression test.
+- **M2. Pooling N>=50 as one binomial is invalid**; the reported +/-CIs are anti-conservative. The 4
+  cells summed into each n=800 arm are different models on a rising curve: chi2(3) homogeneity is
+  **overdispersed in 13 of 18 arms** (up to 126.8; T1 L3b k = [120,151,190,195]). Separately, for
+  pairs sharing initial poses, McNemar is mildly tighter than the independent-binomial SE. Neither
+  effect is accounted for.
+- **M3. The G6 warm-up calibration was itself measured on broken-scorer artifacts.** Same cell,
+  slices 0-4, T1/L1/n100: warm-up 0 -> 0.72, 20 steps -> 0.80, 100 steps -> 0.81, full batch broken
+  scorer -> 0.95, full batch correct scorer -> **0.85**. True first-batch effect ~**+0.13**, not the
+  +0.23 G6 reported. The warm-up itself is byte-identical across all 108 cells, so it cannot
+  reintroduce a flat-vs-variant asymmetry; the **residual** depression after one warm-up batch has
+  never been measured (needs `warmup_batches=2`).
+- **M4. The pooler's MIXED_PROTOCOL guard cannot detect a mixed-generation pool.** All three
+  generations share the identical guard key `(num_inference_steps, protocol.warmup)`; the keys that
+  do differ (`success_signal`, `phantom_guard_steps`) are not checked, and `build_payload` **drops
+  both** from the pooled JSON, so a pooled result's only provenance is its filename suffix. No leak
+  occurred, but the guard would not have fired.
+- **M5. Traceability.** 71 of 108 registry rows carry two `Wilson95` notes with different counts and
+  no protocol tag (`update_registry_from_evals.py` takes `--suffix` but never writes it into the
+  row); the strings `u200`, `u200d32`, `D31`, `D32` appear 0 times in the notes column. And the
+  headline leave-one-out table is computed by an **agent scratch file**, not by anything under
+  `src/` or `scripts/`.
+- **M6. `experiments/gen_stats.csv` had no AC/BC rows** -- rule 9's authority file never got the D31
+  legs; the numbers lived only in `results/gen_stats_cluster.csv`. **Fixed this session**: the 60
+  rows merged in (same schema, same generator, pure insertion). `figures.py::_gen_stats` reads only
+  the authority file, so anything downstream had been seeing the study without its two new arms.
+- **M7. The GPU-portability control (G2b) rested entirely on pre-D32 numbers** -- see below.
+
+### MINOR
+
+T2 stage flags are contaminated for exactly one step per episode at the auto-reset boundary
+(measured: 0 of 7,180 T2 episodes affected in any observable way; the stage trackers never used
+`get_term`, so D32 never applied to them). Three dev scripts (`t2_smoke.py:57`, `t3_smoke.py:81`,
+`sm_diag.py:69`) still read the raw latch. `pool_variant_eval.py:6-7` / `eval.sbatch:28` claim every
+arm has the same spatial coverage -- false for BC by construction (20 distinct manipulandum XY poses
+vs 200). Generation SR for 5 of 6 new arms falls outside its task's [L2, L3b] band (T2 AC +12 pts
+above; T3 both ~3-6 pts below), and the journal's earlier "sits where it should" table omitted T2.
+Four T1 BC legs overshot to 41 demos (trimmed to 400 at conversion). The dead first freeze wave
+(`seq -w` zero-padding bug, `FREEZE_ARM_FAILED` x6) is still in `cluster_jobs.csv` beside the good
+one, with no status column to distinguish them. `experiments/cluster_jobs.csv` holds zero `train`
+rows by construction (training is ledgered in `registry.csv` instead). CLAUDE.md rule 7 pins
+`configs/train/diffusion_base.yaml`, which has never existed -- the frozen file is
+`diffusion_base.sh` (and `git log` confirms it was last touched 2026-08-19, before both waves).
+
+### The cross-GPU boundary, stated plainly
+
+Training data for **L0/L1/L2/L3/L3b on all three tasks was generated on the RTX 4090**
+(driver 580.173.02); **AC and BC were generated on A100s** (driver 535.274.02). So **every
+leave-one-out contrast the study exists to measure is cross-GPU** (AC or BC vs L3b/L2), while
+`AC vs BC` and the entire original ladder are within-GPU. Training and evaluation are common to both
+groups (same A100 partition, same 126 config keys, same D31 slice protocol). G2's parity table
+reproduces exactly today (`PARITY_TOLERABLE`: 37/40 demos pose-matched, actions max|d| 7.0e-3,
+table_cam MAE 0.334 / p99 4, wrist_cam MAE 0.646 / p99 10; the same-GPU control is
+`PARITY_AGREE` with actions d = 0).
+
+Separately: the LOO deltas also cross a **29-day training boundary** (new cells 2026-09-18,
+baselines 2026-08-19/21, reused not retrained), and **no git SHA is recorded in any run artifact**
+(`$WORK/cog/repo` has no `.git`), so code-revision parity rests on the 126/126 config-key identity,
+identical parameter counts and zero lerobot `.py` files modified since 2026-08-19.

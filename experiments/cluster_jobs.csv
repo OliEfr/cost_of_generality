@@ -2339,3 +2339,14 @@ submitted_at,stage,task,arm,key,stem,n_demos,slice,seed,trials,sbatch,walltime,s
 2026-09-19T16:15:20,eval,T2,L3b,L3b,,400,7,,,slurm/eval.sbatch,02:00:00,58217992,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=10
 2026-09-19T16:15:24,eval,T2,L3b,L3b,,400,8,,,slurm/eval.sbatch,02:00:00,58217996,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=10
 2026-09-19T16:15:31,eval,T2,L3b,L3b,,400,9,,,slurm/eval.sbatch,02:00:00,58218003,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=10
+2026-09-20T14:44:31,eval,T2,BC,BC,,10,0,,,slurm/eval.sbatch,02:00:00,58277120,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=6
+2026-09-20T14:44:35,eval,T2,BC,BC,,10,1,,,slurm/eval.sbatch,02:00:00,58277136,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=6
+2026-09-20T14:44:36,eval,T2,BC,BC,,10,2,,,slurm/eval.sbatch,02:00:00,58277142,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=6
+2026-09-20T14:44:39,eval,T2,BC,BC,,10,3,,,slurm/eval.sbatch,02:00:00,58277143,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=6
+2026-09-20T14:44:43,eval,T2,BC,BC,,10,4,,,slurm/eval.sbatch,02:00:00,58277144,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=6
+2026-09-20T14:44:47,eval,T2,BC,BC,,10,5,,,slurm/eval.sbatch,02:00:00,58277145,launch_wave.py | suffix=u200d32 warmup_batches=1 warmup_max_steps=0 slices=6
+2026-09-20T15:26:16,eval,T1,ctl_L1,ctl_L1,,100,0,,,slurm/eval.sbatch,01:00:00,58279701,launch_wave.py | suffix=g2bd32 warmup_batches=1 warmup_max_steps=0 slices=5 env_arm=L1
+2026-09-20T15:26:20,eval,T1,ctl_L1,ctl_L1,,100,1,,,slurm/eval.sbatch,01:00:00,58279706,launch_wave.py | suffix=g2bd32 warmup_batches=1 warmup_max_steps=0 slices=5 env_arm=L1
+2026-09-20T15:26:21,eval,T1,ctl_L1,ctl_L1,,100,2,,,slurm/eval.sbatch,01:00:00,58279710,launch_wave.py | suffix=g2bd32 warmup_batches=1 warmup_max_steps=0 slices=5 env_arm=L1
+2026-09-20T15:26:26,eval,T1,ctl_L1,ctl_L1,,100,3,,,slurm/eval.sbatch,01:00:00,58279716,launch_wave.py | suffix=g2bd32 warmup_batches=1 warmup_max_steps=0 slices=5 env_arm=L1
+2026-09-20T15:26:29,eval,T1,ctl_L1,ctl_L1,,100,4,,,slurm/eval.sbatch,01:00:00,58279719,launch_wave.py | suffix=g2bd32 warmup_batches=1 warmup_max_steps=0 slices=5 env_arm=L1
