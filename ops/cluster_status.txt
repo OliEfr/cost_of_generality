@@ -1,26 +1,25 @@
      JOBID                 NAME    STATE       TIME  NODES NODELIST(REASON)
-  58278003         smoke_resume  PENDING       0:00      1 (Priority)
-  58135713        train_learned  PENDING       0:00      1 (None)
+  58135713        train_learned  PENDING       0:00      1 (Priority)
+  58282908          train_chain  PENDING       0:00      1 (Priority)
   58135863    export_sl6_005000  PENDING       0:00      1 (Dependency)
   58135861    export_sl6_030000  PENDING       0:00      1 (Dependency)
-  58277145             cog_eval  RUNNING       3:55      1 lrdn0116
-58217951                 cog_eval  COMPLETED   00:20:53 
-58217953                 cog_eval  COMPLETED   00:19:55 
-58217960                 cog_eval  COMPLETED   00:20:21 
-58217962                 cog_eval  COMPLETED   00:19:30 
-58217963                 cog_eval  COMPLETED   00:21:24 
-58217985                 cog_eval  COMPLETED   00:21:36 
-58217988                 cog_eval  COMPLETED   00:20:16 
-58217989                 cog_eval  COMPLETED   00:21:10 
-58217990                 cog_eval  COMPLETED   00:20:20 
-58217991                 cog_eval  COMPLETED   00:20:39 
-58217992                 cog_eval  COMPLETED   00:21:26 
-58217996                 cog_eval  COMPLETED   00:19:46 
 58218003                 cog_eval  COMPLETED   00:21:43 
 58277120                 cog_eval  COMPLETED   00:00:05 
 58277136                 cog_eval  COMPLETED   00:00:04 
 58277142                 cog_eval  COMPLETED   00:00:05 
 58277143                 cog_eval  COMPLETED   00:00:08 
 58277144                 cog_eval  COMPLETED   00:00:08 
-58277145                 cog_eval    RUNNING   00:03:55 
-58278003             smoke_resume    PENDING   00:00:00 
+58277145                 cog_eval  COMPLETED   00:20:53 
+58278003             smoke_resume     FAILED   00:01:37 
+58279158             smoke_resume  COMPLETED   00:07:10 
+58279701                 cog_eval  COMPLETED   00:10:33 
+58279706                 cog_eval  COMPLETED   00:10:33 
+58279710                 cog_eval  COMPLETED   00:09:37 
+58279711                 cog_eval  COMPLETED   00:11:24 
+58279716                 cog_eval  COMPLETED   00:09:53 
+58279719                 cog_eval  COMPLETED   00:11:42 
+58279891             cog_auditenv  COMPLETED   00:03:24 
+58280145             cog_auditenv  COMPLETED   00:02:33 
+58280453             smoke_resume  COMPLETED   00:08:46 
+58281730              train_chain CANCELLED+   00:00:00 
+58282908              train_chain    PENDING   00:00:00 

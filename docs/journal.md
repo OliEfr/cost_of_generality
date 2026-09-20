@@ -6335,3 +6335,39 @@ now reads -0.11 rather than -0.02.
 
 GPU spend for the whole audit: **1.17 GPU-h of the 2 GPU-h granted** (0.88 this re-score, 0.19 the
 eval reproducibility slice, 0.10 the runtime env-semantics checks).
+
+## 2026-09-20 -- standalone quantitative report for the leave-one-out study
+
+Built as a self-contained document: the leave-one-out study reported on its own terms, no
+cross-comparison with the additive-ladder study and no interpretation. Two editions from one
+source of truth.
+
+- `src/cog/analysis/loo.py` -- every statistic. This closes the audit's M5: the headline table had
+  been living in an agent scratch file, so nothing in the repo could reproduce it. Wilson intervals
+  per cell, Newcombe method-10 intervals for each delta, McNemar for the one episode-matched pair,
+  chi-square homogeneity within a cell's ten slices and across an arm's six budgets. Writes
+  `paper/loo_report/tables/{surface,loo,pooled,stages,timing,gen}.csv`.
+- `src/cog/analysis/loo_figures.py` -- ten figures into `paper/loo_report/figures/`.
+- `scripts/dev/build_loo_report.py` -- the 26-page landscape PDF (`paper/loo_report/loo_report.pdf`).
+- `scripts/dev/build_loo_artifact.py` -- the web edition, published at
+  https://claude.ai/artifact/CysuGjdyo921hKiRxdmD6x
+
+**Reporting decision, recorded because it changes the numbers a reader sees.** The primary tables
+are per demonstration budget, never pooled across budgets: the six budgets of an arm are six
+different policies on a rising curve, and the homogeneity test rejects a common rate for every one
+of the eighteen arms. A budget-pooled row is kept in Appendix A only, printed beside its own
+chi-square so the dispersion it hides is visible in the same line. The deltas are therefore 54
+rows, one per (task, axis removed, budget), plus 9 pooled rows.
+
+**Bug found while building it.** The T2 milestone "conditional" rates were being computed as a
+ratio of two marginals -- `lifted / opened` -- which is not a conditional probability and exceeded
+1.0 in several cells (L0 N=200 gave 1.065). The milestones are NOT nested: an episode can lift the
+object without ever opening the drawer past 0.15 m. Fixed to use joint counts
+(`|lifted AND opened| / |opened|`), which now lands in [0,1] for all 36 T2 cells, and the joint
+counts are emitted in `stages.csv`. The old ratio never appeared in any published artefact -- it
+was introduced and corrected inside this session -- but the same mistake is easy to repeat, so:
+**a stage funnel's conditional rate must come from the joint, because these stages do not nest.**
+
+The report also carries the audit's findings as a numbered flaw list (F1-F11) and an open-items
+list (T1-T10, two already done). Nothing in `experiments/clean_surface.csv` or the older figures
+was touched.

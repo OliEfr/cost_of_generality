@@ -356,3 +356,4 @@
 - 2026-09-20 13:46  D31 status check could not reach leonardo (renew cert: ssh st07; ~/cineca_login.sh)
 - 2026-09-20 14:12  D31 status check could not reach leonardo (renew cert: ssh st07; ~/cineca_login.sh)
 - 2026-09-20 14:43  D31: 1 job(s) ended badly -- see ops/status_d31.log
+- 2026-09-20 16:07  NEW failed cluster job(s): 58278003 - see ops/cluster_status.txt

@@ -1,2 +1,2 @@
 /leonardo_work     727G
-/leonardo_scratch  855G
+/leonardo_scratch  853G
