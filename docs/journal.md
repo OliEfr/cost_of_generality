@@ -6379,3 +6379,9 @@ opened > nothing), which sums to 100 % and reads as a funnel. `furthest_rows()` 
 `cog.analysis.loo` imposes that ordering explicitly, since the flags themselves do not nest.
 What it makes visible: with all disturbances on, 130/200 episodes at N=100 open the drawer and stop
 there; with the object start pose fixed, 170/200 finish the task. T2's failure is at the grasp.
+
+**Monitoring stood down (2026-09-21).** D31 is complete: 6/6 datasets converted, 36/36 cells
+trained, 1,080/1,080 eval slices, 108/108 cells pooled, registry filled, reports built. All three
+monitoring layers retired -- the `eval_d32` tmux session self-terminated at 1080/1080 as designed,
+the conversion waiter was stopped, and the hourly fallback check was cancelled. Nothing of this
+study is left running on the cluster or locally.
