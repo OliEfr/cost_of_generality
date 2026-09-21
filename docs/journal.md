@@ -6420,3 +6420,57 @@ six-arm framing and shares its `<title>` with the short edition.
 https://claude.ai/artifact/PvmE4my72uhvvuZ98Lskv4 -- with the standing caveat that every success
 rate in it predates D32, so it is the pre-fix scoring of the same policies. It is kept as the
 record of what was believed then, not as a current result.
+
+## 2026-09-21 -- first-batch depression: what is actually established, and what was overstated
+
+Re-derived the evidence for the batch-0 depression when challenged on it. Two corrections to how it
+has been presented, both mine, both from re-reading the numbers rather than new data.
+
+**1. The August probe shows the depression only in batch 0.** Its table is a fresh process on seeds
+5001-5004 scoring 0.35 / 0.65 / 0.80 / 0.85, against those seeds' warm values 0.85 / 0.70 / 0.60 /
+0.85. Read as a row it looks like a recovery ramp. Read seed by seed -- which is the only valid
+comparison, since the seeds differ in difficulty -- only the first is a real gap:
+
+| batch | seed | cold | warm | diff | 95 % |
+|---|---|---|---|---|---|
+| 0 | 5001 | 0.35 | 0.85 | **-0.50** | [-0.70,-0.20] clear |
+| 1 | 5002 | 0.65 | 0.70 | -0.05 | [-0.32,+0.23] not clear |
+| 2 | 5003 | 0.80 | 0.60 | +0.20 | [-0.08,+0.44] not clear, and reversed |
+| 3 | 5004 | 0.85 | 0.85 | 0.00 | [-0.23,+0.23] not clear |
+
+n=20 per cell, so everything after batch 0 is noise. The correct statement is "the depression is
+confined to the first batch", not "it recovers progressively over four batches".
+
+**2. The warm-up-length ladder does not resolve its intermediate points.** G6 is a different
+experiment from the above: same cell (`t1_L1_n100`, slices 0-4, 100 episodes each), four warm-up
+lengths, recovered from `$WORK/cog/results/_partials/*_g6w*`:
+
+| warm-up | SR | note |
+|---|---|---|
+| none | 0.720 | clean by construction -- no prior batch |
+| 1 batch capped at 20 steps | 0.800 | clean: earliest genuine T1 success is step 123, so a 20-step batch cannot succeed and cannot latch |
+| 1 batch capped at 100 steps | 0.810 | clean, same argument |
+| 1 full batch (600 steps) | 0.950 broken / **0.850** corrected | the only one that can latch |
+
+Against no warm-up: 20-step +0.08 [-0.04,+0.20], 100-step +0.09 [-0.03,+0.20], full batch
+**+0.13 [+0.02,+0.24]**. Only the full batch is clear of zero. I had written that "roughly
+two-thirds of the effect is gone after ~20 steps"; that is a point estimate whose interval spans
+from nothing to everything, and the claim is withdrawn.
+
+**What is established:** the depression follows process position, not the poses (seed 5001 scores
+0.35 first-in-process and 0.85 warm), the episodes genuinely fail, and one full warm-up batch
+recovers +0.13 [+0.02,+0.24]. **What is not:** which subsystem, and how fast it settles.
+
+**Probe written to settle the subsystem question**, `scripts/dev/warmup_frame_probe.py` +
+`slurm/warmup_probe.sbatch`. It takes the policy out of the loop: reset the same env with the same
+seed three times in one process, drive every cycle with an identical zero-action sequence, and
+capture camera tensors and rigid-body poses at matched steps. Cameras differing means the renderer
+had not converged; poses differing means physics had not. Both, either, or neither -- neither would
+mean the effect needs the policy in the loop and is not a raw-observation effect at all.
+
+**Blocked: Slurm is refusing every submission from this account.** `sbatch -A euhpc_b38_106
+-p boost_usr_prod --wrap hostname` returns "Invalid account or account/partition combination
+specified", as does the bare default-account form. The associations still list both accounts with
+their QOS, the partition is UP with `AllowAccounts=ALL`, and `saldo` shows 16,792 of 36,521 monthly
+hours used. The last submission that worked was 58282908 at 2026-09-20T16:43. Cluster-side; not
+worked around.
