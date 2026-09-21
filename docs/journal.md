@@ -6474,3 +6474,54 @@ specified", as does the bare default-account form. The associations still list b
 their QOS, the partition is UP with `AllowAccounts=ALL`, and `saldo` shows 16,792 of 36,521 monthly
 hours used. The last submission that worked was 58282908 at 2026-09-20T16:43. Cluster-side; not
 worked around.
+
+### The first-batch depression is the RENDERER, and the physics is exactly innocent
+
+Probe `slurm/warmup_probe.sbatch` → job 58342228, COMPLETED in 1 m 54 s (0.03 GPU-h). The design
+takes the policy out of the loop: reset `Cog-CupPlace-L1-IK-Rel-Visuomotor-v0` (20 envs) with seed
+5000 three times in one process and drive every cycle with an identical zero-action sequence, so
+nothing can diverge through the policy. Captured camera tensors and the cup's root pose at steps
+0, 1, 2, 5, 10, 20, 29.
+
+**Physics: bit-identical.** Cup root pose max |Δ| = **0.000e+00** at every captured step, for all
+three cycle pairs. Not "within tolerance" — equal as float32. Physics is not the mechanism.
+
+**Renderer: not converged in the first cycle.** Cycles 1 vs 2 agree at a flat **0.62 MAE** floor at
+every step and both cameras — that is the renderer's irreducible frame-to-frame sampling noise, and
+it is the yardstick. Against it (mean absolute difference in 0-255 units, cycle 0 vs cycle 1):
+
+| step | table_cam | × floor | wrist_cam | × floor |
+|---|---|---|---|---|
+| 0 | 6.43 | 10× | **69.78** | **112×** |
+| 1 | 2.32 | 3.6× | 1.25 | 2× |
+| 2 | 1.89 | 3.0× | 1.08 | 1.8× |
+| 5 | 1.33 | 2.1× | 0.85 | 1.4× |
+| 10 | 0.96 | 1.5× | 0.70 | 1.1× |
+| 20 | 0.71 | 1.1× | 0.62 | 1.0× |
+| 29 | 0.65 | 1.0× | 0.61 | 1.0× |
+
+Cycle 0 vs 2 reproduces cycle 0 vs 1 to two decimals everywhere, so this is specifically
+"first cycle against all later ones", not a drift.
+
+**The wrist camera's first frame is not a noisy version of the right image — it is a different
+image.** 99.07 % of pixels differ, per-channel mean shift −60 to −63, p99 159, max 231. The figure
+(`paper/loo_report/figures/probe_renderer_warmup.png`) shows the cold frame filled by the arm where
+the warm frame shows the cup in the gripper's view. The reading most consistent with this is that
+the first render after process start uses a camera transform that does not yet reflect the
+post-reset robot pose; the table camera is world-fixed, which is why it shows only progressive
+convergence (6.43 → 0.65) rather than a different scene.
+
+**So:** in the first episode of a fresh process the policy's opening actions are conditioned on a
+wrist view of the wrong thing, and on table pixels that take ~20 simulation steps to reach the
+noise floor. That is a sufficient mechanism for the measured depression, and it explains the shape
+of the G6 ladder — a 20-step warm-up recovers part of the effect because ~20 steps is where the
+table camera settles, and a full warm-up batch recovers the rest.
+
+**Consequence for the protocol:** the D31 warm-up batch is not a precaution, it is a correction for
+a measured rendering defect, and it is applied identically to all 108 cells. Anything that scores a
+policy on the first episode of a fresh process — including the pre-D31 per-variant protocol — is
+scoring it on corrupted first observations.
+
+Open: whether the wrist-camera first-frame defect is a camera-transform ordering bug that could be
+fixed outright (one extra `sim.render()` before the first observation), which would remove the need
+for a warm-up batch entirely. Not attempted.
