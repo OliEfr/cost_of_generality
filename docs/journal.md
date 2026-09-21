@@ -6414,3 +6414,9 @@ Hosted pages:
 The long leave-one-out page is the pre-simplification edition, recovered from commit `c2a5345`
 and published byte-for-byte unchanged at the user's request; it therefore still carries the
 six-arm framing and shares its `<title>` with the short edition.
+
+**The original ladder report is hosted too**, unchanged: `paper/results_analysis_report.html`
+(titled "T2 Inversion & Gen-Bias Audit", generated 2026-08-22, committed `73be535`) at
+https://claude.ai/artifact/PvmE4my72uhvvuZ98Lskv4 -- with the standing caveat that every success
+rate in it predates D32, so it is the pre-fix scoring of the same policies. It is kept as the
+record of what was believed then, not as a current result.
