@@ -6385,3 +6385,32 @@ trained, 1,080/1,080 eval slices, 108/108 cells pooled, registry filled, reports
 monitoring layers retired -- the `eval_d32` tmux session self-terminated at 1080/1080 as designed,
 the conversion waiter was stopped, and the hourly fallback check was cancelled. Nothing of this
 study is left running on the cluster or locally.
+
+## 2026-09-21 -- the additive-ladder study reported on its own, and all three pages hosted
+
+The ladder study (switch disturbances on one at a time: L0 -> L1 -> L2 -> L3b) now has its own
+report, built from the same corrected `u200d32` measurements as the leave-one-out one but a
+different set of pairings: the cost of *adding* an axis on top of the rungs below it,
+`SR(with) - SR(one rung below)` at a matched budget.
+
+- `src/cog/analysis/ladder.py` -- the pairings and their statistics; shares Wilson/Newcombe/
+  homogeneity with `loo.py` so the two studies cannot drift apart numerically.
+- `src/cog/analysis/ladder_figures.py`, `scripts/dev/build_ladder_report.py`,
+  `scripts/dev/build_ladder_artifact.py`.
+- `paper/ladder_report/{ladder_report.pdf, figures/, tables/, artifact/}`.
+
+**One property worth recording: the ladder study has no cross-GPU boundary.** All four rungs'
+demonstrations were generated on the 4090, so the hardware caveat that governs two of the
+leave-one-out contrasts does not apply to any comparison here. Its own first caveat is different
+and structural: **each rung is conditional on the rungs below it**, so the cost attributed to the
+goal axis is its cost *given* that the object start already varies. A different ladder order would
+give different numbers; this study measures one order.
+
+Hosted pages:
+- additive ladder -- https://claude.ai/artifact/FfFF6NmDNC9Je8HydJHEFB
+- leave-one-out, short -- https://claude.ai/artifact/CysuGjdyo921hKiRxdmD6x
+- leave-one-out, long -- https://claude.ai/artifact/C9TGLZEq9EzXXZqo71xcfj
+
+The long leave-one-out page is the pre-simplification edition, recovered from commit `c2a5345`
+and published byte-for-byte unchanged at the user's request; it therefore still carries the
+six-arm framing and shares its `<title>` with the short edition.

@@ -1,0 +1,329 @@
+<title>Additive disturbance ladder</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --paper:#f6f7f9; --card:#ffffff; --ink:#15181d; --ink-2:#3d4650; --muted:#6b7580;
+  --line:#dde2e8; --line-2:#eceff3; --accent:#1f4f7a; --accent-soft:#e8eff6;
+  --ax-a:#c2453f; --ax-b:#c96a11; --ax-c:#3f7f39;
+  --good:#3f7f39; --flag:#a8560d;
+  --on-accent:#ffffff;
+  --shadow:0 1px 2px rgba(20,28,38,.06), 0 8px 24px -16px rgba(20,28,38,.28);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#101317; --card:#171b21; --ink:#e7ebf0; --ink-2:#b9c2cc; --muted:#8a95a1;
+    --line:#2a313a; --line-2:#212730; --accent:#7fb3de; --accent-soft:#1b2833;
+    --ax-a:#e8706a; --ax-b:#e59a4a; --ax-c:#77bd6f; --good:#77bd6f; --flag:#e0a163;
+    --on-accent:#0d1116;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101317; --card:#171b21; --ink:#e7ebf0; --ink-2:#b9c2cc; --muted:#8a95a1;
+  --line:#2a313a; --line-2:#212730; --accent:#7fb3de; --accent-soft:#1b2833;
+  --ax-a:#e8706a; --ax-b:#e59a4a; --ax-c:#77bd6f; --good:#77bd6f; --flag:#e0a163;
+  --on-accent:#0d1116;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink); margin:0;
+  font-family:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+.masthead,nav.toc,main,footer{max-width:1180px; margin-inline:auto; padding-inline:16px}
+.masthead{padding-block:52px 22px}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted); margin:0 0 14px;
+}
+h1{
+  font-family:"IBM Plex Serif",Georgia,serif; font-weight:600; font-size:clamp(30px,5.4vw,50px);
+  line-height:1.06; letter-spacing:-.015em; margin:0 0 14px; text-wrap:balance;
+}
+.standfirst{font-size:clamp(16px,2.2vw,19px); line-height:1.5; color:var(--ink-2); max-width:62ch; margin:0 0 26px}
+.facts{display:flex; flex-wrap:wrap; gap:0; margin:0 0 22px; border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
+.facts>div{padding:11px 22px 11px 0; margin-right:22px; border-right:1px solid var(--line-2); flex:0 0 auto}
+.facts>div:last-child{border-right:0}
+.facts dt{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:0 0 3px}
+.facts dd{margin:0; font-weight:500; font-variant-numeric:tabular-nums; font-size:15px}
+.scopenote{
+  background:var(--accent-soft); border-left:3px solid var(--accent); padding:12px 16px;
+  margin:0; font-size:14px; color:var(--ink-2); max-width:78ch;
+}
+nav.toc{padding-block:10px 30px}
+nav.toc ol{list-style:none; display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:2px 20px; margin:0; padding:0}
+nav.toc a{display:flex; gap:10px; align-items:baseline; text-decoration:none; color:var(--ink-2); padding:5px 0; border-bottom:1px solid transparent; font-size:14px}
+nav.toc a:hover{color:var(--accent); border-bottom-color:var(--line)}
+.tnum{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); min-width:14px}
+main{padding-block:0 40px}
+section{padding-block:34px; border-top:1px solid var(--line)}
+h2{
+  font-family:"IBM Plex Serif",Georgia,serif; font-weight:600; font-size:clamp(21px,3vw,28px);
+  letter-spacing:-.01em; margin:0 0 16px; display:flex; gap:14px; align-items:baseline; scroll-margin-top:20px;
+}
+.snum{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--accent); font-weight:500; letter-spacing:.04em}
+h3{font-size:16px; font-weight:600; margin:30px 0 10px; letter-spacing:-.005em}
+h4.tasklabel{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:22px 0 7px; font-weight:500}
+p{margin:0 0 12px}
+.lede{max-width:78ch; color:var(--ink-2)}
+.note{font-size:13px; color:var(--muted); max-width:86ch; margin-top:9px}
+.mono,code{font-family:"IBM Plex Mono",ui-monospace,monospace}
+code{font-size:.9em; background:var(--line-2); padding:1px 5px; border-radius:3px}
+.sm{font-size:12px}
+/* tables */
+.scroll{overflow-x:auto; margin:14px 0 4px; border:1px solid var(--line); border-radius:6px; background:var(--card)}
+table{border-collapse:collapse; width:100%; font-size:13.5px}
+thead th{
+  text-align:left; font-weight:600; font-size:11.5px; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--muted); padding:10px 12px; border-bottom:1px solid var(--line); white-space:nowrap;
+  background:var(--card); position:sticky; top:0;
+}
+td{padding:8px 12px; border-bottom:1px solid var(--line-2); vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--line-2)}
+table.wide{font-size:12.5px}
+table.wide td,table.wide th{padding:6px 10px; white-space:nowrap}
+.n{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+.n.big{font-weight:500}
+.n.dim{color:var(--muted)}
+.n.sig{font-weight:600}
+.n.ns{color:var(--muted)}
+.na{color:var(--muted)}
+table.cells td{vertical-align:top}
+table.cells .sub{display:block; font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--muted); margin-top:1px}
+.tsk{color:var(--ink-2)}
+.arm{font-family:"IBM Plex Mono",monospace; font-weight:500}
+.arm-L3b{color:var(--ink)}
+.arm-AC{color:var(--ax-a)} .arm-BC{color:var(--ax-b)} .arm-L2{color:var(--ax-c)}
+.setup{font-weight:600}
+.s-L3b{color:var(--ink)} .s-AC{color:var(--ax-a)} .s-BC{color:var(--ax-b)} .s-L2{color:var(--ax-c)}
+.bar.s-AC{color:var(--ax-a)} .bar.s-BC{color:var(--ax-b)} .bar.s-L2{color:var(--ax-c)}
+.fixed{font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.06em; color:var(--flag)}
+table.cells .sub .ns{color:var(--muted)}
+.arm-L0,.arm-L1{color:var(--muted)}
+.ax{font-family:"IBM Plex Mono",monospace}
+.ax-A{color:var(--ax-a)} .ax-B{color:var(--ax-b)} .ax-C{color:var(--ax-c)}
+.flag{font-size:11.5px; font-family:"IBM Plex Mono",monospace}
+.flag.yes{color:var(--flag)} .flag.no{color:var(--muted)}
+/* delta bar */
+.bar{position:relative; display:block; width:150px; height:15px}
+.bar .zero{position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--line); }
+.bar .rule{position:absolute; top:7px; height:2px; border-radius:1px; background:currentColor; opacity:.45}
+.bar .dot{position:absolute; top:4px; width:8px; height:8px; margin-left:-4px; border-radius:50%; background:currentColor}
+.bar.ax-A{color:var(--ax-a)} .bar.ax-B{color:var(--ax-b)} .bar.ax-C{color:var(--ax-c)}
+.bar.off{opacity:.42}
+/* kv grid */
+.kv{display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin:14px 0}
+.kv>div{background:var(--card); padding:9px 13px; display:flex; flex-direction:column; gap:1px}
+.kv .k{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.kv .v{font-size:13.5px}
+/* figures */
+figure.plate{margin:20px 0 6px; background:#ffffff; border:1px solid var(--line); border-radius:6px; padding:14px; box-shadow:var(--shadow)}
+figure.plate img{display:block; width:100%; height:auto}
+figcaption{font-size:12.5px; color:#5c6570; margin-top:10px; line-height:1.45; max-width:92ch}
+.fignum{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#1f4f7a; margin-right:7px}
+/* controls */
+.controls{display:flex; flex-wrap:wrap; gap:14px 18px; align-items:center; margin:16px 0 4px; font-size:13px}
+.chk{display:flex; gap:7px; align-items:center; color:var(--ink-2); cursor:pointer}
+.filters{display:flex; flex-wrap:wrap; gap:6px}
+.chip{
+  font:inherit; font-size:12px; padding:3px 11px; border-radius:99px; cursor:pointer;
+  border:1px solid var(--line); background:var(--card); color:var(--ink-2);
+}
+.chip:hover{border-color:var(--accent); color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
+.chip.clear{border-style:dashed}
+/* flaws + todos */
+ol.flaws{list-style:none; margin:16px 0 0; padding:0; display:flex; flex-direction:column; gap:0}
+ol.flaws li{display:grid; grid-template-columns:52px 1fr; gap:14px; padding:15px 0; border-top:1px solid var(--line-2)}
+ol.flaws li:first-child{border-top:0}
+.fid{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--flag); font-weight:500; padding-top:2px}
+.fbody h4{margin:0 0 5px; font-size:15px; font-weight:600}
+.fbody p{margin:0; color:var(--ink-2); font-size:14px; max-width:92ch}
+ul.todos{list-style:none; margin:14px 0 0; padding:0}
+ul.todos li{display:grid; grid-template-columns:46px 1fr auto; gap:12px; align-items:baseline; padding:9px 0; border-top:1px solid var(--line-2)}
+ul.todos li:first-child{border-top:0}
+.tid{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted)}
+.ttext{font-size:14px}
+ul.todos .status{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--flag); white-space:nowrap}
+ul.todos li.done .status{color:var(--good)}
+ul.todos li.done .ttext{color:var(--muted)}
+footer{border-top:1px solid var(--line); padding-block:22px 40px; color:var(--muted); font-size:12.5px}
+footer code{background:none; padding:0}
+@media (max-width:640px){
+  .masthead{padding-block:34px 16px}
+  .facts>div{padding-right:14px; margin-right:14px}
+  .bar{width:100px}
+  ol.flaws li{grid-template-columns:1fr; gap:4px}
+  ul.todos li{grid-template-columns:1fr; gap:2px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+<style>
+.r-L0{color:#7b93a9} .r-L1{color:#6d9cc4} .r-L2{color:#3f6f9e} .r-L3b{color:#1d3f5e}
+.a-A{color:var(--ax-a)} .a-B{color:var(--ax-b)} .a-C{color:var(--ax-c)}
+.bar.a-A{color:var(--ax-a)} .bar.a-B{color:var(--ax-b)} .bar.a-C{color:var(--ax-c)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .r-L0{color:#a9c0d6}
+  :root:not([data-theme="light"]) .r-L1{color:#8fb6d6}
+  :root:not([data-theme="light"]) .r-L2{color:#7fa8cc}
+  :root:not([data-theme="light"]) .r-L3b{color:#cdd9e4}}
+:root[data-theme="dark"] .r-L0{color:#a9c0d6} :root[data-theme="dark"] .r-L1{color:#8fb6d6}
+:root[data-theme="dark"] .r-L2{color:#7fa8cc} :root[data-theme="dark"] .r-L3b{color:#cdd9e4}
+.rung{font-weight:600}
+</style>
+<header class="masthead">
+  <h1>Additive disturbance ladder</h1>
+  <p class="standfirst">Start with nothing varying, switch the disturbances on one at a time, and see what each one costs.</p>
+  <dl class="facts">
+    <div><dt>rungs per task</dt><dd>4</dd></div>
+    <div><dt>policies</dt><dd>72</dd></div>
+    <div><dt>episodes scored</dt><dd>14,400</dd></div>
+    <div><dt>budgets</dt><dd>10 &rarr; 400 demos</dd></div>
+    <div><dt>generated</dt><dd>2026-09-21</dd></div>
+  </dl></header>
+<main>
+<section><h2>What was run</h2>
+<p class="lede">Four rungs per task, each trained at six demonstration budgets and scored on 200 episodes. Same training recipe everywhere, one seed, 80,000 steps.</p>
+<div class="scroll"><table class="">
+<thead><tr><th>rung</th><th>object start position</th><th>goal position</th><th>object type</th><th>name on disk</th></tr></thead>
+<tbody>
+<tr><td><b class="rung r-L0">nothing varies</b></td><td><span class="fixed">FIXED</span></td><td><span class="fixed">FIXED</span></td><td>1 type</td><td><code>L0</code></td></tr>
+<tr><td><b class="rung r-L1">+ object start</b></td><td>varies</td><td><span class="fixed">FIXED</span></td><td>1 type</td><td><code>L1</code></td></tr>
+<tr><td><b class="rung r-L2">+ goal</b></td><td>varies</td><td>varies</td><td>1 type</td><td><code>L2</code></td></tr>
+<tr><td><b class="rung r-L3b">+ object type</b></td><td>varies</td><td>varies</td><td>10 types</td><td><code>L3b</code></td></tr>
+</tbody></table></div>
+<p class="note">Tasks: <b>T1 cup_place</b> put a cup on a goal disk &middot; <b>T2 drawer_stow</b> open a drawer and stow an object in it &middot; <b>T3 push_target</b> push a puck to a target. The cost reported for a disturbance is always <b>success rate with it on, minus success rate one rung below, at the same demonstration budget</b>. Negative means switching it on made the policy worse. All four rungs&rsquo; demonstrations were generated on the same GPU, so no comparison here crosses a hardware boundary.</p>
+</section>
+<section><h2>What each disturbance costs</h2>
+<figure class="plate">
+  <img src="figures/ladder02_delta.png" alt="Change in success rate when a disturbance is switched on, given the rungs below it. Bands are 95&amp;thinsp;% intervals; below the dashed line it made things worse." loading="lazy">
+  <figcaption>Change in success rate when a disturbance is switched on, given the rungs below it. Bands are 95&thinsp;% intervals; below the dashed line it made things worse.</figcaption>
+</figure>
+<h3>T1 cup_place</h3>
+<div class="scroll"><table class="cells">
+<thead><tr><th>demos</th><th>switch on object start</th><th></th><th>switch on goal</th><th></th><th>switch on object type</th><th></th></tr></thead>
+<tbody>
+<tr><td><span class="n">10</span></td><td><span class="n sig">-0.475</span><span class="sub">[-0.553, -0.385]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.475, interval -0.553 to -0.385"><span class="zero"></span><span class="rule" style="left:15.45%;width:10.48%"></span><span class="dot" style="left:20.31%"></span></span></td><td><span class="n sig">-0.165</span><span class="sub">[-0.249, -0.078]</span></td><td><span class="bar on a-B" role="img" aria-label="-0.165, interval -0.249 to -0.078"><span class="zero"></span><span class="rule" style="left:34.45%;width:10.68%"></span><span class="dot" style="left:39.69%"></span></span></td><td><span class="n ns">-0.030</span><span class="sub">[-0.105, +0.045]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="-0.030, interval -0.105 to +0.045"><span class="zero"></span><span class="rule" style="left:43.46%;width:9.34%"></span><span class="dot" style="left:48.12%"></span></span></td></tr>
+<tr><td><span class="n">25</span></td><td><span class="n sig">-0.380</span><span class="sub">[-0.455, -0.299]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.380, interval -0.455 to -0.299"><span class="zero"></span><span class="rule" style="left:21.56%;width:9.76%"></span><span class="dot" style="left:26.25%"></span></span></td><td><span class="n sig">-0.135</span><span class="sub">[-0.229, -0.037]</span></td><td><span class="bar on a-B" role="img" aria-label="-0.135, interval -0.229 to -0.037"><span class="zero"></span><span class="rule" style="left:35.67%;width:12.01%"></span><span class="dot" style="left:41.56%"></span></span></td><td><span class="n ns">-0.070</span><span class="sub">[-0.163, +0.025]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="-0.070, interval -0.163 to +0.025"><span class="zero"></span><span class="rule" style="left:39.81%;width:11.73%"></span><span class="dot" style="left:45.63%"></span></span></td></tr>
+<tr><td><span class="n">50</span></td><td><span class="n sig">-0.340</span><span class="sub">[-0.409, -0.272]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.340, interval -0.409 to -0.272"><span class="zero"></span><span class="rule" style="left:24.45%;width:8.53%"></span><span class="dot" style="left:28.75%"></span></span></td><td><span class="n ns">-0.030</span><span class="sub">[-0.123, +0.064]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="-0.030, interval -0.123 to +0.064"><span class="zero"></span><span class="rule" style="left:42.30%;width:11.69%"></span><span class="dot" style="left:48.12%"></span></span></td><td><span class="n ns">-0.020</span><span class="sub">[-0.115, +0.075]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="-0.020, interval -0.115 to +0.075"><span class="zero"></span><span class="rule" style="left:42.84%;width:11.85%"></span><span class="dot" style="left:48.75%"></span></span></td></tr>
+<tr><td><span class="n">100</span></td><td><span class="n sig">-0.135</span><span class="sub">[-0.190, -0.088]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.135, interval -0.190 to -0.088"><span class="zero"></span><span class="rule" style="left:38.12%;width:6.39%"></span><span class="dot" style="left:41.56%"></span></span></td><td><span class="n sig">-0.135</span><span class="sub">[-0.213, -0.056]</span></td><td><span class="bar on a-B" role="img" aria-label="-0.135, interval -0.213 to -0.056"><span class="zero"></span><span class="rule" style="left:36.71%;width:9.81%"></span><span class="dot" style="left:41.56%"></span></span></td><td><span class="n ns">+0.030</span><span class="sub">[-0.056, +0.115]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="+0.030, interval -0.056 to +0.115"><span class="zero"></span><span class="rule" style="left:46.51%;width:10.70%"></span><span class="dot" style="left:51.88%"></span></span></td></tr>
+<tr><td><span class="n">200</span></td><td><span class="n sig">-0.040</span><span class="sub">[-0.077, -0.013]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.040, interval -0.077 to -0.013"><span class="zero"></span><span class="rule" style="left:45.19%;width:4.01%"></span><span class="dot" style="left:47.50%"></span></span></td><td><span class="n ns">-0.015</span><span class="sub">[-0.060, +0.029]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="-0.015, interval -0.060 to +0.029"><span class="zero"></span><span class="rule" style="left:46.23%;width:5.58%"></span><span class="dot" style="left:49.06%"></span></span></td><td><span class="n ns">+0.005</span><span class="sub">[-0.041, +0.052]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="+0.005, interval -0.041 to +0.052"><span class="zero"></span><span class="rule" style="left:47.42%;width:5.81%"></span><span class="dot" style="left:50.31%"></span></span></td></tr>
+<tr><td><span class="n">400</span></td><td><span class="n ns">-0.010</span><span class="sub">[-0.041, +0.018]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-A" role="img" aria-label="-0.010, interval -0.041 to +0.018"><span class="zero"></span><span class="rule" style="left:47.43%;width:3.73%"></span><span class="dot" style="left:49.38%"></span></span></td><td><span class="n ns">-0.010</span><span class="sub">[-0.046, +0.024]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="-0.010, interval -0.046 to +0.024"><span class="zero"></span><span class="rule" style="left:47.12%;width:4.40%"></span><span class="dot" style="left:49.38%"></span></span></td><td><span class="n ns">+0.005</span><span class="sub">[-0.031, +0.042]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="+0.005, interval -0.031 to +0.042"><span class="zero"></span><span class="rule" style="left:48.06%;width:4.55%"></span><span class="dot" style="left:50.31%"></span></span></td></tr>
+</tbody></table></div>
+<h3>T2 drawer_stow</h3>
+<div class="scroll"><table class="cells">
+<thead><tr><th>demos</th><th>switch on object start</th><th></th><th>switch on goal</th><th></th><th>switch on object type</th><th></th></tr></thead>
+<tbody>
+<tr><td><span class="n">10</span></td><td><span class="n sig">-0.535</span><span class="sub">[-0.606, -0.453]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.535, interval -0.606 to -0.453"><span class="zero"></span><span class="rule" style="left:12.12%;width:9.60%"></span><span class="dot" style="left:16.56%"></span></span></td><td><span class="n ns">-0.020</span><span class="sub">[-0.071, +0.030]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="-0.020, interval -0.071 to +0.030"><span class="zero"></span><span class="rule" style="left:45.56%;width:6.32%"></span><span class="dot" style="left:48.75%"></span></span></td><td><span class="n ns">-0.020</span><span class="sub">[-0.065, +0.023]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="-0.020, interval -0.065 to +0.023"><span class="zero"></span><span class="rule" style="left:45.97%;width:5.46%"></span><span class="dot" style="left:48.75%"></span></span></td></tr>
+<tr><td><span class="n">25</span></td><td><span class="n sig">-0.645</span><span class="sub">[-0.711, -0.562]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.645, interval -0.711 to -0.562"><span class="zero"></span><span class="rule" style="left:5.56%;width:9.33%"></span><span class="dot" style="left:9.69%"></span></span></td><td><span class="n ns">-0.065</span><span class="sub">[-0.131, +0.001]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="-0.065, interval -0.131 to +0.001"><span class="zero"></span><span class="rule" style="left:41.80%;width:8.25%"></span><span class="dot" style="left:45.94%"></span></span></td><td><span class="n ns">+0.035</span><span class="sub">[-0.028, +0.098]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="+0.035, interval -0.028 to +0.098"><span class="zero"></span><span class="rule" style="left:48.26%;width:7.87%"></span><span class="dot" style="left:52.19%"></span></span></td></tr>
+<tr><td><span class="n">50</span></td><td><span class="n sig">-0.600</span><span class="sub">[-0.670, -0.515]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.600, interval -0.670 to -0.515"><span class="zero"></span><span class="rule" style="left:8.14%;width:9.70%"></span><span class="dot" style="left:12.50%"></span></span></td><td><span class="n sig">-0.080</span><span class="sub">[-0.158, -0.001]</span></td><td><span class="bar on a-B" role="img" aria-label="-0.080, interval -0.158 to -0.001"><span class="zero"></span><span class="rule" style="left:40.11%;width:9.85%"></span><span class="dot" style="left:45.00%"></span></span></td><td><span class="n sig">-0.085</span><span class="sub">[-0.150, -0.021]</span></td><td><span class="bar on a-C" role="img" aria-label="-0.085, interval -0.150 to -0.021"><span class="zero"></span><span class="rule" style="left:40.62%;width:8.09%"></span><span class="dot" style="left:44.69%"></span></span></td></tr>
+<tr><td><span class="n">100</span></td><td><span class="n sig">-0.595</span><span class="sub">[-0.665, -0.509]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.595, interval -0.665 to -0.509"><span class="zero"></span><span class="rule" style="left:8.42%;width:9.77%"></span><span class="dot" style="left:12.81%"></span></span></td><td><span class="n ns">-0.075</span><span class="sub">[-0.152, +0.003]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="-0.075, interval -0.152 to +0.003"><span class="zero"></span><span class="rule" style="left:40.48%;width:9.72%"></span><span class="dot" style="left:45.31%"></span></span></td><td><span class="n ns">+0.000</span><span class="sub">[-0.072, +0.072]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="+0.000, interval -0.072 to +0.072"><span class="zero"></span><span class="rule" style="left:45.48%;width:9.04%"></span><span class="dot" style="left:50.00%"></span></span></td></tr>
+<tr><td><span class="n">200</span></td><td><span class="n sig">-0.710</span><span class="sub">[-0.769, -0.632]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.710, interval -0.769 to -0.632"><span class="zero"></span><span class="rule" style="left:1.91%;width:8.61%"></span><span class="dot" style="left:5.63%"></span></span></td><td><span class="n ns">+0.075</span><span class="sub">[-0.004, +0.153]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="+0.075, interval -0.004 to +0.153"><span class="zero"></span><span class="rule" style="left:49.75%;width:9.81%"></span><span class="dot" style="left:54.69%"></span></span></td><td><span class="n sig">-0.080</span><span class="sub">[-0.158, -0.001]</span></td><td><span class="bar on a-C" role="img" aria-label="-0.080, interval -0.158 to -0.001"><span class="zero"></span><span class="rule" style="left:40.15%;width:9.76%"></span><span class="dot" style="left:45.00%"></span></span></td></tr>
+<tr><td><span class="n">400</span></td><td><span class="n sig">-0.675</span><span class="sub">[-0.738, -0.594]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.675, interval -0.738 to -0.594"><span class="zero"></span><span class="rule" style="left:3.87%;width:9.01%"></span><span class="dot" style="left:7.81%"></span></span></td><td><span class="n sig">+0.115</span><span class="sub">[+0.036, +0.192]</span></td><td><span class="bar on a-B" role="img" aria-label="+0.115, interval +0.036 to +0.192"><span class="zero"></span><span class="rule" style="left:52.27%;width:9.76%"></span><span class="dot" style="left:57.19%"></span></span></td><td><span class="n sig">-0.120</span><span class="sub">[-0.197, -0.042]</span></td><td><span class="bar on a-C" role="img" aria-label="-0.120, interval -0.197 to -0.042"><span class="zero"></span><span class="rule" style="left:37.69%;width:9.70%"></span><span class="dot" style="left:42.50%"></span></span></td></tr>
+</tbody></table></div>
+<h3>T3 push_target</h3>
+<div class="scroll"><table class="cells">
+<thead><tr><th>demos</th><th>switch on object start</th><th></th><th>switch on goal</th><th></th><th>switch on object type</th><th></th></tr></thead>
+<tbody>
+<tr><td><span class="n">10</span></td><td><span class="n sig">-0.505</span><span class="sub">[-0.576, -0.426]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.505, interval -0.576 to -0.426"><span class="zero"></span><span class="rule" style="left:14.02%;width:9.36%"></span><span class="dot" style="left:18.44%"></span></span></td><td><span class="n sig">-0.170</span><span class="sub">[-0.260, -0.076]</span></td><td><span class="bar on a-B" role="img" aria-label="-0.170, interval -0.260 to -0.076"><span class="zero"></span><span class="rule" style="left:33.74%;width:11.52%"></span><span class="dot" style="left:39.38%"></span></span></td><td><span class="n ns">+0.035</span><span class="sub">[-0.054, +0.124]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="+0.035, interval -0.054 to +0.124"><span class="zero"></span><span class="rule" style="left:46.60%;width:11.13%"></span><span class="dot" style="left:52.19%"></span></span></td></tr>
+<tr><td><span class="n">25</span></td><td><span class="n sig">-0.295</span><span class="sub">[-0.364, -0.226]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.295, interval -0.364 to -0.226"><span class="zero"></span><span class="rule" style="left:27.25%;width:8.61%"></span><span class="dot" style="left:31.56%"></span></span></td><td><span class="n sig">-0.185</span><span class="sub">[-0.277, -0.089]</span></td><td><span class="bar on a-B" role="img" aria-label="-0.185, interval -0.277 to -0.089"><span class="zero"></span><span class="rule" style="left:32.71%;width:11.75%"></span><span class="dot" style="left:38.44%"></span></span></td><td><span class="n ns">-0.005</span><span class="sub">[-0.102, +0.092]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="-0.005, interval -0.102 to +0.092"><span class="zero"></span><span class="rule" style="left:43.63%;width:12.13%"></span><span class="dot" style="left:49.69%"></span></span></td></tr>
+<tr><td><span class="n">50</span></td><td><span class="n sig">-0.130</span><span class="sub">[-0.185, -0.081]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.130, interval -0.185 to -0.081"><span class="zero"></span><span class="rule" style="left:38.41%;width:6.50%"></span><span class="dot" style="left:41.88%"></span></span></td><td><span class="n sig">-0.115</span><span class="sub">[-0.192, -0.037]</span></td><td><span class="bar on a-B" role="img" aria-label="-0.115, interval -0.192 to -0.037"><span class="zero"></span><span class="rule" style="left:38.02%;width:9.67%"></span><span class="dot" style="left:42.81%"></span></span></td><td><span class="n sig">-0.170</span><span class="sub">[-0.259, -0.077]</span></td><td><span class="bar on a-C" role="img" aria-label="-0.170, interval -0.259 to -0.077"><span class="zero"></span><span class="rule" style="left:33.83%;width:11.34%"></span><span class="dot" style="left:39.38%"></span></span></td></tr>
+<tr><td><span class="n">100</span></td><td><span class="n sig">-0.090</span><span class="sub">[-0.140, -0.047]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.090, interval -0.140 to -0.047"><span class="zero"></span><span class="rule" style="left:41.25%;width:5.80%"></span><span class="dot" style="left:44.38%"></span></span></td><td><span class="n ns">-0.005</span><span class="sub">[-0.066, +0.056]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="-0.005, interval -0.066 to +0.056"><span class="zero"></span><span class="rule" style="left:45.89%;width:7.59%"></span><span class="dot" style="left:49.69%"></span></span></td><td><span class="n sig">-0.080</span><span class="sub">[-0.149, -0.011]</span></td><td><span class="bar on a-C" role="img" aria-label="-0.080, interval -0.149 to -0.011"><span class="zero"></span><span class="rule" style="left:40.67%;width:8.65%"></span><span class="dot" style="left:45.00%"></span></span></td></tr>
+<tr><td><span class="n">200</span></td><td><span class="n sig">-0.060</span><span class="sub">[-0.103, -0.025]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.060, interval -0.103 to -0.025"><span class="zero"></span><span class="rule" style="left:43.55%;width:4.89%"></span><span class="dot" style="left:46.25%"></span></span></td><td><span class="n ns">+0.005</span><span class="sub">[-0.045, +0.055]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="+0.005, interval -0.045 to +0.055"><span class="zero"></span><span class="rule" style="left:47.21%;width:6.23%"></span><span class="dot" style="left:50.31%"></span></span></td><td><span class="n ns">+0.000</span><span class="sub">[-0.049, +0.049]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="+0.000, interval -0.049 to +0.049"><span class="zero"></span><span class="rule" style="left:46.94%;width:6.12%"></span><span class="dot" style="left:50.00%"></span></span></td></tr>
+<tr><td><span class="n">400</span></td><td><span class="n sig">-0.070</span><span class="sub">[-0.115, -0.033]</span></td><td><span class="bar on a-A" role="img" aria-label="-0.070, interval -0.115 to -0.033"><span class="zero"></span><span class="rule" style="left:42.80%;width:5.13%"></span><span class="dot" style="left:45.63%"></span></span></td><td><span class="n ns">+0.015</span><span class="sub">[-0.036, +0.067]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-B" role="img" aria-label="+0.015, interval -0.036 to +0.067"><span class="zero"></span><span class="rule" style="left:47.75%;width:6.42%"></span><span class="dot" style="left:50.94%"></span></span></td><td><span class="n ns">-0.045</span><span class="sub">[-0.101, +0.010]<span class="ns sm"> not clear of zero</span></span></td><td><span class="bar off a-C" role="img" aria-label="-0.045, interval -0.101 to +0.010"><span class="zero"></span><span class="rule" style="left:43.67%;width:6.94%"></span><span class="dot" style="left:47.19%"></span></span></td></tr>
+</tbody></table></div>
+<p class="note">Read each budget on its own line. The same disturbance can cost a lot at 25 demonstrations and nothing at 400.</p>
+</section>
+<section><h2>The success rates behind those costs</h2>
+<figure class="plate">
+  <img src="figures/ladder01_success.png" alt="Success rate at each rung. Error bars are 95&amp;thinsp;% intervals on 200 episodes." loading="lazy">
+  <figcaption>Success rate at each rung. Error bars are 95&thinsp;% intervals on 200 episodes.</figcaption>
+</figure>
+<h3>T1 cup_place</h3>
+<div class="scroll"><table class="cells">
+<thead><tr><th>demos</th><th><span class="r-L0">nothing varies</span></th><th><span class="r-L1">+ object start</span></th><th><span class="r-L2">+ goal</span></th><th><span class="r-L3b">+ object type</span></th></tr></thead>
+<tbody>
+<tr><td><span class="n">10</span></td><td><span class="n big">0.830</span><span class="sub">166/200</span></td><td><span class="n big">0.355</span><span class="sub">71/200</span></td><td><span class="n big">0.190</span><span class="sub">38/200</span></td><td><span class="n big">0.160</span><span class="sub">32/200</span></td></tr>
+<tr><td><span class="n">25</span></td><td><span class="n big">0.925</span><span class="sub">185/200</span></td><td><span class="n big">0.545</span><span class="sub">109/200</span></td><td><span class="n big">0.410</span><span class="sub">82/200</span></td><td><span class="n big">0.340</span><span class="sub">68/200</span></td></tr>
+<tr><td><span class="n">50</span></td><td><span class="n big">0.990</span><span class="sub">198/200</span></td><td><span class="n big">0.650</span><span class="sub">130/200</span></td><td><span class="n big">0.620</span><span class="sub">124/200</span></td><td><span class="n big">0.600</span><span class="sub">120/200</span></td></tr>
+<tr><td><span class="n">100</span></td><td><span class="n big">0.995</span><span class="sub">199/200</span></td><td><span class="n big">0.860</span><span class="sub">172/200</span></td><td><span class="n big">0.725</span><span class="sub">145/200</span></td><td><span class="n big">0.755</span><span class="sub">151/200</span></td></tr>
+<tr><td><span class="n">200</span></td><td><span class="n big">1.000</span><span class="sub">200/200</span></td><td><span class="n big">0.960</span><span class="sub">192/200</span></td><td><span class="n big">0.945</span><span class="sub">189/200</span></td><td><span class="n big">0.950</span><span class="sub">190/200</span></td></tr>
+<tr><td><span class="n">400</span></td><td><span class="n big">0.990</span><span class="sub">198/200</span></td><td><span class="n big">0.980</span><span class="sub">196/200</span></td><td><span class="n big">0.970</span><span class="sub">194/200</span></td><td><span class="n big">0.975</span><span class="sub">195/200</span></td></tr>
+</tbody></table></div>
+<h3>T2 drawer_stow</h3>
+<div class="scroll"><table class="cells">
+<thead><tr><th>demos</th><th><span class="r-L0">nothing varies</span></th><th><span class="r-L1">+ object start</span></th><th><span class="r-L2">+ goal</span></th><th><span class="r-L3b">+ object type</span></th></tr></thead>
+<tbody>
+<tr><td><span class="n">10</span></td><td><span class="n big">0.610</span><span class="sub">122/200</span></td><td><span class="n big">0.075</span><span class="sub">15/200</span></td><td><span class="n big">0.055</span><span class="sub">11/200</span></td><td><span class="n big">0.035</span><span class="sub">7/200</span></td></tr>
+<tr><td><span class="n">25</span></td><td><span class="n big">0.805</span><span class="sub">161/200</span></td><td><span class="n big">0.160</span><span class="sub">32/200</span></td><td><span class="n big">0.095</span><span class="sub">19/200</span></td><td><span class="n big">0.130</span><span class="sub">26/200</span></td></tr>
+<tr><td><span class="n">50</span></td><td><span class="n big">0.845</span><span class="sub">169/200</span></td><td><span class="n big">0.245</span><span class="sub">49/200</span></td><td><span class="n big">0.165</span><span class="sub">33/200</span></td><td><span class="n big">0.080</span><span class="sub">16/200</span></td></tr>
+<tr><td><span class="n">100</span></td><td><span class="n big">0.830</span><span class="sub">166/200</span></td><td><span class="n big">0.235</span><span class="sub">47/200</span></td><td><span class="n big">0.160</span><span class="sub">32/200</span></td><td><span class="n big">0.160</span><span class="sub">32/200</span></td></tr>
+<tr><td><span class="n">200</span></td><td><span class="n big">0.875</span><span class="sub">175/200</span></td><td><span class="n big">0.165</span><span class="sub">33/200</span></td><td><span class="n big">0.240</span><span class="sub">48/200</span></td><td><span class="n big">0.160</span><span class="sub">32/200</span></td></tr>
+<tr><td><span class="n">400</span></td><td><span class="n big">0.820</span><span class="sub">164/200</span></td><td><span class="n big">0.145</span><span class="sub">29/200</span></td><td><span class="n big">0.260</span><span class="sub">52/200</span></td><td><span class="n big">0.140</span><span class="sub">28/200</span></td></tr>
+</tbody></table></div>
+<h3>T3 push_target</h3>
+<div class="scroll"><table class="cells">
+<thead><tr><th>demos</th><th><span class="r-L0">nothing varies</span></th><th><span class="r-L1">+ object start</span></th><th><span class="r-L2">+ goal</span></th><th><span class="r-L3b">+ object type</span></th></tr></thead>
+<tbody>
+<tr><td><span class="n">10</span></td><td><span class="n big">0.955</span><span class="sub">191/200</span></td><td><span class="n big">0.450</span><span class="sub">90/200</span></td><td><span class="n big">0.280</span><span class="sub">56/200</span></td><td><span class="n big">0.315</span><span class="sub">63/200</span></td></tr>
+<tr><td><span class="n">25</span></td><td><span class="n big">0.975</span><span class="sub">195/200</span></td><td><span class="n big">0.680</span><span class="sub">136/200</span></td><td><span class="n big">0.495</span><span class="sub">99/200</span></td><td><span class="n big">0.490</span><span class="sub">98/200</span></td></tr>
+<tr><td><span class="n">50</span></td><td><span class="n big">0.990</span><span class="sub">198/200</span></td><td><span class="n big">0.860</span><span class="sub">172/200</span></td><td><span class="n big">0.745</span><span class="sub">149/200</span></td><td><span class="n big">0.575</span><span class="sub">115/200</span></td></tr>
+<tr><td><span class="n">100</span></td><td><span class="n big">0.990</span><span class="sub">198/200</span></td><td><span class="n big">0.900</span><span class="sub">180/200</span></td><td><span class="n big">0.895</span><span class="sub">179/200</span></td><td><span class="n big">0.815</span><span class="sub">163/200</span></td></tr>
+<tr><td><span class="n">200</span></td><td><span class="n big">0.995</span><span class="sub">199/200</span></td><td><span class="n big">0.935</span><span class="sub">187/200</span></td><td><span class="n big">0.940</span><span class="sub">188/200</span></td><td><span class="n big">0.940</span><span class="sub">188/200</span></td></tr>
+<tr><td><span class="n">400</span></td><td><span class="n big">0.995</span><span class="sub">199/200</span></td><td><span class="n big">0.925</span><span class="sub">185/200</span></td><td><span class="n big">0.940</span><span class="sub">188/200</span></td><td><span class="n big">0.895</span><span class="sub">179/200</span></td></tr>
+</tbody></table></div>
+</section>
+<section><h2>Where T2 policies got stuck</h2>
+<p class="lede">T2 is a four-part task: open the drawer, pick up the object, carry it over the open drawer, drop it in. Every episode records how far it got, so a failure can be placed instead of just counted. Each bar is 200 episodes split by the furthest point reached, so the five shares add to 100.</p>
+<figure class="plate">
+  <img src="figures/ladder03_funnel.png" alt="How far each episode got before it stopped. Numbers are percentages of 200 episodes." loading="lazy">
+  <figcaption>How far each episode got before it stopped. Numbers are percentages of 200 episodes.</figcaption>
+</figure>
+<div class="scroll"><table class="">
+<thead><tr><th>rung</th><th>demos</th><th>never opened</th><th>opened, stopped</th><th>lifted, stopped</th><th>held over, stopped</th><th>stowed it</th></tr></thead>
+<tbody>
+<tr><td><b class="rung r-L0">nothing varies</b></td><td><span class="n">10</span></td><td><span class="n">7</span></td><td><span class="n">37</span></td><td><span class="n">16</span></td><td><span class="n">18</span></td><td><span class="n big">122</span></td></tr>
+<tr><td><b class="rung r-L0">nothing varies</b></td><td><span class="n">25</span></td><td><span class="n">16</span></td><td><span class="n">2</span></td><td><span class="n">6</span></td><td><span class="n">15</span></td><td><span class="n big">161</span></td></tr>
+<tr><td><b class="rung r-L0">nothing varies</b></td><td><span class="n">50</span></td><td><span class="n">13</span></td><td><span class="n">1</span></td><td><span class="n">6</span></td><td><span class="n">11</span></td><td><span class="n big">169</span></td></tr>
+<tr><td><b class="rung r-L0">nothing varies</b></td><td><span class="n">100</span></td><td><span class="n">6</span></td><td><span class="n">3</span></td><td><span class="n">19</span></td><td><span class="n">6</span></td><td><span class="n big">166</span></td></tr>
+<tr><td><b class="rung r-L0">nothing varies</b></td><td><span class="n">200</span></td><td><span class="n">2</span></td><td><span class="n">1</span></td><td><span class="n">17</span></td><td><span class="n">5</span></td><td><span class="n big">175</span></td></tr>
+<tr><td><b class="rung r-L0">nothing varies</b></td><td><span class="n">400</span></td><td><span class="n">20</span></td><td><span class="n">3</span></td><td><span class="n">9</span></td><td><span class="n">4</span></td><td><span class="n big">164</span></td></tr>
+<tr><td><b class="rung r-L1">+ object start</b></td><td><span class="n">10</span></td><td><span class="n">40</span></td><td><span class="n">141</span></td><td><span class="n">4</span></td><td><span class="n">0</span></td><td><span class="n big">15</span></td></tr>
+<tr><td><b class="rung r-L1">+ object start</b></td><td><span class="n">25</span></td><td><span class="n">18</span></td><td><span class="n">142</span></td><td><span class="n">8</span></td><td><span class="n">0</span></td><td><span class="n big">32</span></td></tr>
+<tr><td><b class="rung r-L1">+ object start</b></td><td><span class="n">50</span></td><td><span class="n">10</span></td><td><span class="n">137</span></td><td><span class="n">4</span></td><td><span class="n">0</span></td><td><span class="n big">49</span></td></tr>
+<tr><td><b class="rung r-L1">+ object start</b></td><td><span class="n">100</span></td><td><span class="n">19</span></td><td><span class="n">130</span></td><td><span class="n">4</span></td><td><span class="n">0</span></td><td><span class="n big">47</span></td></tr>
+<tr><td><b class="rung r-L1">+ object start</b></td><td><span class="n">200</span></td><td><span class="n">38</span></td><td><span class="n">124</span></td><td><span class="n">5</span></td><td><span class="n">0</span></td><td><span class="n big">33</span></td></tr>
+<tr><td><b class="rung r-L1">+ object start</b></td><td><span class="n">400</span></td><td><span class="n">25</span></td><td><span class="n">141</span></td><td><span class="n">5</span></td><td><span class="n">0</span></td><td><span class="n big">29</span></td></tr>
+<tr><td><b class="rung r-L2">+ goal</b></td><td><span class="n">10</span></td><td><span class="n">65</span></td><td><span class="n">124</span></td><td><span class="n">0</span></td><td><span class="n">0</span></td><td><span class="n big">11</span></td></tr>
+<tr><td><b class="rung r-L2">+ goal</b></td><td><span class="n">25</span></td><td><span class="n">22</span></td><td><span class="n">158</span></td><td><span class="n">1</span></td><td><span class="n">0</span></td><td><span class="n big">19</span></td></tr>
+<tr><td><b class="rung r-L2">+ goal</b></td><td><span class="n">50</span></td><td><span class="n">23</span></td><td><span class="n">133</span></td><td><span class="n">11</span></td><td><span class="n">0</span></td><td><span class="n big">33</span></td></tr>
+<tr><td><b class="rung r-L2">+ goal</b></td><td><span class="n">100</span></td><td><span class="n">28</span></td><td><span class="n">135</span></td><td><span class="n">5</span></td><td><span class="n">0</span></td><td><span class="n big">32</span></td></tr>
+<tr><td><b class="rung r-L2">+ goal</b></td><td><span class="n">200</span></td><td><span class="n">22</span></td><td><span class="n">126</span></td><td><span class="n">4</span></td><td><span class="n">0</span></td><td><span class="n big">48</span></td></tr>
+<tr><td><b class="rung r-L2">+ goal</b></td><td><span class="n">400</span></td><td><span class="n">18</span></td><td><span class="n">125</span></td><td><span class="n">5</span></td><td><span class="n">0</span></td><td><span class="n big">52</span></td></tr>
+<tr><td><b class="rung r-L3b">+ object type</b></td><td><span class="n">10</span></td><td><span class="n">42</span></td><td><span class="n">144</span></td><td><span class="n">2</span></td><td><span class="n">5</span></td><td><span class="n big">7</span></td></tr>
+<tr><td><b class="rung r-L3b">+ object type</b></td><td><span class="n">25</span></td><td><span class="n">7</span></td><td><span class="n">166</span></td><td><span class="n">1</span></td><td><span class="n">0</span></td><td><span class="n big">26</span></td></tr>
+<tr><td><b class="rung r-L3b">+ object type</b></td><td><span class="n">50</span></td><td><span class="n">34</span></td><td><span class="n">142</span></td><td><span class="n">8</span></td><td><span class="n">0</span></td><td><span class="n big">16</span></td></tr>
+<tr><td><b class="rung r-L3b">+ object type</b></td><td><span class="n">100</span></td><td><span class="n">34</span></td><td><span class="n">130</span></td><td><span class="n">4</span></td><td><span class="n">0</span></td><td><span class="n big">32</span></td></tr>
+<tr><td><b class="rung r-L3b">+ object type</b></td><td><span class="n">200</span></td><td><span class="n">29</span></td><td><span class="n">134</span></td><td><span class="n">5</span></td><td><span class="n">0</span></td><td><span class="n big">32</span></td></tr>
+<tr><td><b class="rung r-L3b">+ object type</b></td><td><span class="n">400</span></td><td><span class="n">44</span></td><td><span class="n">124</span></td><td><span class="n">3</span></td><td><span class="n">1</span></td><td><span class="n big">28</span></td></tr>
+</tbody></table></div>
+<p class="note">Counts out of 200 episodes.</p>
+</section>
+<section><h2>What could be wrong with these numbers</h2><ol class="flaws">
+<li><div class="fid">1</div><div class="fbody"><h4>Each rung is measured on top of the rungs below it.</h4><p>The cost of switching on the goal is measured with the object start already varying, and the cost of object type with both of the others already on. A different order would give different numbers. This report measures one order, the one the ladder defines.</p></div></li>
+<li><div class="fid">2</div><div class="fbody"><h4>One training seed.</h4><p>Every policy is seed 0. The intervals here cover episode sampling only; they contain no training-run variance.</p></div></li>
+<li><div class="fid">3</div><div class="fbody"><h4>Repeating an evaluation does not give the identical episodes back.</h4><p>Re-running one 20-episode slice with the same seed and checkpoint reproduced the slice total but flipped two individual episodes. Expect about +/-1 success per 20 episodes of jitter.</p></div></li>
+<li><div class="fid">4</div><div class="fbody"><h4>Do not average a change across demonstration budgets.</h4><p>The six budgets are six different policies. A test for a shared success rate is rejected in all 18 rung-task pairs, so an average over budgets describes the mix of budgets chosen, not the rung.</p></div></li>
+<li><div class="fid">5</div><div class="fbody"><h4>These numbers replace an earlier scoring of the same policies.</h4><p>The success counter used to read a flag that stayed latched across episode boundaries, which credited successes that never happened. All 108 cells were re-scored after the fix and this report uses only the corrected results. Older surfaces in the repository for the same cells are superseded.</p></div></li>
+</ol></section>
+<section><h2>What would fix them</h2><ul class="todos">
+<li class="open"><span class="tid">1</span><span class="ttext">Train more than one seed on whichever rungs matter.</span></li>
+<li class="open"><span class="tid">2</span><span class="ttext">Measure the ladder in a second order, so the conditioning in caveat 1 can be quantified.</span></li>
+<li class="open"><span class="tid">3</span><span class="ttext">Record the evaluator version in the results ledger, and which git revision each run used.</span></li>
+<li class="open"><span class="tid">4</span><span class="ttext">Measure whether a second warm-up batch moves the scored success rate.</span></li>
+<li class="open"><span class="tid">5</span><span class="ttext">Mark the superseded surface files in the repository so they cannot be picked up by mistake.</span></li>
+</ul></section>
+</main>
+<footer><p>Every number from <code>src/cog/analysis/ladder.py</code> over the pooled result files. Tables as CSV in <code>paper/ladder_report/tables/</code>. Repository <code>cost_of_generality</code> @ <code>b1e9b9f</code> &middot; 2026-09-21</p></footer>
