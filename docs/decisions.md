@@ -1274,8 +1274,14 @@ and on table pixels ~20 steps from settled. That is sufficient to produce the me
 - The warm-up is identical across all cells, so it cannot bias one arm against another. It costs
   one extra batch per slice.
 
-### VERIFY (open)
+### VERIFY (answered 2026-09-22, partially)
 
 Whether the wrist-camera first-frame defect is a transform-ordering bug that an extra
-`sim.render()` before the first observation would remove outright. If it is, the warm-up batch
-could shrink to a few render calls. Probed separately; see the journal.
+`sim.render()` before the first observation would remove outright. **It is.** Job 58382793: one
+extra render call takes the cold wrist frame from 105x the noise floor to 1.6x, and four calls put
+both cameras at the floor. The renderer is one call behind the post-reset transform.
+
+Still open: whether that recovers the success rate. The probe measures observations, not success,
+so it does not establish that a few render calls could replace the warm-up batch's
++0.13 [+0.02,+0.24]. Until an eval run says otherwise, the rule above stands unchanged: no result
+is reported from the first episode of a fresh process.

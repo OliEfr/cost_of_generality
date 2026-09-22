@@ -6525,3 +6525,46 @@ scoring it on corrupted first observations.
 Open: whether the wrist-camera first-frame defect is a camera-transform ordering bug that could be
 fixed outright (one extra `sim.render()` before the first observation), which would remove the need
 for a warm-up batch entirely. Not attempted.
+
+### D33 VERIFY answered: one extra `sim.render()` removes the cold-frame defect
+
+Probe `slurm/render_fix_probe.sbatch` / `scripts/dev/warmup_render_fix_probe.py`, job 58382793,
+67 s. Three reset cycles at seed 5000 in one process; in each, the observation is captured straight
+from `reset()` and again after 1, 2, 4 and 8 extra `env.sim.render()` calls. Nothing in the eval
+path was changed -- this measures only.
+
+Mean absolute difference, 0-255 units, cold first cycle against the warm second cycle's
+`reset()` observation:
+
+| camera | extra renders | cold vs warm | × noise floor |
+|---|---|---|---|
+| wrist_cam | 0 | **69.578** | **105×** |
+| wrist_cam | 1 | **1.085** | **1.6×** |
+| wrist_cam | 2 | 0.962 | 1.5× |
+| wrist_cam | 4 | 0.747 | 1.1× |
+| wrist_cam | 8 | 0.405 | 0.6× |
+| table_cam | 0 | 3.704 | 5.3× |
+| table_cam | 1 | **1.115** | **1.6×** |
+| table_cam | 4 | 0.716 | 1.0× |
+| table_cam | 8 | 0.347 | 0.5× |
+
+**A single extra render call collapses the wrist defect from 105× the noise floor to 1.6×.** Four
+calls put both cameras at the floor; eight go below it, which is expected -- more render calls
+average the renderer's stochastic sampling down, so the two images agree more tightly than two
+single renders ever do. The control column confirms the calls are not changing image content in the
+warm case: extra renders move the *warm* frame by 0.34-0.66, i.e. by about the noise floor.
+
+So the wrist camera's catastrophic first frame is exactly what it looked like -- the renderer is one
+call behind the post-reset transform, and driving it once more fixes it.
+
+**What this does NOT show.** The probe measures observations, not success. It does not establish
+that replacing the warm-up batch with a few render calls recovers the +0.13 [+0.02,+0.24] the batch
+is worth. Settling that needs an eval run: one cell, warm-up replaced by N renders, against the
+warm-up-batch number. Roughly 0.5-1 GPU-h for 5-10 slices. Not run -- the user asked for a trial
+and a report, and D33's rule (never score the first episode of a fresh process) is unaffected
+either way.
+
+One caveat on the comparison itself: this probe never calls `env.step()`, so its "warm" reference is
+a process that has only rendered, never simulated. That is why its table_cam figure at zero extra
+renders is 3.70 where the D33 probe measured 6.43 for the nominally same pair. The wrist figure,
+which is the defect under test, reproduces almost exactly (69.58 here vs 69.78 there).
