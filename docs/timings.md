@@ -447,3 +447,32 @@ policy inference, is the bottleneck. Cluster cold-start extras: Kit app-ready 13
 36 s cold, scene creation 0.6-1.7 s with assets staged locally (vs a 300 s S3 timeout
 without). Running SR after 80 episodes was 0.812, against 0.86 recorded locally for the
 same cell -- the cluster path reproduces the local result, it is only slower.
+
+## Eval slice, and what the warm-up batch costs -- measured 2026-09-22
+
+From the `[eval] warmup 1/1 (unscored, seed 4900) <s>` and `EVAL_WALL_SECONDS=<s> rc=0` lines of
+**2,205 completed eval jobs** on Leonardo A100s (all generations of the D31 sweep, so the sample
+covers every task at every demo budget). Both figures are whole-job wall clock, warm-up included in
+the total; the balance is Kit boot + policy load + env creation (~60-80 s) plus the scored batch.
+
+| task | slices | warm-up batch (mean) | whole slice (mean) | warm-up share |
+|---|---|---|---|---|
+| T1 cup_place | 760 | **225 s** (3.8 min) | 504 s | 44.7 % |
+| T2 drawer_stow | 725 | **581 s** (9.7 min) | 1,241 s | 46.8 % |
+| T3 push_target | 720 | **316 s** (5.3 min) | 693 s | 45.6 % |
+| all | 2,205 | 372 s | 808 s | **46.0 %** |
+
+Scaled to one full 36-cell sweep of a task set (10 slices per cell, 360 slices per task):
+
+| task | warm-up | total | |
+|---|---|---|---|
+| T1 | 22.5 GPU-h | 50.4 GPU-h | |
+| T2 | 58.1 GPU-h | 124.1 GPU-h | |
+| T3 | 31.6 GPU-h | 69.3 GPU-h | |
+| **all three** | **112.2 GPU-h** | **243.8 GPU-h** | **46 %** |
+
+So the D33 warm-up batch is not a rounding error: it is **~46 % of every eval sweep**, 112 GPU-h on
+the 108-cell surface. It buys +0.13 [+0.02,+0.24] of un-depressed success rate on the calibration
+cell. The open question from D33's VERIFY is now also a budget question: a few `sim.render()` calls
+cost microseconds and remove the observation-level defect outright, so if an eval run shows they
+also recover the success rate, essentially all 112 GPU-h come back.
