@@ -96,13 +96,15 @@ def main() -> None:
     ap.add_argument("--n", nargs="*", type=int, default=NDEMOS, help="eval stage only")
     ap.add_argument("--step", default="080000", help="eval stage only")
     ap.add_argument("--slices", type=int, default=SLICES, help="eval stage only")
-    ap.add_argument("--warmup-batches", type=int, default=1, help="eval stage only; see gate G6")
+    ap.add_argument("--warmup-batches", type=int, default=0,
+                    help="eval stage only; 0 since D34 -- warm-up is four render calls, not a batch")
     ap.add_argument("--warmup-max-steps", type=int, default=0,
                     help="eval stage only; 0 = the task's own --max_steps")
-    ap.add_argument("--warmup-renders", type=int, default=0, dest="warmup_renders",
+    ap.add_argument("--warmup-renders", type=int, default=4, dest="warmup_renders",
                     help="eval stage only: extra sim.render() calls after the scored reset "
                          "instead of a warm-up batch (D33)")
-    ap.add_argument("--suffix", default="u200", help="eval stage only: protocol suffix")
+    ap.add_argument("--suffix", default="r4",
+                    help="eval stage only: protocol suffix. Default r4 names the D34 render-warmed protocol, so a forgotten --suffix still cannot collide with the batch-warmed u200d32 surface")
     ap.add_argument("--env-arm", default=None, dest="env_arm",
                     help="eval stage only: evaluate in THIS arm's env while loading the checkpoint "
                          "of --arms. Only use is a diagnostic control (G2b trains on ctl_L1 and is "

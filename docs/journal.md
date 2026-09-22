@@ -6612,3 +6612,15 @@ renderer's noise floor); 1 or 2 were not tested at the success level.
 **Not switched over.** The default remains `--warmup_batches 1`, and the 108-cell surface is
 untouched. Flipping the default would make new results non-comparable with the published surface
 unless that is re-run, which is a separate decision and a separate 130 GPU-h.
+
+**Default switched (D34).** On the user's directive, `--warmup_renders 4` is now the default in
+`rollout_eval.py`, `slurm/eval.sbatch` and `scripts/ops/launch_wave.py`, and the launcher's default
+suffix moved from `u200` to `r4` so a forgotten flag cannot produce a file that collides with the
+batch-warmed surface. `COG_WARMUP_BATCHES=1 COG_WARMUP_RENDERS=0` still reproduces the old protocol.
+
+While flipping it, closed the audit's M4: `pool_variant_eval.py` keyed its MIXED_PROTOCOL check on
+`(num_inference_steps, warmup)` alone, which is identical across all three evaluator generations of
+the D31 sweep -- it would have passed a pool that mixed the phantom-success scorer with the
+corrected one, and it could not see the batch-vs-renders difference either. The key now includes
+`warmup_renders` and `success_signal`, and both are carried into the pooled payload, so provenance
+no longer rests on the filename.

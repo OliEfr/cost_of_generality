@@ -1293,3 +1293,66 @@ result licenses is a future switch, not a retroactive one: every number in the p
 came from batch-warmed evaluations, so flipping the default makes new results non-comparable with
 it unless the surface is re-run (~130 GPU-h). That is a separate decision, to be taken when the
 next sweep is scoped rather than now.
+
+## D34 -- 2026-09-22 (USER DIRECTIVE): the eval warm-up is four render calls, not a batch
+
+**Directive.** "make this new default for all future runs. if results are identical we can switch
+and just run all following evals with the procedure and compare to old ones nevertheless."
+
+**Status:** accepted, defaults flipped. Applies to runs from here on; nothing published is re-scored.
+
+### Decision
+
+`--warmup_renders 4` replaces `--warmup_batches 1` as the default everywhere an eval is launched:
+
+| where | was | is |
+|---|---|---|
+| `rollout_eval.py --warmup_renders` | 0 | **4** |
+| `eval.sbatch COG_WARMUP_BATCHES` | 1 | **0** |
+| `eval.sbatch COG_WARMUP_RENDERS` | 0 | **4** |
+| `launch_wave.py --warmup-batches` | 1 | **0** |
+| `launch_wave.py --warmup-renders` | 0 | **4** |
+| `launch_wave.py --suffix` | `u200` | **`r4`** |
+
+To reproduce the batch-warmed protocol exactly -- which is what produced the published 108-cell
+surface -- set `COG_WARMUP_BATCHES=1 COG_WARMUP_RENDERS=0`. That path is unchanged and still works.
+
+### Why
+
+D33 established that the first-batch depression is a renderer defect: the renderer is one call
+behind the post-reset transform, so the first frame of a fresh process shows a stale wrist view at
+105x the renderer's own noise floor. The warm-up *batch* was hiding that defect by spending a whole
+batch; four render calls fix it directly. Measured at the success level on three mid-range cells,
+200 episodes each (journal 2026-09-22):
+
+| cell | batch-warmed | render-warmed | difference |
+|---|---|---|---|
+| T1 L1 n100 | 0.860 | 0.855 | -0.005 |
+| T2 BC n50 | 0.750 | 0.770 | +0.020 |
+| T3 L2 n50 | 0.745 | 0.740 | -0.005 |
+| pooled, 600 eps | 0.785 | 0.788 | **+0.003 [-0.043, +0.050]** |
+
+against a refutation criterion of about -0.13, the size of the effect the batch was correcting.
+Wall clock falls 39.7 / 48.3 / 44.4 % per slice, **45.4 % overall** -- ~112 GPU-h on a 108-cell
+sweep.
+
+### The comparability rule this creates
+
+The published surface is batch-warmed throughout; everything from here is render-warmed. The two
+are **not poolable**, and the directive is explicit that new runs are still to be compared against
+the old ones -- so the difference has to be visible, not assumed away:
+
+1. **The suffix names the protocol.** Default `r4`, so a forgotten `--suffix` cannot collide with
+   `u200d32`.
+2. **Every result records `protocol.warmup_renders`**, written by `rollout_eval.py`.
+3. **The pooler now refuses a mixed pool.** `pool_variant_eval.py`'s MIXED_PROTOCOL key gained
+   `warmup_renders` and `success_signal`. This closes a real hole found by the 2026-09-20 audit:
+   all three evaluator generations of the D31 sweep shared an identical
+   `(num_inference_steps, warmup)` pair, so the old key would have passed a pool mixing the
+   phantom-success scorer with the corrected one. Both fields are now carried into the pooled
+   payload as well, so a pooled file's provenance no longer rests on its filename alone.
+
+**VERIFY (open).** Whether 1 or 2 renders suffice; only 4 was tested at the success level, chosen
+because four calls put both cameras at the renderer's noise floor. And whether the equivalence holds
+at the ceiling -- all three test cells were mid-range by construction, since a saturated cell cannot
+move either way.

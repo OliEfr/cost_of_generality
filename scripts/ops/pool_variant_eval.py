@@ -75,6 +75,8 @@ def build_payload(parts, task_tag, arm, step, checkpoint, slice_keys, scheme, co
             "base_seed": 5000,
             "scheme": scheme,
             "warmup": proto0.get("warmup"),
+            "warmup_renders": proto0.get("warmup_renders"),
+            "success_signal": proto0.get("success_signal"),
             "comment": comment,
         },
         "per_variant" if arm in VARIANT_ARMS else "per_batch": per_slice,
@@ -116,10 +118,18 @@ def main():
     parts = [json.loads(p.read_text()) for p in paths]
 
     # Every slice must have been measured the same way.
+    # warmup_renders and success_signal are in this key because without them the check cannot see
+    # the two differences that actually matter. All three evaluator generations of the D31 sweep
+    # shared an identical (num_inference_steps, warmup) pair, so the original key would have passed
+    # a pool that mixed the phantom-success scorer with the corrected one; and since D34 the warm-up
+    # is four render calls rather than a batch, which the warmup block alone also cannot express.
     settings = {(d.get("num_inference_steps"),
-                 json.dumps(d.get("protocol", {}).get("warmup"), sort_keys=True)) for d in parts}
+                 json.dumps(d.get("protocol", {}).get("warmup"), sort_keys=True),
+                 d.get("protocol", {}).get("warmup_renders"),
+                 d.get("protocol", {}).get("success_signal")) for d in parts}
     if len(settings) != 1:
-        print(f"MIXED_PROTOCOL {stem}: slices disagree on (num_inference_steps, warmup): {settings}")
+        print(f"MIXED_PROTOCOL {stem}: slices disagree on "
+              f"(num_inference_steps, warmup, warmup_renders, success_signal): {settings}")
         return 6
     sizes = {d.get("episodes") for d in parts}
     if len(sizes) != 1:

@@ -47,12 +47,15 @@ STEP="${5:-080000}"
 source "${WORK:-/leonardo_work/EUHPC_B38_106}/cog/repo/slurm/lib_cog_container.sh"
 cog_task_spec "${TASK}" || exit 2
 
-# Warm-up knobs. One full batch is the conservative default; gate G6 calibrates whether a shorter
-# cap suffices, and whatever it decides is passed in by the launcher so the whole sweep shares one
-# setting. Every result records what it ran with, so two protocols can never be pooled by accident.
-WARMUP_BATCHES="${COG_WARMUP_BATCHES:-1}"
+# Warm-up knobs. D34 flipped the default from one full batch to four extra render calls: the batch
+# existed to hide a renderer that is one call behind the post-reset transform (D33), and four calls
+# fix that directly for microseconds instead of 46% of the sweep's wall clock. Set
+# COG_WARMUP_BATCHES=1 COG_WARMUP_RENDERS=0 to reproduce the batch-warmed protocol that produced the
+# published 108-cell surface. Every result records what it ran with, so the two can never be pooled
+# by accident -- the pooler keys its MIXED_PROTOCOL check on both.
+WARMUP_BATCHES="${COG_WARMUP_BATCHES:-0}"
 WARMUP_MAX_STEPS="${COG_WARMUP_MAX_STEPS:-0}"
-WARMUP_RENDERS="${COG_WARMUP_RENDERS:-0}"
+WARMUP_RENDERS="${COG_WARMUP_RENDERS:-4}"
 SUFFIX="${COG_EVAL_SUFFIX:-u200}"
 
 RUN_ID="${TASK,,}_${ARM}_n${NDEMOS}_s0"

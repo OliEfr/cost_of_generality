@@ -53,12 +53,12 @@ parser.add_argument(
 parser.add_argument(
     "--warmup_renders",
     type=int,
-    default=0,
+    default=4,
     help="extra env.sim.render() calls after each scored reset, before the first observation "
     "is read. D33: the renderer is one call behind the post-reset transform, so the first "
     "frame of a fresh process shows a stale wrist view (measured 105x the renderer's own "
     "noise floor; one extra call takes it to 1.6x, four to the floor). This is the cheap "
-    "alternative to --warmup_batches, which costs a full batch -- 46% of an eval sweep",
+    "alternative to --warmup_batches, which costs a full batch -- 46% of an eval sweep. DEFAULT 4 since D34: measured to reproduce the batch-warmed success rates on three cells (+0.003 [-0.043,+0.050] over 600 episodes) at 45.4% less wall clock",
 )
 parser.add_argument(
     "--warmup_max_steps",
