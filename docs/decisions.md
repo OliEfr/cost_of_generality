@@ -1281,7 +1281,15 @@ Whether the wrist-camera first-frame defect is a transform-ordering bug that an 
 extra render call takes the cold wrist frame from 105x the noise floor to 1.6x, and four calls put
 both cameras at the floor. The renderer is one call behind the post-reset transform.
 
-Still open: whether that recovers the success rate. The probe measures observations, not success,
-so it does not establish that a few render calls could replace the warm-up batch's
-+0.13 [+0.02,+0.24]. Until an eval run says otherwise, the rule above stands unchanged: no result
-is reported from the first episode of a fresh process.
+Whether that recovers the success rate: **answered 2026-09-22, yes.** Suffix `rfix4`,
+`--warmup_batches 0 --warmup_renders 4`, 200 episodes on each of three mid-range cells --
+T1 L1 n100 0.855 vs 0.860, T2 BC n50 0.770 vs 0.750, T3 L2 n50 0.740 vs 0.745; pooled
+0.788 vs 0.785, difference **+0.003 [-0.043, +0.050]**. The refutation criterion was a systematic
+shift of about -0.13; the interval excludes it by a wide margin. Measured wall-clock saving 39.7 /
+48.3 / 44.4 % per slice, 45.4 % overall -- on the 46 % projection.
+
+**The rule above stands unchanged, and the default is still `--warmup_batches 1`.** What the
+result licenses is a future switch, not a retroactive one: every number in the published surface
+came from batch-warmed evaluations, so flipping the default makes new results non-comparable with
+it unless the surface is re-run (~130 GPU-h). That is a separate decision, to be taken when the
+next sweep is scoped rather than now.

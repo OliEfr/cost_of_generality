@@ -476,3 +476,10 @@ the 108-cell surface. It buys +0.13 [+0.02,+0.24] of un-depressed success rate o
 cell. The open question from D33's VERIFY is now also a budget question: a few `sim.render()` calls
 cost microseconds and remove the observation-level defect outright, so if an eval run shows they
 also recover the success rate, essentially all 112 GPU-h come back.
+
+**Confirmed 2026-09-22.** The projection above was tested rather than left standing: 30 slices with
+`--warmup_batches 0 --warmup_renders 4` against the batch-warmed slices of the same three cells give
+537.7 → 324.3 s (T1, −39.7 %), 1270.8 → 656.4 s (T2, −48.3 %), 793.9 → 441.2 s (T3, −44.4 %),
+**45.4 % overall** — within a point of the 46 % projected here, and with no loss of success rate
+(journal 2026-09-22, D33 VERIFY). The saving is available to any future sweep that adopts
+`--warmup_renders`; it is not retroactive, since the published surface is batch-warmed throughout.

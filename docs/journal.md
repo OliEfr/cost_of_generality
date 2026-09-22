@@ -6568,3 +6568,47 @@ One caveat on the comparison itself: this probe never calls `env.step()`, so its
 a process that has only rendered, never simulated. That is why its table_cam figure at zero extra
 renders is 3.70 where the D33 probe measured 6.43 for the nominally same pair. The wrist figure,
 which is the defect under test, reproduces almost exactly (69.58 here vs 69.78 there).
+
+## 2026-09-22 -- four render calls reproduce the warm-up batch's success rates
+
+D33's remaining VERIFY, answered. Suffix `rfix4`: `--warmup_batches 0 --warmup_renders 4`, 10 slices
+= 200 scored episodes per cell, on three mid-range cells chosen because a depression would show
+there (saturated cells cannot move). 30/30 slices COMPLETED, all carrying
+`warmup={batches: 0}`, `warmup_renders=4` and the corrected success signal.
+
+| cell | warm-up batch | 4 renders | difference | Newcombe 95 % | |
+|---|---|---|---|---|---|
+| T1 L1 n100 | 172/200 = 0.860 | 171/200 = **0.855** | −0.005 | [−0.074, +0.064] | no difference |
+| T2 BC n50 | 150/200 = 0.750 | 154/200 = **0.770** | +0.020 | [−0.064, +0.103] | no difference |
+| T3 L2 n50 | 149/200 = 0.745 | 148/200 = **0.740** | −0.005 | [−0.090, +0.080] | no difference |
+| pooled, 600 eps | 471/600 = 0.785 | 473/600 = **0.788** | +0.003 | [−0.043, +0.050] | no difference |
+
+**Verdict: the swap reproduces the success rates.** The refutation criterion was a systematic
+negative shift of about the size of the warm-up batch's own effect, −0.13; the pooled interval is
+[−0.043, +0.050] and excludes that by a wide margin, and no individual cell moves. Two deltas are
+−0.005, i.e. a single episode in 200.
+
+**Wall clock, measured from the job logs rather than projected:**
+
+| task | with a warm-up batch | with 4 renders | saved |
+|---|---|---|---|
+| T1 | 538 s/slice | **324 s** | 213 s (39.7 %) |
+| T2 | 1,271 s/slice | **656 s** | 614 s (48.3 %) |
+| T3 | 794 s/slice | **441 s** | 353 s (44.4 %) |
+| all three | 2,602 s | 1,422 s | **45.4 %** |
+
+That lands on the 46 % projection in `docs/timings.md`, so the estimate there needs no revision.
+On a 108-cell sweep it is ~112 GPU-h returned. (Caveat on the T1 row: its "renders" sample includes
+the five G6 `g6w0` slices, which ran with no warm-up of any kind; timing-wise they are the same
+class, since both skip the batch.)
+
+**Limits, stated plainly.** Three cells, 600 episodes. The pooled interval excludes any shift beyond
+about ±0.05, so a systematic effect smaller than that is not ruled out — but it is an order of
+magnitude below what the warm-up batch was correcting. All three cells are mid-range by
+construction; the test says nothing about cells at the ceiling, where by definition nothing can
+move. Four renders was chosen from the observation-level probe (four calls put both cameras at the
+renderer's noise floor); 1 or 2 were not tested at the success level.
+
+**Not switched over.** The default remains `--warmup_batches 1`, and the 108-cell surface is
+untouched. Flipping the default would make new results non-comparable with the published surface
+unless that is re-run, which is a separate decision and a separate 130 GPU-h.
