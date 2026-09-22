@@ -99,6 +99,9 @@ def main() -> None:
     ap.add_argument("--warmup-batches", type=int, default=1, help="eval stage only; see gate G6")
     ap.add_argument("--warmup-max-steps", type=int, default=0,
                     help="eval stage only; 0 = the task's own --max_steps")
+    ap.add_argument("--warmup-renders", type=int, default=0, dest="warmup_renders",
+                    help="eval stage only: extra sim.render() calls after the scored reset "
+                         "instead of a warm-up batch (D33)")
     ap.add_argument("--suffix", default="u200", help="eval stage only: protocol suffix")
     ap.add_argument("--env-arm", default=None, dest="env_arm",
                     help="eval stage only: evaluate in THIS arm's env while loading the checkpoint "
@@ -141,7 +144,8 @@ def main() -> None:
     env = ""
     if args.stage == "eval":
         env = (f"COG_WARMUP_BATCHES={args.warmup_batches} "
-               f"COG_WARMUP_MAX_STEPS={args.warmup_max_steps} COG_EVAL_SUFFIX={args.suffix} ")
+               f"COG_WARMUP_MAX_STEPS={args.warmup_max_steps} "
+               f"COG_WARMUP_RENDERS={args.warmup_renders} COG_EVAL_SUFFIX={args.suffix} ")
         if args.env_arm:
             env += f"COG_EVAL_ENV_ARM={args.env_arm} "
     extra = ""
@@ -155,7 +159,8 @@ def main() -> None:
     note = "launch_wave.py"
     if args.stage == "eval":
         note += (f" | suffix={args.suffix} warmup_batches={args.warmup_batches} "
-                 f"warmup_max_steps={args.warmup_max_steps} slices={args.slices}")
+                 f"warmup_max_steps={args.warmup_max_steps} "
+                 f"warmup_renders={args.warmup_renders} slices={args.slices}")
         if args.env_arm:
             note += f" env_arm={args.env_arm}"
 

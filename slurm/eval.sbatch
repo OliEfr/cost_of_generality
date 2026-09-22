@@ -52,6 +52,7 @@ cog_task_spec "${TASK}" || exit 2
 # setting. Every result records what it ran with, so two protocols can never be pooled by accident.
 WARMUP_BATCHES="${COG_WARMUP_BATCHES:-1}"
 WARMUP_MAX_STEPS="${COG_WARMUP_MAX_STEPS:-0}"
+WARMUP_RENDERS="${COG_WARMUP_RENDERS:-0}"
 SUFFIX="${COG_EVAL_SUFFIX:-u200}"
 
 RUN_ID="${TASK,,}_${ARM}_n${NDEMOS}_s0"
@@ -101,6 +102,7 @@ cog_gpu_exec python -u -m cog.eval.rollout_eval \
     --task "${ENVID}" --checkpoint "${CKPT}" --protocol "${PROTO}" \
     --num_inference_steps 10 --max_steps "${MAX_STEPS}" ${STAGES} \
     --warmup_batches "${WARMUP_BATCHES}" --warmup_max_steps "${WARMUP_MAX_STEPS}" \
+    --warmup_renders "${WARMUP_RENDERS}" \
     --out "${OUT}" --headless --enable_cameras \
     "--kit_args=\"${COG_KIT_ARGS}\""
 RC=$?

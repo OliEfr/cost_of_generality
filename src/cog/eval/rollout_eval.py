@@ -51,6 +51,16 @@ parser.add_argument(
     "clear of the eval block (5000-5009) and of every generation seed block",
 )
 parser.add_argument(
+    "--warmup_renders",
+    type=int,
+    default=0,
+    help="extra env.sim.render() calls after each scored reset, before the first observation "
+    "is read. D33: the renderer is one call behind the post-reset transform, so the first "
+    "frame of a fresh process shows a stale wrist view (measured 105x the renderer's own "
+    "noise floor; one extra call takes it to 1.6x, four to the floor). This is the cheap "
+    "alternative to --warmup_batches, which costs a full batch -- 46% of an eval sweep",
+)
+parser.add_argument(
     "--warmup_max_steps",
     type=int,
     default=0,
@@ -116,6 +126,27 @@ from isaaclab_tasks.utils.parse_cfg import parse_env_cfg
 from lerobot.policies.factory import get_policy_class, make_pre_post_processors
 
 
+def drive_renderer(env, n):
+    """Run the renderer n extra times and re-read the observation it feeds the policy.
+
+    The sensors cache on a timestamp that render() does not advance, so they are forced; without
+    that the recomputed observation is the same stale buffer.
+    """
+    if n <= 0:
+        return None
+    for _ in range(n):
+        env.sim.render()
+    for name in ("table_cam", "wrist_cam"):
+        sensor = getattr(env.scene, "sensors", {}).get(name)
+        if sensor is None:
+            continue
+        try:
+            sensor.update(dt=0.0, force_recompute=True)
+        except TypeError:
+            sensor.update(0.0)
+    return env.observation_manager.compute()
+
+
 def obs_to_batch(obs, device):
     pol = obs["policy"]
     state = torch.cat([pol["eef_pos"], pol["eef_quat"], pol["gripper_pos"]], dim=-1).float()
@@ -159,6 +190,7 @@ def main():
     # The signal the SR was computed from. u200 results have no such key and were scored off the
     # sticky get_term() latch; u200g10 has guard_steps=10 and the same latch one window later.
     proto_out["success_signal"] = "terminated & get_term('success')"
+    proto_out["warmup_renders"] = args_cli.warmup_renders
 
     # Stage instrumentation reads sim state the policy never sees; it cannot alter the
     # rollout. Thresholds mirror the success termination (min_drawer_open=0.15) and the
@@ -266,6 +298,7 @@ def main():
     for b in range(batches):
         t_batch = time.time()
         obs, _ = env.reset(seed=base_seed + b)
+        obs = drive_renderer(env, args_cli.warmup_renders) or obs
         policy.reset()
         idx_list = batch_tasks = batch_embs = None
         if instr_strings:
