@@ -1227,3 +1227,55 @@ inflated flat cells with clean diagonal ones.
 way: both were sized to the *symptom's location* (t == 0, then t < 10) without reading the code that
 produced it. Thirty lines of `TerminationManager.compute()` answered in one pass what two rounds of
 guard-widening could not. Read the mechanism before sizing a workaround to it.
+
+## D33 -- 2026-09-21: the first-batch depression is a renderer defect, so the warm-up batch is mandatory, not precautionary
+
+**Status:** accepted. Upgrades D31's warm-up batch from an empirical correction to a documented one,
+and adds a standing rule.
+
+### Decision
+
+**Every scored episode runs in a process that has already completed at least one unscored batch.**
+No result is reported from the first episode of a fresh process. This was already D31's protocol;
+what changes is that it is now backed by a mechanism rather than by an observed offset, and that it
+applies to any future eval protocol, not only the 108-cell sweep.
+
+### What was measured
+
+Probe `slurm/warmup_probe.sbatch` / `scripts/dev/warmup_frame_probe.py`, job 58342228, 1 m 54 s.
+The policy is removed from the loop: one process resets `Cog-CupPlace-L1-IK-Rel-Visuomotor-v0`
+(20 envs) three times at seed 5000 and drives every cycle with an identical zero-action sequence,
+so nothing can diverge through the policy. Camera tensors and the cup's root pose are captured at
+steps 0, 1, 2, 5, 10, 20, 29.
+
+- **Physics is exactly identical.** Cup root pose max |Δ| = `0.000e+00` at every step for all three
+  cycle pairs. Equal as float32, not within tolerance.
+- **The renderer is not converged in the first cycle.** Cycles 1 vs 2 sit at a flat **0.62 MAE**
+  floor (0-255 units) at every step and both cameras -- the renderer's own sampling noise, and the
+  yardstick. Cycle 0 against it: table_cam **10×** the floor at step 0, decaying to 1.0× by step 20;
+  wrist_cam **112×** at step 0, at the floor from step 1.
+- **The wrist camera's first frame is a different image, not a noisy one.** 99.07 % of pixels
+  differ, per-channel mean shift −60 to −63, max 231. Most consistent reading: the first render
+  after process start uses a camera transform that does not yet reflect the post-reset robot pose.
+  The table camera is world-fixed, which is why it shows progressive convergence instead.
+
+So a policy's opening actions in a fresh process are conditioned on a wrist view of the wrong thing
+and on table pixels ~20 steps from settled. That is sufficient to produce the measured depression
+(one full warm-up batch is worth **+0.13 [+0.02, +0.24]** on `t1_L1_n100`), and it explains why a
+20-step warm-up recovers part of it: ~20 steps is where the table camera reaches the floor.
+
+### Consequences
+
+- All 1,080 slices behind the current 108-cell surface ran `warmup={batches: 1, seed: 4900}` --
+  verified, zero exceptions. Both published reports rest entirely on warmed evaluations.
+- Any protocol that scores the first episode of a process is scoring corrupted observations. The
+  pre-D31 per-variant protocol did exactly that for every one of its episodes, which is the
+  mechanical reason its diagonal cells read low.
+- The warm-up is identical across all cells, so it cannot bias one arm against another. It costs
+  one extra batch per slice.
+
+### VERIFY (open)
+
+Whether the wrist-camera first-frame defect is a transform-ordering bug that an extra
+`sim.render()` before the first observation would remove outright. If it is, the warm-up batch
+could shrink to a few render calls. Probed separately; see the journal.
